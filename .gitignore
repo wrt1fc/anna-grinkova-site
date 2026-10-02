@@ -1,0 +1,15 @@
+# Retired comparison variant and local export tooling
+/prototype-v2/
+/DESIGN-V2.md
+/figma-export/
+
+# Superseded portrait; current images are anna-vertical.jpg and anna-horizontal.jpg
+/prototype/assets/anna-portrait.webp
+
+# Local and generated files
+node_modules/
+.env
+.env.*
+*.log
+.DS_Store
+Thumbs.db
