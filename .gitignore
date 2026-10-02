@@ -8,6 +8,7 @@
 
 # Local and generated files
 node_modules/
+/data/
 .env
 .env.*
 *.log

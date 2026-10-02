@@ -1,0 +1,12 @@
+{
+  "name": "anna-grinkova-site",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.15.0"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "test": "node --test"
+  }
+}
