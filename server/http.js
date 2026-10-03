@@ -71,7 +71,7 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
         if (path === '/api/auth/register' && req.method === 'POST') {
           const body = await readJson(req);
           const email = normalizeEmail(body.email);
-          if (!email || !validPassword(body.password) || body.password !== body.confirmPassword) return json(res, 400, { error: 'invalid_credentials', message: 'Проверьте email и совпадение паролей (не менее 12 символов).' });
+          if (!email || !validPassword(body.password) || body.password !== body.confirmPassword) return json(res, 400, { error: 'invalid_credentials', message: 'Проверьте email и совпадение паролей. Пароль: от 8 символов, с заглавной буквой, цифрой и спецсимволом.' });
           if (store.findUserByEmail(email)) return json(res, 409, { error: 'email_exists', message: 'Этот email уже зарегистрирован.' });
           const sent = await sendCode({ purpose: 'registration', email, passwordHash: hashPassword(body.password) });
           return json(res, sent.status, sent.data);
@@ -115,7 +115,7 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
           const body = await readJson(req);
           if (typeof body.challenge !== 'string' || !/^\d{6}$/.test(body.code || '')
             || !validPassword(body.password) || body.password !== body.confirmPassword) {
-            return json(res, 400, { error: 'invalid_request', message: 'Проверьте код и совпадение новых паролей.' });
+            return json(res, 400, { error: 'invalid_request', message: 'Проверьте код и совпадение новых паролей. Пароль: от 8 символов, с заглавной буквой, цифрой и спецсимволом.' });
           }
           const changed = store.consumeChallenge(tokenHash(body.challenge), emailCodeHash(codeSecret, body.challenge, body.code), 'reset', Date.now(), hashPassword(body.password));
           if (!changed) return json(res, 400, { error: 'invalid_code', message: 'Код неверный или срок его действия истёк.' });

@@ -7,6 +7,7 @@ const passwordInput = document.getElementById('signup-password');
 const confirmInput = document.getElementById('signup-confirm');
 const codeInput = document.getElementById('signup-code');
 const formMessage = document.getElementById('form-message');
+const passwordRules = document.getElementById('password-rules');
 let authMode = 'login';
 let challenge = null;
 let currentUser = null;
@@ -35,12 +36,29 @@ function showRoute() {
 
 const modes = {
   login: { title: 'Войти в кабинет', description: 'Введите email и пароль.', submit: 'Войти', fields: ['email', 'password'], switch: 'Создать аккаунт' },
-  register: { title: 'Создать аккаунт', description: 'Пароль должен содержать не менее 12 символов. Затем подтвердите почту кодом.', submit: 'Получить код', fields: ['email', 'password', 'confirm'], switch: 'Уже есть аккаунт? Войти' },
+  register: { title: 'Создать аккаунт', description: 'Придумайте пароль и подтвердите почту кодом.', submit: 'Получить код', fields: ['email', 'password', 'confirm'], switch: 'Уже есть аккаунт? Войти' },
   verify: { title: 'Подтвердить почту', description: 'Введите шестизначный код из письма. Он действует 10 минут.', submit: 'Подтвердить', fields: ['code'], switch: 'Вернуться ко входу' },
   'verify-existing': { title: 'Подтвердить почту', description: 'Введите шестизначный код из письма. Он действует 10 минут.', submit: 'Подтвердить', fields: ['code'], switch: 'Вернуться в кабинет' },
   'reset-request': { title: 'Сменить пароль', description: 'Отправим код на почту, привязанную к аккаунту.', submit: 'Получить код', fields: ['email'], switch: 'Вернуться ко входу' },
-  'reset-confirm': { title: 'Новый пароль', description: 'Введите код из письма и новый пароль от 12 символов.', submit: 'Сохранить пароль', fields: ['code', 'password', 'confirm'], switch: 'Вернуться ко входу' },
+  'reset-confirm': { title: 'Новый пароль', description: 'Введите код из письма и придумайте новый пароль.', submit: 'Сохранить пароль', fields: ['code', 'password', 'confirm'], switch: 'Вернуться ко входу' },
 };
+
+function passwordChecks(value) {
+  return {
+    length: [...value].length >= 8 && [...value].length <= 128,
+    uppercase: /\p{Lu}/u.test(value),
+    digit: /\p{Nd}/u.test(value),
+    special: /[^\p{L}\p{N}\s]/u.test(value),
+  };
+}
+
+function updatePasswordRules() {
+  const checks = passwordChecks(passwordInput.value);
+  for (const item of passwordRules.querySelectorAll('[data-password-rule]')) {
+    item.classList.toggle('met', checks[item.dataset.passwordRule]);
+  }
+  return Object.values(checks).every(Boolean);
+}
 
 function setAuthMode(mode) {
   authMode = mode;
@@ -55,6 +73,10 @@ function setAuthMode(mode) {
     ({ email: emailInput, password: passwordInput, confirm: confirmInput, code: codeInput })[field].required = visible;
   }
   passwordInput.autocomplete = mode === 'login' ? 'current-password' : 'new-password';
+  const creatingPassword = mode === 'register' || mode === 'reset-confirm';
+  passwordInput.minLength = creatingPassword ? 8 : 0;
+  passwordRules.hidden = !creatingPassword;
+  updatePasswordRules();
   document.getElementById('auth-forgot').hidden = mode !== 'login';
   document.getElementById('auth-resend').hidden = !['verify', 'verify-existing', 'reset-confirm'].includes(mode);
   formMessage.textContent = '';
@@ -104,6 +126,7 @@ document.querySelectorAll('[data-toggle-password]').forEach((toggle) => toggle.a
   toggle.setAttribute('aria-label', `${showing ? 'Скрыть' : 'Показать'} ${input === confirmInput ? 'подтверждение пароля' : 'пароль'}`);
   input.focus();
 }));
+passwordInput.addEventListener('input', updatePasswordRules);
 dialog.addEventListener('click', (event) => { if (event.target === dialog) closeSignup(); });
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && !dialog.hidden) closeSignup();
@@ -115,6 +138,7 @@ document.addEventListener('keydown', (event) => {
 });
 
 async function sendRegistration() {
+  if (!updatePasswordRules()) { formMessage.textContent = 'Пароль: от 8 символов, с заглавной буквой, цифрой и спецсимволом.'; return; }
   if (passwordInput.value !== confirmInput.value) { formMessage.textContent = 'Пароли не совпадают.'; return; }
   const { response, data } = await api('/api/auth/register', { method: 'POST', body: JSON.stringify({ email: emailInput.value, password: passwordInput.value, confirmPassword: confirmInput.value }) });
   if (!response.ok) { formMessage.textContent = data.message || 'Не удалось отправить код.'; return; }
@@ -141,6 +165,7 @@ authForm.addEventListener('submit', async (event) => {
   try {
     if (authMode === 'register') { await sendRegistration(); return; }
     if (authMode === 'reset-request') { await requestReset(); return; }
+    if (authMode === 'reset-confirm' && !updatePasswordRules()) { formMessage.textContent = 'Пароль: от 8 символов, с заглавной буквой, цифрой и спецсимволом.'; return; }
     if (authMode === 'reset-confirm' && passwordInput.value !== confirmInput.value) { formMessage.textContent = 'Пароли не совпадают.'; return; }
     const path = { login: '/api/auth/login', verify: '/api/auth/register/verify', 'verify-existing': '/api/auth/email/verify', 'reset-confirm': '/api/auth/reset/confirm' }[authMode];
     const body = authMode === 'login' ? { email: emailInput.value, password: passwordInput.value }

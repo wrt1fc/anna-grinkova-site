@@ -21,10 +21,13 @@ async function fixture(run, { mailEnabled = true } = {}) {
   finally { await new Promise((resolve) => server.close(resolve)); store.close(); }
 }
 
-const signup = { email: 'anna@example.com', password: 'very-long-password', confirmPassword: 'very-long-password' };
+const signup = { email: 'anna@example.com', password: 'Very-long-password1!', confirmPassword: 'Very-long-password1!' };
 
 test('registration requires matching passwords and an emailed one-time code', async () => fixture(async ({ store, sent, request }) => {
   assert.equal((await request('/api/auth/register', 'POST', { ...signup, confirmPassword: 'different-password' })).response.status, 400);
+  assert.equal((await request('/api/auth/register', 'POST', { ...signup, password: 'verylong1!', confirmPassword: 'verylong1!' })).response.status, 400);
+  assert.equal((await request('/api/auth/register', 'POST', { ...signup, password: 'Verylong!', confirmPassword: 'Verylong!' })).response.status, 400);
+  assert.equal((await request('/api/auth/register', 'POST', { ...signup, password: 'Verylong1', confirmPassword: 'Verylong1' })).response.status, 400);
   assert.equal(sent.length, 0);
   const pending = await request('/api/auth/register', 'POST', signup);
   assert.equal(pending.response.status, 202);
@@ -45,8 +48,9 @@ test('password reset uses a code and invalidates previous sessions', async () =>
   const cookie = registered.response.headers.get('set-cookie').split(';')[0];
   const requested = await request('/api/auth/reset/request', 'POST', { email: signup.email });
   assert.equal(requested.response.status, 202);
-  const reset = { challenge: requested.data.challenge, code: sent.at(-1).code, password: 'another-long-password', confirmPassword: 'another-long-password' };
+  const reset = { challenge: requested.data.challenge, code: sent.at(-1).code, password: 'Another-long-password2!', confirmPassword: 'Another-long-password2!' };
   assert.equal((await request('/api/auth/reset/confirm', 'POST', { ...reset, confirmPassword: 'mismatch-password' })).response.status, 400);
+  assert.equal((await request('/api/auth/reset/confirm', 'POST', { ...reset, password: 'Anotherlong2', confirmPassword: 'Anotherlong2' })).response.status, 400);
   assert.equal((await request('/api/auth/reset/confirm', 'POST', { ...reset, code: '000000' })).response.status, 400);
   assert.equal((await request('/api/auth/reset/confirm', 'POST', reset)).response.status, 200);
   assert.equal((await request('/api/me', 'GET', null, cookie)).response.status, 401);
@@ -78,7 +82,7 @@ test('reset request does not reveal whether an email is registered', async () =>
   assert.equal(second.response.status, 429);
   assert.equal(sent.length, 0);
   assert.equal((await request('/api/auth/reset/confirm', 'POST', {
-    challenge: first.data.challenge, code: '000000', password: 'another-long-password', confirmPassword: 'another-long-password',
+    challenge: first.data.challenge, code: '000000', password: 'Another-long-password2!', confirmPassword: 'Another-long-password2!',
   })).response.status, 400);
 }));
 

@@ -7,7 +7,12 @@ export function normalizeEmail(value) {
 }
 
 export function validPassword(value) {
-  return typeof value === 'string' && value.length >= 12 && value.length <= 128;
+  if (typeof value !== 'string') return false;
+  const length = [...value].length;
+  return length >= 8 && length <= 128
+    && /\p{Lu}/u.test(value)
+    && /\p{Nd}/u.test(value)
+    && /[^\p{L}\p{N}\s]/u.test(value);
 }
 
 export function hashPassword(password) {
