@@ -4,9 +4,13 @@ const dialog = document.getElementById('signup-dialog');
 const authForm = document.getElementById('signup-form');
 const emailInput = document.getElementById('signup-email');
 const passwordInput = document.getElementById('signup-password');
+const confirmInput = document.getElementById('signup-confirm');
+const codeInput = document.getElementById('signup-code');
 const formMessage = document.getElementById('form-message');
-let focusBeforeDialog = null;
 let authMode = 'login';
+let challenge = null;
+let currentUser = null;
+let focusBeforeDialog = null;
 
 async function api(path, options = {}) {
   const response = await fetch(path, { ...options, headers: { 'Content-Type': 'application/json', ...options.headers }, credentials: 'same-origin' });
@@ -15,57 +19,119 @@ async function api(path, options = {}) {
 
 function showRoute() {
   const hash = window.location.hash.replace('#', '');
-  const page = ['day', 'week', 'plans', 'account'].includes(hash) ? hash : 'home';
+  const page = ['day', 'week', 'account'].includes(hash) ? hash : 'home';
+  if (hash && !['home', 'day', 'week', 'account', 'about'].includes(hash)) history.replaceState(null, '', '#home');
   for (const element of pages) element.hidden = element.dataset.page !== page;
   for (const element of navigation) {
     const navPage = element.dataset.nav || element.dataset.mobileNav;
     if (navPage === page || (hash === 'about' && navPage === 'about')) element.setAttribute('aria-current', 'page');
     else element.removeAttribute('aria-current');
   }
-  document.title = { home: 'Анна Гринькова — пространство прогнозов', day: 'Карта дня — Анна Гринькова', week: 'Прогноз на неделю — Анна Гринькова', plans: 'Варианты доступа — Анна Гринькова', account: 'Личный кабинет — Анна Гринькова' }[page];
+  document.title = { home: 'Анна Гринькова — пространство прогнозов', day: 'Карта дня — Анна Гринькова', week: 'Прогноз на неделю — Анна Гринькова', account: 'Личный кабинет — Анна Гринькова' }[page];
   window.scrollTo({ top: 0, behavior: 'auto' });
   if (hash === 'about') requestAnimationFrame(() => document.getElementById('about').scrollIntoView({ behavior: 'smooth' }));
   if (page === 'account') refreshAccount();
 }
 
+const modes = {
+  login: { title: 'Войти в кабинет', description: 'Введите email и пароль.', submit: 'Войти', fields: ['email', 'password'], switch: 'Создать аккаунт' },
+  register: { title: 'Создать аккаунт', description: 'Пароль должен содержать не менее 12 символов. Затем подтвердите почту кодом.', submit: 'Получить код', fields: ['email', 'password', 'confirm'], switch: 'Уже есть аккаунт? Войти' },
+  verify: { title: 'Подтвердить почту', description: 'Введите шестизначный код из письма. Он действует 10 минут.', submit: 'Подтвердить', fields: ['code'], switch: 'Вернуться ко входу' },
+  'verify-existing': { title: 'Подтвердить почту', description: 'Введите шестизначный код из письма. Он действует 10 минут.', submit: 'Подтвердить', fields: ['code'], switch: 'Вернуться в кабинет' },
+  'reset-request': { title: 'Сменить пароль', description: 'Отправим код на почту, привязанную к аккаунту.', submit: 'Получить код', fields: ['email'], switch: 'Вернуться ко входу' },
+  'reset-confirm': { title: 'Новый пароль', description: 'Введите код из письма и новый пароль от 12 символов.', submit: 'Сохранить пароль', fields: ['code', 'password', 'confirm'], switch: 'Вернуться ко входу' },
+};
+
 function setAuthMode(mode) {
   authMode = mode;
-  const register = mode === 'register';
-  document.getElementById('signup-title').textContent = register ? 'Создать аккаунт' : 'Войти в кабинет';
-  document.getElementById('auth-description').textContent = register ? 'Сохраните профиль, чтобы позже получать персональные прогнозы.' : 'Войдите, чтобы увидеть профиль и доступ к прогнозам.';
-  document.getElementById('auth-submit').firstChild.textContent = register ? 'Создать аккаунт ' : 'Войти ';
-  document.getElementById('auth-switch').textContent = register ? 'Уже есть аккаунт? Войти' : 'Создать аккаунт';
-  passwordInput.autocomplete = register ? 'new-password' : 'current-password';
+  const config = modes[mode];
+  document.getElementById('signup-title').textContent = config.title;
+  document.getElementById('auth-description').textContent = config.description;
+  document.getElementById('auth-submit').firstChild.textContent = `${config.submit} `;
+  document.getElementById('auth-switch').textContent = config.switch;
+  for (const field of ['email', 'password', 'confirm', 'code']) {
+    const visible = config.fields.includes(field);
+    document.getElementById(`${field}-field`).hidden = !visible;
+    ({ email: emailInput, password: passwordInput, confirm: confirmInput, code: codeInput })[field].required = visible;
+  }
+  passwordInput.autocomplete = mode === 'login' ? 'current-password' : 'new-password';
+  document.getElementById('auth-forgot').hidden = mode !== 'login';
+  document.getElementById('auth-resend').hidden = !['verify', 'verify-existing', 'reset-confirm'].includes(mode);
   formMessage.textContent = '';
 }
 
-function openSignup(event) {
+function openSignup(event, mode = 'login') {
+  if (mode === 'login' && currentUser && event.currentTarget.classList.contains('header-entry')) {
+    window.location.hash = 'account';
+    return;
+  }
   focusBeforeDialog = event.currentTarget;
   dialog.hidden = false;
   document.body.classList.add('dialog-open');
-  setAuthMode('login');
-  emailInput.focus();
+  setAuthMode(mode);
+  (modes[mode].fields.includes('email') ? emailInput : codeInput).focus();
 }
 
 function closeSignup() {
   dialog.hidden = true;
   document.body.classList.remove('dialog-open');
   authForm.reset();
+  challenge = null;
+  for (const toggle of document.querySelectorAll('[data-toggle-password]')) {
+    document.getElementById(toggle.dataset.togglePassword).type = 'password';
+    toggle.setAttribute('aria-pressed', 'false');
+    toggle.setAttribute('aria-label', toggle.dataset.togglePassword === 'signup-confirm' ? 'Показать подтверждение пароля' : 'Показать пароль');
+  }
   if (focusBeforeDialog) focusBeforeDialog.focus();
 }
 
-document.querySelectorAll('[data-open-signup]').forEach((button) => button.addEventListener('click', openSignup));
+document.querySelectorAll('[data-open-signup]').forEach((button) => button.addEventListener('click', (event) => openSignup(event)));
 document.querySelectorAll('[data-close-signup]').forEach((button) => button.addEventListener('click', closeSignup));
-document.getElementById('auth-switch').addEventListener('click', () => setAuthMode(authMode === 'login' ? 'register' : 'login'));
+document.getElementById('auth-switch').addEventListener('click', () => {
+  if (authMode === 'login') setAuthMode('register');
+  else if (authMode === 'verify-existing') closeSignup();
+  else setAuthMode('login');
+});
+document.getElementById('auth-forgot').addEventListener('click', () => {
+  passwordInput.value = confirmInput.value = '';
+  setAuthMode('reset-request');
+});
+document.querySelectorAll('[data-toggle-password]').forEach((toggle) => toggle.addEventListener('click', () => {
+  const input = document.getElementById(toggle.dataset.togglePassword);
+  const showing = input.type === 'password';
+  input.type = showing ? 'text' : 'password';
+  toggle.setAttribute('aria-pressed', String(showing));
+  toggle.setAttribute('aria-label', `${showing ? 'Скрыть' : 'Показать'} ${input === confirmInput ? 'подтверждение пароля' : 'пароль'}`);
+  input.focus();
+}));
 dialog.addEventListener('click', (event) => { if (event.target === dialog) closeSignup(); });
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && !dialog.hidden) closeSignup();
   if (event.key !== 'Tab' || dialog.hidden) return;
-  const focusable = [...dialog.querySelectorAll('button, input')];
+  const focusable = [...dialog.querySelectorAll('button, input')].filter((element) => element.getClientRects().length);
   const first = focusable[0], last = focusable[focusable.length - 1];
   if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
   else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
 });
+
+async function sendRegistration() {
+  if (passwordInput.value !== confirmInput.value) { formMessage.textContent = 'Пароли не совпадают.'; return; }
+  const { response, data } = await api('/api/auth/register', { method: 'POST', body: JSON.stringify({ email: emailInput.value, password: passwordInput.value, confirmPassword: confirmInput.value }) });
+  if (!response.ok) { formMessage.textContent = data.message || 'Не удалось отправить код.'; return; }
+  challenge = data.challenge;
+  setAuthMode('verify');
+  formMessage.textContent = data.message;
+  codeInput.focus();
+}
+
+async function requestReset() {
+  const { response, data } = await api('/api/auth/reset/request', { method: 'POST', body: JSON.stringify({ email: emailInput.value }) });
+  if (!response.ok) { formMessage.textContent = data.message || 'Не удалось отправить код.'; return; }
+  if (data.challenge) challenge = data.challenge;
+  setAuthMode('reset-confirm');
+  formMessage.textContent = data.message;
+  codeInput.focus();
+}
 
 authForm.addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -73,39 +139,58 @@ authForm.addEventListener('submit', async (event) => {
   button.disabled = true;
   formMessage.textContent = 'Проверяем данные…';
   try {
-    const { response, data } = await api(`/api/auth/${authMode}`, { method: 'POST', body: JSON.stringify({ email: emailInput.value, password: passwordInput.value }) });
-    if (!response.ok) { formMessage.textContent = data.message || 'Не удалось войти. Проверьте данные.'; return; }
-    closeSignup();
-    window.location.hash = 'account';
-    refreshAccount();
+    if (authMode === 'register') { await sendRegistration(); return; }
+    if (authMode === 'reset-request') { await requestReset(); return; }
+    if (authMode === 'reset-confirm' && passwordInput.value !== confirmInput.value) { formMessage.textContent = 'Пароли не совпадают.'; return; }
+    const path = { login: '/api/auth/login', verify: '/api/auth/register/verify', 'verify-existing': '/api/auth/email/verify', 'reset-confirm': '/api/auth/reset/confirm' }[authMode];
+    const body = authMode === 'login' ? { email: emailInput.value, password: passwordInput.value }
+      : authMode === 'reset-confirm' ? { challenge, code: codeInput.value, password: passwordInput.value, confirmPassword: confirmInput.value }
+        : { challenge, code: codeInput.value };
+    const { response, data } = await api(path, { method: 'POST', body: JSON.stringify(body) });
+    if (!response.ok) { formMessage.textContent = data.message || 'Не удалось завершить действие.'; return; }
+    if (authMode === 'reset-confirm') {
+      passwordInput.value = confirmInput.value = codeInput.value = '';
+      setAuthMode('login');
+      formMessage.textContent = data.message;
+      await refreshAccount();
+    } else {
+      closeSignup();
+      window.location.hash = 'account';
+      await refreshAccount();
+    }
   } catch { formMessage.textContent = 'Сервис недоступен. Попробуйте позже.'; }
   finally { button.disabled = false; }
 });
 
+document.getElementById('auth-resend').addEventListener('click', async () => {
+  formMessage.textContent = 'Отправляем код…';
+  try {
+    if (authMode === 'verify') await sendRegistration();
+    else if (authMode === 'reset-confirm') await requestReset();
+    else if (authMode === 'verify-existing') {
+      const { response, data } = await api('/api/auth/email/request', { method: 'POST', body: '{}' });
+      if (response.ok) challenge = data.challenge;
+      formMessage.textContent = data.message || 'Не удалось отправить код.';
+    }
+  } catch { formMessage.textContent = 'Сервис недоступен. Попробуйте позже.'; }
+});
+
 function renderAccount(data) {
-  const user = data?.user;
-  document.getElementById('account-heading').textContent = user ? 'Вы в кабинете' : 'Войдите в кабинет';
-  document.getElementById('account-email').textContent = user ? user.email : 'Создайте аккаунт, чтобы подготовить профиль для персонального прогноза.';
-  document.getElementById('account-login').hidden = !!user;
-  document.getElementById('account-logout').hidden = !user;
-  document.getElementById('birth-card').hidden = !user;
-  if (user && data.birthProfile) {
+  currentUser = data?.user || null;
+  document.getElementById('account-heading').textContent = currentUser ? 'Вы в кабинете' : 'Войдите в кабинет';
+  document.getElementById('account-email').textContent = currentUser ? currentUser.email : 'Создайте аккаунт, чтобы подготовить профиль для персонального прогноза.';
+  document.getElementById('account-login').hidden = !!currentUser;
+  document.getElementById('account-logout').hidden = !currentUser;
+  document.getElementById('birth-card').hidden = !currentUser;
+  document.getElementById('account-change-password').hidden = !currentUser;
+  document.getElementById('account-verify-email').hidden = !currentUser || currentUser.emailVerified;
+  document.getElementById('email-status').textContent = currentUser
+    ? currentUser.emailVerified ? 'Почта подтверждена.' : 'Почта ещё не подтверждена.'
+    : 'Войдите, чтобы управлять аккаунтом.';
+  if (currentUser && data.birthProfile) {
     const form = document.getElementById('birth-form');
     for (const key of ['birthDate', 'birthTime', 'birthPlace']) form.elements[key].value = data.birthProfile[key];
   }
-  const container = document.getElementById('account-access');
-  container.replaceChildren();
-  if (!user) { const p = document.createElement('p'); p.textContent = 'Для просмотра доступа войдите в кабинет.'; container.append(p); return; }
-  for (const feature of ['day', 'week']) {
-    const right = data.entitlements.find((item) => item.feature === feature);
-    const row = document.createElement('p'); row.className = 'access-row';
-    const title = document.createElement('strong'); title.textContent = feature === 'day' ? 'Прогноз на день' : 'Прогноз на неделю';
-    const state = document.createElement('span'); state.textContent = right ? `Доступ до ${new Date(right.endsAt).toLocaleDateString('ru-RU')}` : 'Нет доступа';
-    row.append(title, state); container.append(row);
-  }
-  const note = document.createElement('p'); note.className = 'account-small-note';
-  note.textContent = 'Персональные прогнозы ещё разрабатываются. Активный доступ пока не открывает текст прогноза.';
-  container.append(note);
 }
 
 async function refreshAccount() {
@@ -117,6 +202,22 @@ document.getElementById('account-logout').addEventListener('click', async () => 
   try { await api('/api/auth/logout', { method: 'POST', body: '{}' }); } catch { /* refresh handles unavailable service */ }
   await refreshAccount();
 });
+document.getElementById('account-change-password').addEventListener('click', (event) => {
+  openSignup(event, 'reset-request');
+  emailInput.value = currentUser.email;
+});
+document.getElementById('account-verify-email').addEventListener('click', async (event) => {
+  const message = document.getElementById('security-message');
+  message.textContent = 'Отправляем код…';
+  try {
+    const { response, data } = await api('/api/auth/email/request', { method: 'POST', body: '{}' });
+    if (!response.ok) { message.textContent = data.message || 'Не удалось отправить код.'; return; }
+    openSignup(event, 'verify-existing');
+    challenge = data.challenge;
+    formMessage.textContent = data.message;
+    message.textContent = '';
+  } catch { message.textContent = 'Сервис недоступен. Попробуйте позже.'; }
+});
 
 document.getElementById('birth-form').addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -126,30 +227,11 @@ document.getElementById('birth-form').addEventListener('submit', async (event) =
   button.disabled = true;
   message.textContent = 'Сохраняем…';
   try {
-    const profile = Object.fromEntries(new FormData(form));
-    const { response, data } = await api('/api/profile', { method: 'PUT', body: JSON.stringify(profile) });
+    const { response, data } = await api('/api/profile', { method: 'PUT', body: JSON.stringify(Object.fromEntries(new FormData(form))) });
     message.textContent = response.ok ? 'Данные рождения сохранены.' : data.message || 'Не удалось сохранить данные.';
   } catch { message.textContent = 'Сервис недоступен. Попробуйте позже.'; }
   finally { button.disabled = false; }
 });
 
-async function renderPlans() {
-  const list = document.getElementById('plans-list');
-  try {
-    const { data } = await api('/api/plans');
-    for (const plan of data.plans) {
-      const card = document.createElement('article'); card.className = 'plan-card';
-      const tag = document.createElement('span'); tag.className = 'subtle-tag'; tag.textContent = plan.id === 'day' ? 'Первый запуск' : 'Следующий этап';
-      const title = document.createElement('h2'); title.textContent = plan.title;
-      const description = document.createElement('p'); description.textContent = plan.description;
-      const terms = document.createElement('p'); terms.className = 'plan-terms'; terms.textContent = `Доступ на ${plan.durationDays} ${plan.durationDays === 1 ? 'день' : 'дней'}`;
-      const price = document.createElement('p'); price.className = 'plan-price'; price.textContent = plan.priceKopeks ? `${(plan.priceKopeks / 100).toLocaleString('ru-RU')} ₽` : 'Цена появится позже';
-      const link = document.createElement('a'); link.className = 'inline-action'; link.href = '#account'; link.textContent = 'Перейти в кабинет ↗';
-      card.append(tag, title, description, terms, price, link); list.append(card);
-    }
-  } catch { const p = document.createElement('p'); p.textContent = 'Не удалось загрузить варианты доступа.'; list.append(p); }
-}
-
 window.addEventListener('hashchange', showRoute);
 showRoute();
-renderPlans();

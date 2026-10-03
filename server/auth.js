@@ -1,4 +1,4 @@
-import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, randomBytes, randomInt, scryptSync, timingSafeEqual } from 'node:crypto';
 
 export function normalizeEmail(value) {
   if (typeof value !== 'string') return null;
@@ -30,3 +30,8 @@ export function verifyPassword(password, stored) {
 
 export function newSessionToken() { return randomBytes(32).toString('base64url'); }
 export function tokenHash(token) { return createHash('sha256').update(token).digest('hex'); }
+export function newEmailCode() { return String(randomInt(0, 1_000_000)).padStart(6, '0'); }
+export function newChallenge() { return randomBytes(24).toString('base64url'); }
+export function emailCodeHash(secret, challenge, code) {
+  return createHmac('sha256', secret).update(`${challenge}:${code}`).digest('hex');
+}

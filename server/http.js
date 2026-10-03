@@ -2,8 +2,7 @@ import { createServer as nodeServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { hashPassword, newSessionToken, normalizeEmail, tokenHash, validPassword, verifyPassword } from './auth.js';
-import { publicPlans } from './catalog.js';
+import { emailCodeHash, hashPassword, newChallenge, newEmailCode, newSessionToken, normalizeEmail, tokenHash, validPassword, verifyPassword } from './auth.js';
 
 const SESSION_AGE = 30 * 24 * 60 * 60;
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.webp': 'image/webp' };
@@ -30,9 +29,32 @@ function cookieToken(req) {
   return value && /^[A-Za-z0-9_-]{43}$/.test(value) ? value : null;
 }
 
-export function createServer({ store, root = new URL('../prototype/', import.meta.url), prices = {}, secureCookies = false }) {
+export function createServer({ store, mailer = null, codeSecret, root = new URL('../prototype/', import.meta.url), secureCookies = false }) {
+  if (!codeSecret || String(codeSecret).length < 32) throw new Error('AUTH_CODE_SECRET must have at least 32 characters');
   const rootPath = fileURLToPath(root);
   const sessionCookie = (value, maxAge) => `anna_session=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secureCookies ? '; Secure' : ''}`;
+  async function sendCode({ purpose, email, userId = null, passwordHash = null }) {
+    if (!mailer) return { status: 503, data: { error: 'mail_unavailable', message: 'Отправка кодов временно недоступна.' } };
+    const challenge = newChallenge();
+    const code = newEmailCode();
+    const challengeHash = tokenHash(challenge);
+    const issued = store.issueChallenge({ challengeHash, purpose, email, userId, passwordHash, codeHash: emailCodeHash(codeSecret, challenge, code) });
+    if (!issued) return { status: 429, data: { error: 'too_soon', message: 'Новый код можно запросить через минуту.' } };
+    try { await mailer.sendCode({ to: email, purpose, code }); }
+    catch (error) {
+      store.deleteChallenge(challengeHash);
+      console.error('Mail delivery failed:', error.message);
+      return { status: 503, data: { error: 'mail_unavailable', message: 'Не удалось отправить код. Попробуйте позже.' } };
+    }
+    return { status: 202, data: { challenge, message: 'Код отправлен на вашу почту.' } };
+  }
+
+  function sessionFor(res, user) {
+    const newToken = newSessionToken();
+    store.saveSession(tokenHash(newToken), user.id, Date.now() + SESSION_AGE * 1000);
+    return { cookie: sessionCookie(newToken, SESSION_AGE), user: { id: user.id, email: user.email, emailVerified: !!user.emailVerified || user.email_verified_at != null } };
+  }
+
   return nodeServer(async (req, res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
@@ -46,32 +68,78 @@ export function createServer({ store, root = new URL('../prototype/', import.met
         }
         const token = cookieToken(req);
         const user = token ? store.userForSession(tokenHash(token)) : null;
-        if (path === '/api/plans' && req.method === 'GET') return json(res, 200, { plans: publicPlans(prices), checkoutAvailable: false });
         if (path === '/api/auth/register' && req.method === 'POST') {
           const body = await readJson(req);
           const email = normalizeEmail(body.email);
-          if (!email || !validPassword(body.password)) return json(res, 400, { error: 'invalid_credentials', message: 'Укажите корректный email и пароль от 12 до 128 символов.' });
+          if (!email || !validPassword(body.password) || body.password !== body.confirmPassword) return json(res, 400, { error: 'invalid_credentials', message: 'Проверьте email и совпадение паролей (не менее 12 символов).' });
           if (store.findUserByEmail(email)) return json(res, 409, { error: 'email_exists', message: 'Этот email уже зарегистрирован.' });
-          const created = store.createUser(email, hashPassword(body.password));
-          const newToken = newSessionToken();
-          store.saveSession(tokenHash(newToken), created.id, Date.now() + SESSION_AGE * 1000);
-          return json(res, 201, { user: created }, { 'Set-Cookie': sessionCookie(newToken, SESSION_AGE) });
+          const sent = await sendCode({ purpose: 'registration', email, passwordHash: hashPassword(body.password) });
+          return json(res, sent.status, sent.data);
+        }
+        if (path === '/api/auth/register/verify' && req.method === 'POST') {
+          const body = await readJson(req);
+          if (typeof body.challenge !== 'string' || !/^\d{6}$/.test(body.code || '')) return json(res, 400, { error: 'invalid_code' });
+          const created = store.consumeChallenge(tokenHash(body.challenge), emailCodeHash(codeSecret, body.challenge, body.code), 'registration');
+          if (!created) return json(res, 400, { error: 'invalid_code', message: 'Код неверный или срок его действия истёк.' });
+          const session = sessionFor(res, created);
+          return json(res, 201, { user: session.user }, { 'Set-Cookie': session.cookie });
         }
         if (path === '/api/auth/login' && req.method === 'POST') {
           const body = await readJson(req);
           const found = store.findUserByEmail(normalizeEmail(body.email) || '');
           if (!found || !verifyPassword(body.password, found.password_hash)) return json(res, 401, { error: 'invalid_credentials', message: 'Неверный email или пароль.' });
-          const newToken = newSessionToken();
-          store.saveSession(tokenHash(newToken), found.id, Date.now() + SESSION_AGE * 1000);
-          return json(res, 200, { user: { id: found.id, email: found.email } }, { 'Set-Cookie': sessionCookie(newToken, SESSION_AGE) });
+          const session = sessionFor(res, found);
+          return json(res, 200, { user: session.user }, { 'Set-Cookie': session.cookie });
+        }
+        if (path === '/api/auth/reset/request' && req.method === 'POST') {
+          const body = await readJson(req);
+          const email = normalizeEmail(body.email);
+          if (!email) return json(res, 400, { error: 'invalid_email' });
+          if (!mailer) return json(res, 503, { error: 'mail_unavailable', message: 'Отправка кодов временно недоступна.' });
+          const found = store.findUserByEmail(email);
+          const generic = { message: 'Если аккаунт существует, код отправлен на почту.' };
+          if (!found) {
+            const challenge = newChallenge();
+            const code = newEmailCode();
+            const issued = store.issueChallenge({ challengeHash: tokenHash(challenge), purpose: 'reset', email,
+              codeHash: emailCodeHash(codeSecret, challenge, code) });
+            return issued ? json(res, 202, { ...generic, challenge })
+              : json(res, 429, { error: 'too_soon', message: 'Новый код можно запросить через минуту.' });
+          }
+          const sent = await sendCode({ purpose: 'reset', email, userId: found.id });
+          if (sent.status === 429) return json(res, 429, sent.data);
+          if (sent.status !== 202) return json(res, sent.status, sent.data);
+          return json(res, 202, { ...generic, challenge: sent.data.challenge });
+        }
+        if (path === '/api/auth/reset/confirm' && req.method === 'POST') {
+          const body = await readJson(req);
+          if (typeof body.challenge !== 'string' || !/^\d{6}$/.test(body.code || '')
+            || !validPassword(body.password) || body.password !== body.confirmPassword) {
+            return json(res, 400, { error: 'invalid_request', message: 'Проверьте код и совпадение новых паролей.' });
+          }
+          const changed = store.consumeChallenge(tokenHash(body.challenge), emailCodeHash(codeSecret, body.challenge, body.code), 'reset', Date.now(), hashPassword(body.password));
+          if (!changed) return json(res, 400, { error: 'invalid_code', message: 'Код неверный или срок его действия истёк.' });
+          return json(res, 200, { ok: true, message: 'Пароль изменён. Войдите с новым паролем.' }, { 'Set-Cookie': sessionCookie('', 0) });
         }
         if (path === '/api/auth/logout' && req.method === 'POST') {
           if (token) store.deleteSession(tokenHash(token));
           return json(res, 200, { ok: true }, { 'Set-Cookie': sessionCookie('', 0) });
         }
         if (!user) return json(res, 401, { error: 'login_required' });
+        if (path === '/api/auth/email/request' && req.method === 'POST') {
+          if (user.emailVerified) return json(res, 409, { error: 'already_verified' });
+          const sent = await sendCode({ purpose: 'verify', email: user.email, userId: user.id });
+          return json(res, sent.status, sent.data);
+        }
+        if (path === '/api/auth/email/verify' && req.method === 'POST') {
+          const body = await readJson(req);
+          if (typeof body.challenge !== 'string' || !/^\d{6}$/.test(body.code || '')) return json(res, 400, { error: 'invalid_code' });
+          const verified = store.consumeChallenge(tokenHash(body.challenge), emailCodeHash(codeSecret, body.challenge, body.code), 'verify', Date.now(), null, user.id);
+          if (!verified) return json(res, 400, { error: 'invalid_code', message: 'Код неверный или срок его действия истёк.' });
+          return json(res, 200, { ok: true });
+        }
         if (path === '/api/me' && req.method === 'GET') {
-          return json(res, 200, { user, birthProfile: store.getBirthProfile(user.id), entitlements: store.listEntitlements(user.id).filter((item) => item.status === 'paid' && item.endsAt > Date.now()) });
+          return json(res, 200, { user, birthProfile: store.getBirthProfile(user.id) });
         }
         if (path === '/api/profile' && req.method === 'PUT') {
           const body = await readJson(req);
@@ -85,10 +153,7 @@ export function createServer({ store, root = new URL('../prototype/', import.met
           }
           return json(res, 200, { birthProfile: store.saveBirthProfile(user.id, { birthDate: date, birthTime: time, birthPlace: place }) });
         }
-        if (path === '/api/orders' && req.method === 'POST') return json(res, 503, { error: 'checkout_unavailable', message: 'Оплата пока не подключена.' });
         if ((path === '/api/forecast/day' || path === '/api/forecast/week') && req.method === 'GET') {
-          const feature = path.endsWith('/day') ? 'day' : 'week';
-          if (!store.hasAccess(user.id, feature)) return json(res, 403, { error: 'payment_required' });
           return json(res, 501, { error: 'forecast_unavailable', message: 'Персональный прогноз пока готовится.' });
         }
         return json(res, 404, { error: 'not_found' });
