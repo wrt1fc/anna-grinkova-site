@@ -20,6 +20,8 @@ test('local writer uses a bounded Qwen request and preserves calculated facts', 
   assert.equal(request.model, 'qwen3:4b');
   assert.equal(request.stream, false);
   assert.ok(request.options.num_predict <= 256);
+  assert.match(request.system, /бытовой ситуацией/);
+  assert.match(request.system, /непереданные аспекты/);
   assert.deepEqual(result.astronomy, forecast.astronomy);
   assert.deepEqual(result.tarot, forecast.tarot);
   assert.equal(result.generation.kind, 'local-llm');

@@ -1,3 +1,5 @@
+import forecastStyle from '../config/forecast-style.json' with { type: 'json' };
+
 const ENDPOINT = 'http://127.0.0.1:11434/api/generate';
 
 const OUTPUT_SCHEMA = {
@@ -28,7 +30,7 @@ export function createLocalForecastWriter({ model, fetchImpl = fetch }) {
           think: false,
           format: OUTPUT_SCHEMA,
           options: { temperature: 0.2, num_predict: 240, num_ctx: 2048 },
-          system: 'Пиши по-русски короткий бережный общий прогноз на день. Используй только данные из запроса. Не обещай событий, не давай медицинских, юридических и финансовых советов. Верни JSON с body, action, question. В body обязательно назови знаки Солнца и Луны, фазу Луны и карту таро. Сохрани смысл исходных полей.',
+          system: forecastStyle.systemInstructions.join(' '),
           prompt: JSON.stringify({ date: forecast.date, astronomy: forecast.astronomy, tarot: forecast.tarot, draft: forecast.reading }),
         }),
         signal: AbortSignal.timeout(45_000),
