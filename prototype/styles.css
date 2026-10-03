@@ -71,3 +71,5 @@
 .birth-card[hidden]{display:none}
 @media(max-width:760px){.simple-hero{padding-top:55px;padding-bottom:42px}.simple-hero h1{font-size:48px}.simple-hero>p:last-child{font-size:15px}.account-layout{grid-template-columns:1fr;gap:14px;padding-top:30px;padding-bottom:115px}.account-card{padding:28px;min-height:0}.account-card h2{font-size:32px}}
 @media(max-width:760px){.birth-form{grid-template-columns:1fr}.birth-form button{width:100%}}
+
+#route-day .mini-card-title{max-width:100%;text-align:center;font-size:clamp(17px,2.2vw,25px);line-height:1.15;overflow-wrap:anywhere}

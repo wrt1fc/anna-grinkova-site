@@ -18,6 +18,28 @@ async function api(path, options = {}) {
   return { response, data: await response.json() };
 }
 
+async function loadDailyForecast() {
+  const status = document.getElementById('day-status');
+  status.textContent = 'Загружаем прогноз…';
+  try {
+    const { response, data } = await api('/api/forecast/day');
+    if (!response.ok) throw new Error(data.message || 'Не удалось загрузить прогноз.');
+    document.querySelector('#route-day .mini-card-title').textContent = data.tarot.name;
+    document.getElementById('day-card-label').textContent = `Карта «${data.tarot.name}»`;
+    document.getElementById('day-date-label').textContent = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' })
+      .format(new Date(`${data.date}T12:00:00+03:00`));
+    document.getElementById('day-reading-title').textContent = data.reading.title;
+    document.getElementById('day-reading-body').textContent = data.reading.body;
+    document.getElementById('day-reading-question').textContent = data.reading.question;
+    document.getElementById('day-reading-focus').textContent = data.reading.focus;
+    document.getElementById('day-reading-action').textContent = data.reading.action;
+    const sotisStatus = data.astronomy.sotis?.status === 'matched'
+      ? ' Положения Солнца и Луны сверены с Sotis.'
+      : data.astronomy.sotis?.status === 'unavailable' ? ' Сверка с Sotis сейчас недоступна.' : '';
+    status.textContent = `Астрономические положения рассчитаны на 12:00 МСК. Карта таро выбирается для этой даты.${sotisStatus}`;
+  } catch (error) { status.textContent = error.message || 'Не удалось загрузить прогноз.'; }
+}
+
 function showRoute() {
   const hash = window.location.hash.replace('#', '');
   const page = ['day', 'week', 'account'].includes(hash) ? hash : 'home';
@@ -31,6 +53,7 @@ function showRoute() {
   document.title = { home: 'Анна Гринькова — пространство прогнозов', day: 'Карта дня — Анна Гринькова', week: 'Прогноз на неделю — Анна Гринькова', account: 'Личный кабинет — Анна Гринькова' }[page];
   window.scrollTo({ top: 0, behavior: 'auto' });
   if (hash === 'about') requestAnimationFrame(() => document.getElementById('about').scrollIntoView({ behavior: 'smooth' }));
+  if (page === 'day') loadDailyForecast();
   if (page === 'account') refreshAccount();
 }
 

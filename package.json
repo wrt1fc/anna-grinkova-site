@@ -8,5 +8,8 @@
   "scripts": {
     "start": "node server/index.js",
     "test": "node --test"
+  },
+  "dependencies": {
+    "astronomy-engine": "2.1.19"
   }
 }

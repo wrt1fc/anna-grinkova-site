@@ -3,6 +3,8 @@ import { readFile } from 'node:fs/promises';
 import { extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { emailCodeHash, hashPassword, newChallenge, newEmailCode, newSessionToken, normalizeEmail, tokenHash, validPassword, verifyPassword } from './auth.js';
+import { forecastForDate, moscowDate } from './daily-forecast.js';
+import { createTrafficLimiter } from './traffic.js';
 
 const SESSION_AGE = 30 * 24 * 60 * 60;
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.webp': 'image/webp' };
@@ -29,10 +31,13 @@ function cookieToken(req) {
   return value && /^[A-Za-z0-9_-]{43}$/.test(value) ? value : null;
 }
 
-export function createServer({ store, mailer = null, codeSecret, root = new URL('../prototype/', import.meta.url), secureCookies = false }) {
+export function createServer({ store, mailer = null, codeSecret, root = new URL('../prototype/', import.meta.url), secureCookies = false,
+  mailDailyLimit = 0, trafficLimiter = createTrafficLimiter(), forecastWriter = null, sotisVerifier = null }) {
   if (!codeSecret || String(codeSecret).length < 32) throw new Error('AUTH_CODE_SECRET must have at least 32 characters');
+  if (!Number.isSafeInteger(mailDailyLimit) || mailDailyLimit < 0) throw new Error('MAIL_DAILY_LIMIT must be a non-negative integer');
   const rootPath = fileURLToPath(root);
   const sessionCookie = (value, maxAge) => `anna_session=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secureCookies ? '; Secure' : ''}`;
+  let dailyCache = null;
   async function sendCode({ purpose, email, userId = null, passwordHash = null }) {
     if (!mailer) return { status: 503, data: { error: 'mail_unavailable', message: 'Отправка кодов временно недоступна.' } };
     const challenge = newChallenge();
@@ -40,6 +45,10 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
     const challengeHash = tokenHash(challenge);
     const issued = store.issueChallenge({ challengeHash, purpose, email, userId, passwordHash, codeHash: emailCodeHash(codeSecret, challenge, code) });
     if (!issued) return { status: 429, data: { error: 'too_soon', message: 'Новый код можно запросить через минуту.' } };
+    if (!store.consumeDailyQuota('mail', new Date().toISOString().slice(0, 10), mailDailyLimit)) {
+      store.deleteChallenge(challengeHash);
+      return { status: 429, data: { error: 'mail_quota_exceeded', message: 'Лимит писем на сегодня исчерпан. Попробуйте завтра.' } };
+    }
     try { await mailer.sendCode({ to: email, purpose, code }); }
     catch (error) {
       store.deleteChallenge(challengeHash);
@@ -62,9 +71,42 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
       const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
       const path = url.pathname;
       if (path.startsWith('/api/')) {
+        const traffic = trafficLimiter.check(req.socket.remoteAddress || 'unknown');
+        if (!traffic.allowed) return json(res, 429, { error: 'rate_limited', message: 'Слишком много запросов. Попробуйте позже.' }, { 'Retry-After': String(traffic.retryAfter) });
         if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) && req.headers.origin) {
           const origin = new URL(req.headers.origin);
           if (origin.host !== req.headers.host) return json(res, 403, { error: 'forbidden_origin' });
+        }
+        if (path === '/api/forecast/day' && req.method === 'GET') {
+          const day = moscowDate();
+          if (dailyCache?.date !== day) {
+            const calculated = forecastForDate(day);
+            const promise = (async () => {
+              let forecast = calculated;
+              if (sotisVerifier) {
+                try {
+                  const positions = await sotisVerifier.verify(day, {
+                    sun: calculated.astronomy.sun.longitude, moon: calculated.astronomy.moon.longitude,
+                  });
+                  forecast = { ...forecast, astronomy: { ...forecast.astronomy,
+                    sotis: { status: 'matched', sunLongitude: Number(positions.sun.toFixed(3)), moonLongitude: Number(positions.moon.toFixed(3)) } } };
+                } catch (error) {
+                  console.warn('Sotis verification unavailable:', error.message);
+                  forecast = { ...forecast, astronomy: { ...forecast.astronomy, sotis: { status: 'unavailable' } } };
+                }
+              }
+              if (forecastWriter) {
+                try { return await forecastWriter.refine(forecast); }
+                catch (error) { console.warn('Local forecast writer failed:', error.message); }
+              }
+              return forecast;
+            })();
+            dailyCache = { date: day, promise };
+          }
+          return json(res, 200, await dailyCache.promise);
+        }
+        if (path === '/api/forecast/week' && req.method === 'GET') {
+          return json(res, 501, { error: 'forecast_unavailable', message: 'Прогноз на неделю пока готовится.' });
         }
         const token = cookieToken(req);
         const user = token ? store.userForSession(tokenHash(token)) : null;
@@ -152,9 +194,6 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
             return json(res, 400, { error: 'invalid_birth_profile', message: 'Проверьте дату, время и место рождения.' });
           }
           return json(res, 200, { birthProfile: store.saveBirthProfile(user.id, { birthDate: date, birthTime: time, birthPlace: place }) });
-        }
-        if ((path === '/api/forecast/day' || path === '/api/forecast/week') && req.method === 'GET') {
-          return json(res, 501, { error: 'forecast_unavailable', message: 'Персональный прогноз пока готовится.' });
         }
         return json(res, 404, { error: 'not_found' });
       }

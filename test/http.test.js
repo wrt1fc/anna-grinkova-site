@@ -2,12 +2,14 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createServer } from '../server/http.js';
 import { createStore } from '../server/store.js';
+import { createTrafficLimiter } from '../server/traffic.js';
 
-async function fixture(run, { mailEnabled = true } = {}) {
+async function fixture(run, { mailEnabled = true, mailDailyLimit = 100, trafficLimiter, forecastWriter, sotisVerifier } = {}) {
   const store = createStore(':memory:');
   const sent = [];
   const mailer = mailEnabled ? { async sendCode(message) { sent.push(message); } } : null;
-  const server = createServer({ store, mailer, codeSecret: 'test-secret-with-at-least-thirty-two-characters' });
+  const server = createServer({ store, mailer, mailDailyLimit, trafficLimiter, forecastWriter, sotisVerifier,
+    codeSecret: 'test-secret-with-at-least-thirty-two-characters' });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
   async function request(path, method = 'GET', body, cookie) {
@@ -66,7 +68,10 @@ test('profile belongs to its account and stays protected', async () => fixture(a
   assert.equal((await request('/api/profile', 'PUT', { birthDate: '1990-02-30', birthTime: '10:45', birthPlace: 'Москва' }, cookie)).response.status, 400);
   assert.equal((await request('/api/profile', 'PUT', { birthDate: '1990-03-10', birthTime: '10:45', birthPlace: 'Москва' }, cookie)).response.status, 200);
   assert.deepEqual((await request('/api/me', 'GET', null, cookie)).data.birthProfile, { birthDate: '1990-03-10', birthTime: '10:45', birthPlace: 'Москва' });
-  assert.equal((await request('/api/forecast/day', 'GET', null, cookie)).response.status, 501);
+  const forecast = await request('/api/forecast/day');
+  assert.equal(forecast.response.status, 200);
+  assert.equal(forecast.data.scope, 'general');
+  assert.equal((await request('/api/forecast/week')).response.status, 501);
 }));
 
 test('registration does not create an unverified account without a mail service', async () => fixture(async ({ store, request }) => {
@@ -96,3 +101,46 @@ test('a previously created account can confirm its email without changing its pa
   assert.equal((await request('/api/auth/email/verify', 'POST', { challenge: issued.data.challenge, code: sent[0].code }, cookie)).response.status, 200);
   assert.equal((await request('/api/me', 'GET', null, cookie)).data.user.emailVerified, true);
 }));
+
+test('the server rejects API traffic above its per-address cap', async () => fixture(async ({ request }) => {
+  assert.equal((await request('/api/forecast/day')).response.status, 200);
+  assert.equal((await request('/api/forecast/day')).response.status, 200);
+  const limited = await request('/api/forecast/day');
+  assert.equal(limited.response.status, 429);
+  assert.ok(Number(limited.response.headers.get('retry-after')) > 0);
+}, { trafficLimiter: createTrafficLimiter({ perIpLimit: 2, globalLimit: 10 }) }));
+
+test('mail delivery stops at a durable daily quota', async () => fixture(async ({ request, sent }) => {
+  assert.equal((await request('/api/auth/register', 'POST', signup)).response.status, 202);
+  assert.equal((await request('/api/auth/register', 'POST', { ...signup, email: 'second@example.com' })).response.status, 429);
+  assert.equal(sent.length, 1);
+}, { mailDailyLimit: 1 }));
+
+test('mail delivery is disabled when its explicit daily quota is zero', async () => fixture(async ({ request, sent }) => {
+  assert.equal((await request('/api/auth/register', 'POST', signup)).response.status, 429);
+  assert.equal(sent.length, 0);
+}, { mailDailyLimit: 0 }));
+
+test('daily generation is cached and falls back to calculated text when local writer fails', async () => {
+  let calls = 0;
+  await fixture(async ({ request }) => {
+    const first = await request('/api/forecast/day');
+    const second = await request('/api/forecast/day');
+    assert.equal(first.response.status, 200);
+    assert.deepEqual(first.data, second.data);
+    assert.equal(first.data.generation.kind, 'rules');
+    assert.equal(calls, 1);
+  }, { forecastWriter: { async refine() { calls++; throw new Error('local model unavailable'); } } });
+});
+
+test('Sotis is contacted once for the daily result and its values are recorded', async () => {
+  let calls = 0;
+  await fixture(async ({ request }) => {
+    const first = await request('/api/forecast/day');
+    const second = await request('/api/forecast/day');
+    assert.equal(first.response.status, 200);
+    assert.deepEqual(first.data, second.data);
+    assert.equal(first.data.astronomy.sotis.status, 'matched');
+    assert.equal(calls, 1);
+  }, { sotisVerifier: { async verify(_day, positions) { calls++; return positions; } } });
+});

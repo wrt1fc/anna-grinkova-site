@@ -46,3 +46,18 @@ test('account and birth profile remain after reopening the database', () => {
     reopened.close();
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('outbound mail quota persists and stops at its daily cap', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'anna-quota-'));
+  const path = join(dir, 'site.sqlite');
+  try {
+    const first = createStore(path);
+    assert.equal(first.consumeDailyQuota('mail', '2026-10-03', 2), true);
+    first.close();
+    const reopened = createStore(path);
+    assert.equal(reopened.consumeDailyQuota('mail', '2026-10-03', 2), true);
+    assert.equal(reopened.consumeDailyQuota('mail', '2026-10-03', 2), false);
+    assert.equal(reopened.consumeDailyQuota('mail', '2026-10-04', 2), true);
+    reopened.close();
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});

@@ -37,6 +37,10 @@ export function createStore(path) {
     );
     CREATE INDEX IF NOT EXISTS auth_challenges_expiry ON auth_challenges(expires_at);
     CREATE INDEX IF NOT EXISTS sessions_expiry ON sessions(expires_at);
+    CREATE TABLE IF NOT EXISTS daily_quotas (
+      kind TEXT NOT NULL, day TEXT NOT NULL, used INTEGER NOT NULL,
+      PRIMARY KEY(kind, day)
+    );
   `);
   // Existing local databases from the first account iteration lacked this column.
   const columns = db.prepare('PRAGMA table_info(users)').all().map((row) => row.name);
@@ -97,6 +101,13 @@ export function createStore(path) {
     db.prepare('DELETE FROM auth_challenges WHERE challenge_hash = ?').run(challengeHash);
   }
 
+  function consumeDailyQuota(kind, day, limit) {
+    if (!Number.isSafeInteger(limit) || limit < 1) return false;
+    const result = db.prepare(`INSERT INTO daily_quotas (kind, day, used) VALUES (?, ?, 1)
+      ON CONFLICT(kind, day) DO UPDATE SET used = used + 1 WHERE used < ?`).run(kind, day, limit);
+    return result.changes === 1;
+  }
+
   function consumeChallenge(challengeHash, codeHash, purpose, now = Date.now(), nextPasswordHash = null, expectedUserId = null) {
     db.exec('BEGIN IMMEDIATE');
     try {
@@ -130,7 +141,7 @@ export function createStore(path) {
 
   return {
     createUser, findUserByEmail, findUserById, saveSession, userForSession, deleteSession,
-    getBirthProfile, saveBirthProfile, issueChallenge, deleteChallenge, consumeChallenge,
+    getBirthProfile, saveBirthProfile, issueChallenge, deleteChallenge, consumeChallenge, consumeDailyQuota,
     close: () => db.close(),
   };
 }
