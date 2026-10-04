@@ -40,3 +40,10 @@ test('Sun and Moon longitudes agree with a Sotis reference chart', () => {
   assert.equal(positions.sun.sign, 'Весы');
   assert.equal(positions.moon.sign, 'Овен');
 });
+
+test('second Sotis snapshot agrees for the daily calculation at Moscow noon', () => {
+  // Public Sotis chart queried for 03.10.2026 12:00 +03:00: Sun 190.17444°, Moon 97.75028°.
+  const positions = planetPositionsAt(new Date('2026-10-03T09:00:00Z'));
+  assert.ok(Math.abs(positions.sun.longitude - 190.17444444444445) < 0.02);
+  assert.ok(Math.abs(positions.moon.longitude - 97.75027777777778) < 0.02);
+});

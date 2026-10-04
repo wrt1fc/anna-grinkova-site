@@ -45,6 +45,11 @@ export function createStore(path) {
   // Existing local databases from the first account iteration lacked this column.
   const columns = db.prepare('PRAGMA table_info(users)').all().map((row) => row.name);
   if (!columns.includes('email_verified_at')) db.exec('ALTER TABLE users ADD COLUMN email_verified_at INTEGER');
+  const profileColumns = new Set(db.prepare('PRAGMA table_info(birth_profiles)').all().map((row) => row.name));
+  for (const [name, type] of Object.entries({ city_id: 'INTEGER', birth_latitude: 'REAL', birth_longitude: 'REAL',
+    birth_time_zone: 'TEXT', birth_utc: 'TEXT', birth_utc_offset_minutes: 'INTEGER' })) {
+    if (!profileColumns.has(name)) db.exec(`ALTER TABLE birth_profiles ADD COLUMN ${name} ${type}`);
+  }
 
   function createUser(email, passwordHash, now = Date.now(), verifiedAt = null) {
     const result = db.prepare('INSERT INTO users (email, password_hash, created_at, email_verified_at) VALUES (?, ?, ?, ?)')
@@ -73,14 +78,24 @@ export function createStore(path) {
   function deleteSession(hash) { db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(hash); }
 
   function getBirthProfile(userId) {
-    return db.prepare('SELECT birth_date AS birthDate, birth_time AS birthTime, birth_place AS birthPlace FROM birth_profiles WHERE user_id = ?').get(userId) ?? null;
+    return db.prepare(`SELECT birth_date AS birthDate, birth_time AS birthTime, birth_place AS birthPlace,
+      city_id AS birthCityId, birth_latitude AS birthLatitude, birth_longitude AS birthLongitude,
+      birth_time_zone AS birthTimeZone, birth_utc AS birthUtc,
+      birth_utc_offset_minutes AS birthUtcOffsetMinutes, updated_at AS updatedAt
+      FROM birth_profiles WHERE user_id = ?`).get(userId) ?? null;
   }
 
   function saveBirthProfile(userId, profile, now = Date.now()) {
-    db.prepare(`INSERT INTO birth_profiles (user_id, birth_date, birth_time, birth_place, updated_at)
-      VALUES (?, ?, ?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET birth_date = excluded.birth_date,
-      birth_time = excluded.birth_time, birth_place = excluded.birth_place, updated_at = excluded.updated_at`)
-      .run(userId, profile.birthDate, profile.birthTime, profile.birthPlace, now);
+    db.prepare(`INSERT INTO birth_profiles (user_id, birth_date, birth_time, birth_place, city_id,
+      birth_latitude, birth_longitude, birth_time_zone, birth_utc, birth_utc_offset_minutes, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET birth_date = excluded.birth_date,
+      birth_time = excluded.birth_time, birth_place = excluded.birth_place, city_id = excluded.city_id,
+      birth_latitude = excluded.birth_latitude, birth_longitude = excluded.birth_longitude,
+      birth_time_zone = excluded.birth_time_zone, birth_utc = excluded.birth_utc,
+      birth_utc_offset_minutes = excluded.birth_utc_offset_minutes, updated_at = excluded.updated_at`)
+      .run(userId, profile.birthDate, profile.birthTime, profile.birthPlace, profile.birthCityId ?? null,
+        profile.birthLatitude ?? null, profile.birthLongitude ?? null, profile.birthTimeZone ?? null,
+        profile.birthUtc ?? null, profile.birthUtcOffsetMinutes ?? null, now);
     return getBirthProfile(userId);
   }
 
@@ -142,6 +157,7 @@ export function createStore(path) {
   return {
     createUser, findUserByEmail, findUserById, saveSession, userForSession, deleteSession,
     getBirthProfile, saveBirthProfile, issueChallenge, deleteChallenge, consumeChallenge, consumeDailyQuota,
+    health: () => db.prepare('SELECT 1 AS ok').get().ok === 1,
     close: () => db.close(),
   };
 }

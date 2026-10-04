@@ -33,10 +33,11 @@ async function loadDailyForecast() {
     document.getElementById('day-reading-question').textContent = data.reading.question;
     document.getElementById('day-reading-focus').textContent = data.reading.focus;
     document.getElementById('day-reading-action').textContent = data.reading.action;
+    document.getElementById('day-scope-label').lastChild.textContent = data.scope === 'personal' ? ' Персональный прогноз' : ' Общий прогноз';
     const sotisStatus = data.astronomy.sotis?.status === 'matched'
       ? ' Положения Солнца и Луны сверены с Sotis.'
       : data.astronomy.sotis?.status === 'unavailable' ? ' Сверка с Sotis сейчас недоступна.' : '';
-    status.textContent = `Астрономические положения рассчитаны на 12:00 МСК. Карта таро выбирается для этой даты.${sotisStatus}`;
+    status.textContent = `Астрономические положения рассчитаны на 12:00 МСК. Цифровая карта таро выбирается ${data.scope === 'personal' ? 'для вашего аккаунта и даты' : 'для этой даты'}.${sotisStatus}`;
   } catch (error) { status.textContent = error.message || 'Не удалось загрузить прогноз.'; }
 }
 
@@ -238,6 +239,10 @@ function renderAccount(data) {
   if (currentUser && data.birthProfile) {
     const form = document.getElementById('birth-form');
     for (const key of ['birthDate', 'birthTime', 'birthPlace']) form.elements[key].value = data.birthProfile[key];
+    for (const key of ['birthCityId', 'birthLatitude', 'birthLongitude', 'birthTimeZone']) {
+      form.elements[key].value = data.birthProfile[key] ?? '';
+    }
+    if (!data.birthProfile.birthCityId) form.querySelector('.birth-manual').open = true;
   }
 }
 
@@ -267,6 +272,34 @@ document.getElementById('account-verify-email').addEventListener('click', async 
   } catch { message.textContent = 'Сервис недоступен. Попробуйте позже.'; }
 });
 
+const birthPlaceInput = document.getElementById('birth-place');
+const birthCityIdInput = document.getElementById('birth-city-id');
+const cityChoices = new Map();
+let citySearchTimer;
+birthPlaceInput.addEventListener('input', () => {
+  const chosen = cityChoices.get(birthPlaceInput.value);
+  birthCityIdInput.value = chosen?.id ?? '';
+  clearTimeout(citySearchTimer);
+  const query = birthPlaceInput.value.trim();
+  if (chosen || query.length < 2) return;
+  citySearchTimer = setTimeout(async () => {
+    try {
+      const { response, data } = await api(`/api/cities?q=${encodeURIComponent(query)}`);
+      if (!response.ok || birthPlaceInput.value.trim() !== query) return;
+      cityChoices.clear();
+      const list = document.getElementById('city-suggestions');
+      list.replaceChildren();
+      for (const city of data.cities) {
+        const label = `${city.name} · ${city.country}${city.regionCode ? ` · ${city.regionCode}` : ''} (#${city.id})`;
+        cityChoices.set(label, city);
+        const option = document.createElement('option');
+        option.value = label;
+        list.append(option);
+      }
+    } catch { /* Manual entry remains available. */ }
+  }, 220);
+});
+
 document.getElementById('birth-form').addEventListener('submit', async (event) => {
   event.preventDefault();
   const form = event.currentTarget;
@@ -275,8 +308,11 @@ document.getElementById('birth-form').addEventListener('submit', async (event) =
   button.disabled = true;
   message.textContent = 'Сохраняем…';
   try {
-    const { response, data } = await api('/api/profile', { method: 'PUT', body: JSON.stringify(Object.fromEntries(new FormData(form))) });
+    const values = Object.fromEntries(new FormData(form));
+    if (values.birthCityId) values.birthPlace = cityChoices.get(values.birthPlace)?.name || values.birthPlace;
+    const { response, data } = await api('/api/profile', { method: 'PUT', body: JSON.stringify(values) });
     message.textContent = response.ok ? 'Данные рождения сохранены.' : data.message || 'Не удалось сохранить данные.';
+    if (data.error === 'birth_time_ambiguous') form.querySelector('.birth-manual').open = true;
   } catch { message.textContent = 'Сервис недоступен. Попробуйте позже.'; }
   finally { button.disabled = false; }
 });

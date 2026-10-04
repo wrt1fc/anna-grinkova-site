@@ -47,6 +47,23 @@ test('account and birth profile remain after reopening the database', () => {
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
+test('resolved birth coordinates survive schema migration and reopen', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'anna-resolved-'));
+  const path = join(dir, 'site.sqlite');
+  try {
+    const first = createStore(path);
+    const user = first.createUser('resolved@example.com', 'hash', 1000, 1000);
+    first.saveBirthProfile(user.id, { birthDate: '1990-03-10', birthTime: '10:45', birthPlace: 'Moscow',
+      birthCityId: 524901, birthLatitude: 55.75222, birthLongitude: 37.61556,
+      birthTimeZone: 'Europe/Moscow', birthUtc: '1990-03-10T07:45:00.000Z', birthUtcOffsetMinutes: 180 });
+    first.close();
+    const reopened = createStore(path);
+    assert.equal(reopened.getBirthProfile(user.id).birthCityId, 524901);
+    assert.equal(reopened.getBirthProfile(user.id).birthUtc, '1990-03-10T07:45:00.000Z');
+    reopened.close();
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test('outbound mail quota persists and stops at its daily cap', () => {
   const dir = mkdtempSync(join(tmpdir(), 'anna-quota-'));
   const path = join(dir, 'site.sqlite');

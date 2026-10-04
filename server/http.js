@@ -5,6 +5,9 @@ import { fileURLToPath } from 'node:url';
 import { emailCodeHash, hashPassword, newChallenge, newEmailCode, newSessionToken, normalizeEmail, tokenHash, validPassword, verifyPassword } from './auth.js';
 import { forecastForDate, moscowDate } from './daily-forecast.js';
 import { createTrafficLimiter } from './traffic.js';
+import { getCityById, searchCities } from './cities.js';
+import { birthInstant } from './birth-time.js';
+import { personalForecastForDate } from './personal-forecast.js';
 
 const SESSION_AGE = 30 * 24 * 60 * 60;
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.webp': 'image/webp' };
@@ -38,6 +41,8 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
   const rootPath = fileURLToPath(root);
   const sessionCookie = (value, maxAge) => `anna_session=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secureCookies ? '; Secure' : ''}`;
   let dailyCache = null;
+  let personalCacheDay = null;
+  const personalCache = new Map();
   async function sendCode({ purpose, email, userId = null, passwordHash = null }) {
     if (!mailer) return { status: 503, data: { error: 'mail_unavailable', message: 'Отправка кодов временно недоступна.' } };
     const challenge = newChallenge();
@@ -77,6 +82,13 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
           const origin = new URL(req.headers.origin);
           if (origin.host !== req.headers.host) return json(res, 403, { error: 'forbidden_origin' });
         }
+        if (path === '/api/health' && req.method === 'GET') {
+          const healthy = store.health();
+          return json(res, healthy ? 200 : 503, { status: healthy ? 'ok' : 'unavailable' });
+        }
+        if (path === '/api/cities' && req.method === 'GET') {
+          return json(res, 200, { cities: searchCities(url.searchParams.get('q') || '') });
+        }
         if (path === '/api/forecast/day' && req.method === 'GET') {
           const day = moscowDate();
           if (dailyCache?.date !== day) {
@@ -103,7 +115,21 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
             })();
             dailyCache = { date: day, promise };
           }
-          return json(res, 200, await dailyCache.promise);
+          const common = await dailyCache.promise;
+          const dailyToken = cookieToken(req);
+          const dailyUser = dailyToken ? store.userForSession(tokenHash(dailyToken)) : null;
+          const profile = dailyUser ? store.getBirthProfile(dailyUser.id) : null;
+          if (profile?.birthUtc) {
+            if (personalCacheDay !== day) { personalCache.clear(); personalCacheDay = day; }
+            const key = `${dailyUser.id}:${profile.updatedAt}:${profile.birthUtc}`;
+            if (!personalCache.has(key)) {
+              const personal = personalForecastForDate(day, profile, dailyUser.id, common);
+              if (personalCache.size >= 1000) personalCache.delete(personalCache.keys().next().value);
+              personalCache.set(key, { ...personal, astronomy: { ...personal.astronomy, sotis: common.astronomy.sotis } });
+            }
+            return json(res, 200, personalCache.get(key));
+          }
+          return json(res, 200, common);
         }
         if (path === '/api/forecast/week' && req.method === 'GET') {
           return json(res, 501, { error: 'forecast_unavailable', message: 'Прогноз на неделю пока готовится.' });
@@ -185,15 +211,38 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
         }
         if (path === '/api/profile' && req.method === 'PUT') {
           const body = await readJson(req);
-          const date = body.birthDate, time = body.birthTime, place = body.birthPlace?.trim();
+          const date = body.birthDate, time = body.birthTime;
           const validDate = typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)
             && !Number.isNaN(Date.parse(date)) && new Date(date).toISOString().slice(0, 10) === date
             && date >= '1900-01-01' && date <= new Date().toISOString().slice(0, 10);
-          if (!validDate || typeof time !== 'string' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)
-            || typeof place !== 'string' || place.length < 2 || place.length > 120) {
+          if (!validDate || typeof time !== 'string' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) {
             return json(res, 400, { error: 'invalid_birth_profile', message: 'Проверьте дату, время и место рождения.' });
           }
-          return json(res, 200, { birthProfile: store.saveBirthProfile(user.id, { birthDate: date, birthTime: time, birthPlace: place }) });
+          const city = body.birthCityId == null || body.birthCityId === '' ? null : getCityById(body.birthCityId);
+          if (body.birthCityId != null && body.birthCityId !== '' && !city) return json(res, 400, { error: 'invalid_city' });
+          const place = city?.name || (typeof body.birthPlace === 'string' ? body.birthPlace.trim() : '');
+          const latitude = city?.latitude ?? (body.birthLatitude === '' || body.birthLatitude == null ? NaN : Number(body.birthLatitude));
+          const longitude = city?.longitude ?? (body.birthLongitude === '' || body.birthLongitude == null ? NaN : Number(body.birthLongitude));
+          const timeZone = city?.timeZone || body.birthTimeZone;
+          if (place.length < 2 || place.length > 120 || !Number.isFinite(latitude) || latitude < -90 || latitude > 90
+            || !Number.isFinite(longitude) || longitude < -180 || longitude > 180 || typeof timeZone !== 'string') {
+            return json(res, 400, { error: 'invalid_birth_profile', message: 'Выберите город из списка либо укажите название, координаты и часовой пояс.' });
+          }
+          let utcOffsetMinutes;
+          if (body.birthUtcOffsetMinutes !== undefined && body.birthUtcOffsetMinutes !== '') {
+            utcOffsetMinutes = Number(body.birthUtcOffsetMinutes);
+            if (!Number.isInteger(utcOffsetMinutes)) return json(res, 400, { error: 'invalid_birth_offset' });
+          }
+          let instant;
+          try { instant = birthInstant({ birthDate: date, birthTime: time, timeZone, utcOffsetMinutes }); }
+          catch (error) {
+            if (error.message === 'birth_time_ambiguous') return json(res, 409, { error: 'birth_time_ambiguous',
+              message: 'Это местное время приходится на перевод часов. Уточните время рождения; если час повторялся, укажите смещение UTC в минутах.' });
+            return json(res, 400, { error: 'invalid_birth_time', message: 'Проверьте местное время и часовой пояс рождения.' });
+          }
+          return json(res, 200, { birthProfile: store.saveBirthProfile(user.id, { birthDate: date, birthTime: time,
+            birthPlace: place, birthCityId: city?.id ?? null, birthLatitude: latitude, birthLongitude: longitude,
+            birthTimeZone: timeZone, birthUtc: instant.utc, birthUtcOffsetMinutes: instant.offsetMinutes }) });
         }
         return json(res, 404, { error: 'not_found' });
       }

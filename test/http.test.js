@@ -26,6 +26,7 @@ async function fixture(run, { mailEnabled = true, mailDailyLimit = 100, trafficL
 const signup = { email: 'anna@example.com', password: 'Very-long-password1!', confirmPassword: 'Very-long-password1!' };
 
 test('registration requires matching passwords and an emailed one-time code', async () => fixture(async ({ store, sent, request }) => {
+  assert.deepEqual((await request('/api/health')).data, { status: 'ok' });
   assert.equal((await request('/api/auth/register', 'POST', { ...signup, confirmPassword: 'different-password' })).response.status, 400);
   assert.equal((await request('/api/auth/register', 'POST', { ...signup, password: 'verylong1!', confirmPassword: 'verylong1!' })).response.status, 400);
   assert.equal((await request('/api/auth/register', 'POST', { ...signup, password: 'Verylong!', confirmPassword: 'Verylong!' })).response.status, 400);
@@ -61,17 +62,65 @@ test('password reset uses a code and invalidates previous sessions', async () =>
 }));
 
 test('profile belongs to its account and stays protected', async () => fixture(async ({ sent, request }) => {
+  const cities = await request('/api/cities?q=%D0%9C%D0%BE%D1%81%D0%BA%D0%B2%D0%B0');
+  assert.equal(cities.response.status, 200);
+  assert.ok(cities.data.cities.some((city) => city.id === 524901));
   const pending = await request('/api/auth/register', 'POST', signup);
   const registered = await request('/api/auth/register/verify', 'POST', { challenge: pending.data.challenge, code: sent.at(-1).code });
   const cookie = registered.response.headers.get('set-cookie').split(';')[0];
   assert.equal((await request('/api/profile', 'PUT', { birthDate: '1990-03-10', birthTime: '10:45', birthPlace: 'Москва' })).response.status, 401);
   assert.equal((await request('/api/profile', 'PUT', { birthDate: '1990-02-30', birthTime: '10:45', birthPlace: 'Москва' }, cookie)).response.status, 400);
-  assert.equal((await request('/api/profile', 'PUT', { birthDate: '1990-03-10', birthTime: '10:45', birthPlace: 'Москва' }, cookie)).response.status, 200);
-  assert.deepEqual((await request('/api/me', 'GET', null, cookie)).data.birthProfile, { birthDate: '1990-03-10', birthTime: '10:45', birthPlace: 'Москва' });
+  assert.equal((await request('/api/profile', 'PUT', { birthDate: '1990-03-10', birthTime: '10:45', birthPlace: 'Москва' }, cookie)).response.status, 400);
+  assert.equal((await request('/api/profile', 'PUT', { birthDate: '1990-03-10', birthTime: '10:45', birthCityId: 524901 }, cookie)).response.status, 200);
+  const profile = (await request('/api/me', 'GET', null, cookie)).data.birthProfile;
+  assert.equal(profile.birthCityId, 524901);
+  assert.equal(profile.birthTimeZone, 'Europe/Moscow');
+  assert.equal(profile.birthPlace, 'Moscow');
+  assert.equal(profile.birthUtc, '1990-03-10T07:45:00.000Z');
   const forecast = await request('/api/forecast/day');
   assert.equal(forecast.response.status, 200);
   assert.equal(forecast.data.scope, 'general');
+  const personal = await request('/api/forecast/day', 'GET', null, cookie);
+  assert.equal(personal.response.status, 200);
+  assert.equal(personal.data.scope, 'personal');
+  assert.equal(personal.data.astronomy.natal.sun.sign, 'Рыбы');
+  assert.equal((await request('/api/forecast/day')).data.scope, 'general');
   assert.equal((await request('/api/forecast/week')).response.status, 501);
+}));
+
+test('manual birth place requires coordinates and time zone', async () => fixture(async ({ sent, request }) => {
+  const pending = await request('/api/auth/register', 'POST', signup);
+  const registered = await request('/api/auth/register/verify', 'POST', { challenge: pending.data.challenge, code: sent.at(-1).code });
+  const cookie = registered.response.headers.get('set-cookie').split(';')[0];
+  const base = { birthDate: '2023-10-29', birthTime: '02:30', birthPlace: 'Небольшой город',
+    birthLatitude: 52.1, birthLongitude: 13.4, birthTimeZone: 'Europe/Berlin' };
+  assert.equal((await request('/api/profile', 'PUT', base, cookie)).response.status, 409);
+  const saved = await request('/api/profile', 'PUT', { ...base, birthUtcOffsetMinutes: 60 }, cookie);
+  assert.equal(saved.response.status, 200);
+  assert.equal(saved.data.birthProfile.birthUtc, '2023-10-29T01:30:00.000Z');
+  assert.equal(saved.data.birthProfile.birthCityId, null);
+}));
+
+test('daily API keeps two accounts and guest responses isolated', async () => fixture(async ({ sent, request }) => {
+  async function account(email, birthDate) {
+    const pending = await request('/api/auth/register', 'POST', { ...signup, email });
+    const verified = await request('/api/auth/register/verify', 'POST', { challenge: pending.data.challenge, code: sent.at(-1).code });
+    const cookie = verified.response.headers.get('set-cookie').split(';')[0];
+    const saved = await request('/api/profile', 'PUT', { birthDate, birthTime: '10:45', birthCityId: 524901 }, cookie);
+    assert.equal(saved.response.status, 200);
+    return cookie;
+  }
+  const first = await account('first@example.com', '1990-03-10');
+  const second = await account('second@example.com', '1995-04-10');
+  const a = (await request('/api/forecast/day', 'GET', null, first)).data;
+  const b = (await request('/api/forecast/day', 'GET', null, second)).data;
+  const guest = (await request('/api/forecast/day')).data;
+  assert.equal(a.scope, 'personal');
+  assert.equal(b.scope, 'personal');
+  assert.equal(guest.scope, 'general');
+  assert.equal(a.astronomy.natal.sun.sign, 'Рыбы');
+  assert.equal(b.astronomy.natal.sun.sign, 'Овен');
+  assert.equal(guest.astronomy.natal, undefined);
 }));
 
 test('registration does not create an unverified account without a mail service', async () => fixture(async ({ store, request }) => {

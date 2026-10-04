@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,500;1,600&family=Roboto:wght@400;500;600;700&family=Wix+Madefor+Display:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./styles.css" />
-    <script src="./app.js?v=6" defer></script>
+    <script src="./app.js?v=7" defer></script>
   </head>
   <body>
     <div class="site-shell">
@@ -86,7 +86,7 @@
           <section class="forecast-hero forecast-hero-day section-wrap">
             <a class="back-link" href="#home"><span aria-hidden="true">←</span> На главную</a>
             <div class="forecast-hero-grid">
-              <div class="forecast-hero-copy"><p class="forecast-kicker">Таро и астропсихология</p><h1>Карта <em>дня</em></h1><p>Прочитайте карту и выберите один вопрос, который стоит держать в уме.</p><span class="sample-label"><span class="sample-dot"></span> Общий прогноз</span></div>
+              <div class="forecast-hero-copy"><p class="forecast-kicker">Таро и астропсихология</p><h1>Карта <em>дня</em></h1><p>Прочитайте карту и выберите один вопрос, который стоит держать в уме.</p><span class="sample-label" id="day-scope-label"><span class="sample-dot"></span> Общий прогноз</span></div>
               <div class="forecast-visual daily-visual" aria-hidden="true"><div class="mini-card"><span class="mini-card-title">Карта дня</span><span class="mini-card-art">✧</span><span class="mini-card-footer">12:00 МСК</span></div></div>
             </div>
           </section>
@@ -111,7 +111,7 @@
           <section class="account-layout section-wrap" aria-label="Данные личного кабинета">
             <div class="account-card"><span class="subtle-tag">Профиль</span><h2 id="account-heading">Войдите в кабинет</h2><p id="account-email">Создайте аккаунт, чтобы подготовить профиль для персонального прогноза.</p><div class="account-actions"><button class="button button-gold" type="button" id="account-login" data-open-signup>Войти или создать аккаунт <span aria-hidden="true">↗</span></button><button class="quiet-button" type="button" id="account-logout" hidden>Выйти</button></div></div>
             <div class="account-card"><span class="subtle-tag">Безопасность</span><h2>Пароль и почта</h2><p id="email-status">Войдите, чтобы управлять аккаунтом.</p><button class="quiet-button" type="button" id="account-change-password" hidden>Сменить пароль ↗</button><button class="quiet-button" type="button" id="account-verify-email" hidden>Подтвердить почту ↗</button><p class="form-status" id="security-message" role="status"></p></div>
-            <div class="account-card birth-card" id="birth-card" hidden><span class="subtle-tag">Для персонального расчёта</span><h2>Данные рождения</h2><p>Укажите дату, точное местное время и город рождения. Эти данные доступны только в вашем кабинете.</p><form id="birth-form" class="birth-form"><label>Дата рождения<input type="date" name="birthDate" required /></label><label>Время рождения<input type="time" name="birthTime" required /></label><label>Место рождения<input type="text" name="birthPlace" autocomplete="address-level2" maxlength="120" placeholder="Например, Москва" required /></label><button class="button button-gold" type="submit">Сохранить <span aria-hidden="true">↗</span></button></form><p class="form-status" id="birth-message" role="status"></p></div>
+            <div class="account-card birth-card" id="birth-card" hidden><span class="subtle-tag">Для персонального расчёта</span><h2>Данные рождения</h2><p>Укажите дату, точное местное время и город рождения. Эти данные доступны только в вашем кабинете.</p><form id="birth-form" class="birth-form"><label>Дата рождения<input type="date" name="birthDate" required /></label><label>Время рождения<input type="time" name="birthTime" required /></label><label>Город рождения<input type="text" name="birthPlace" id="birth-place" list="city-suggestions" autocomplete="off" maxlength="120" placeholder="Начните вводить город" required /><datalist id="city-suggestions"></datalist></label><input type="hidden" name="birthCityId" id="birth-city-id" /><details class="birth-manual"><summary>Моего города нет в списке</summary><p>Укажите координаты и часовой пояс IANA. Для редкого часа перевода часов может понадобиться смещение UTC в минутах.</p><label>Широта<input type="number" name="birthLatitude" min="-90" max="90" step="any" placeholder="55.75" /></label><label>Долгота<input type="number" name="birthLongitude" min="-180" max="180" step="any" placeholder="37.62" /></label><label>Часовой пояс<input type="text" name="birthTimeZone" placeholder="Europe/Moscow" /></label><label>Смещение UTC, минуты<input type="number" name="birthUtcOffsetMinutes" min="-840" max="840" placeholder="Только при переводе часов" /></label></details><button class="button button-gold" type="submit">Сохранить <span aria-hidden="true">↗</span></button></form><p class="form-status" id="birth-message" role="status"></p><p class="city-source">Справочник городов: <a href="https://www.geonames.org/" target="_blank" rel="noopener noreferrer">GeoNames</a>, CC BY 4.0.</p></div>
           </section>
         </div>
       </main>
