@@ -77,3 +77,21 @@
   .daily-draw-copy blockquote{font-size:18px;margin:17px 0 20px}
   .draw-result-actions{gap:16px}
 }
+
+/* Blend the portrait edges into the surrounding sections. */
+.hero-portrait{z-index:0}.about-image img{position:relative;z-index:0}
+.hero-blend-left,.hero-blend-bottom,.about-image>span{position:absolute;z-index:2;pointer-events:none;display:block}
+.hero-blend-left{inset:0 55% 0 0;background:linear-gradient(90deg,#1b1411 0%,rgba(27,20,17,.82) 20%,rgba(27,20,17,0) 100%)}
+.hero-blend-bottom{display:none}
+.hero:after{display:block;z-index:3;height:120px;background:linear-gradient(0deg,var(--bg) 0%,rgba(19,13,11,0) 100%)}
+.about-image:before,.about-image:after{display:none}
+.about-blend-left{inset:0 auto 0 0;width:26%;background:linear-gradient(90deg,var(--bg) 0%,rgba(19,13,11,0) 100%)}
+.about-blend-right{inset:0 0 0 auto;width:15%;background:linear-gradient(270deg,var(--bg) 0%,rgba(19,13,11,0) 100%)}
+.about-blend-top{inset:0 0 auto 0;height:17%;background:linear-gradient(180deg,var(--bg) 0%,rgba(19,13,11,0) 100%)}
+.about-blend-bottom{inset:auto 0 0 0;height:22%;background:linear-gradient(0deg,var(--bg) 0%,rgba(19,13,11,0) 100%)}
+@media(max-width:760px){
+  .hero-blend-left{display:none}
+  .hero-blend-bottom{display:block;inset:auto 0 0;height:30%;background:linear-gradient(0deg,#1b1411 0%,rgba(27,20,17,0) 100%)}
+  .about-blend-left{width:18%}
+  .about-blend-right{width:11%}
+}
