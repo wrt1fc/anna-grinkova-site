@@ -6,6 +6,101 @@ const signupEmail = document.getElementById('signup-email');
 const formMessage = document.getElementById('form-message');
 let focusBeforeDialog = null;
 
+const dailyCards = [
+  {
+    name: 'Сила', numeral: 'VIII', mark: '✧',
+    preview: 'Сегодня может помочь спокойный, прямой разговор.',
+    question: 'Что я хочу сказать без лишнего нажима?',
+    title: 'Сила: говорите прямо, без нажима',
+    reading: 'Если сегодня предстоит важный разговор, начните с того, что для вас действительно важно. Спокойный тон поможет не уйти в спор.',
+    reflection: 'Где я могу выбрать мягкость и при этом остаться верной себе?',
+    focus: 'Один честный разговор', action: 'Запишите мысль, которую давно откладывали.',
+  },
+  {
+    name: 'Звезда', numeral: 'XVII', mark: '✴',
+    preview: 'Вернитесь к идее, которую давно держите в голове.',
+    question: 'Какой маленький шаг приблизит меня к ней?',
+    title: 'Звезда: дайте идее форму',
+    reading: 'Большой замысел легче сдвинуть с места, когда у него есть ближайшее действие. Выберите одну задачу, на которую хватит часа, и начните с неё.',
+    reflection: 'Какая часть моего плана уже достаточно ясна, чтобы начать?',
+    focus: 'Долгий план', action: 'Запишите один конкретный шаг и время для него.',
+  },
+  {
+    name: 'Маг', numeral: 'I', mark: '✳',
+    preview: 'Начните с того, что уже есть под рукой.',
+    question: 'Что я могу сделать сегодня без подготовки?',
+    title: 'Маг: начните с доступного',
+    reading: 'Не обязательно собирать все условия перед стартом. Посмотрите на то, чем вы уже располагаете: время, знания, контакт или черновик. Этого может хватить для первого шага.',
+    reflection: 'Какой ресурс я недооцениваю?',
+    focus: 'Первый шаг', action: 'Сделайте небольшой черновик вместо долгой подготовки.',
+  },
+  {
+    name: 'Умеренность', numeral: 'XIV', mark: '◒',
+    preview: 'Проверьте свой темп, прежде чем брать новое.',
+    question: 'Для чего мне стоит оставить свободное время?',
+    title: 'Умеренность: оставьте запас времени',
+    reading: 'Если день уже заполнен, новое обещание может создать лишнее напряжение. Прежде чем соглашаться, посмотрите, что можно перенести или упростить.',
+    reflection: 'Где я могу снизить темп без чувства вины?',
+    focus: 'Личные границы', action: 'Оставьте в расписании один свободный промежуток.',
+  },
+  {
+    name: 'Колесо Фортуны', numeral: 'X', mark: '⊙',
+    preview: 'Оставьте в планах место для поворота.',
+    question: 'Что я смогу изменить, если обстоятельства сдвинутся?',
+    title: 'Колесо Фортуны: держите план гибким',
+    reading: 'Не всё зависит от точного расписания. Определите главное на сегодня, а второстепенные дела оставьте подвижными. Так будет проще ответить на неожиданные перемены.',
+    reflection: 'Что сегодня важно сохранить, даже если план изменится?',
+    focus: 'Гибкость', action: 'Выберите одно обязательное дело, остальное расставьте по приоритету.',
+  },
+];
+
+const drawCards = [...document.querySelectorAll('[data-draw-card]')];
+const drawIntro = document.getElementById('draw-intro');
+const drawResult = document.getElementById('draw-result');
+const drawStage = document.querySelector('.daily-draw-stage');
+const drawStageNote = document.getElementById('draw-stage-note');
+const drawReset = document.getElementById('draw-reset');
+
+function selectDailyCard(index) {
+  const card = dailyCards[index];
+  if (!card) return;
+  drawStage.classList.add('has-selection');
+  drawStageNote.textContent = 'Можно открыть другую карту';
+  drawCards.forEach((button, buttonIndex) => {
+    const selected = buttonIndex === index;
+    button.classList.toggle('is-selected', selected);
+    button.setAttribute('aria-pressed', String(selected));
+  });
+  drawIntro.hidden = true;
+  drawResult.hidden = false;
+  document.getElementById('draw-result-number').textContent = `${card.numeral} · ваша карта`;
+  document.getElementById('draw-result-title').textContent = card.name;
+  document.getElementById('draw-result-text').textContent = card.preview;
+  document.getElementById('draw-result-question').textContent = card.question;
+  document.getElementById('day-card-title').textContent = card.name;
+  document.getElementById('day-card-mark').textContent = card.mark;
+  document.getElementById('day-card-footer').textContent = `${card.numeral} · карта дня`;
+  document.getElementById('day-reading-meta').textContent = `Карта «${card.name}»`;
+  document.getElementById('day-reading-title').textContent = card.title;
+  document.getElementById('day-reading-text').textContent = card.reading;
+  document.getElementById('day-reading-question').textContent = card.reflection;
+  document.getElementById('day-reading-focus').textContent = card.focus;
+  document.getElementById('day-reading-action').textContent = card.action;
+}
+
+drawCards.forEach((button) => button.addEventListener('click', () => selectDailyCard(Number(button.dataset.drawCard))));
+drawReset.addEventListener('click', () => {
+  drawStage.classList.remove('has-selection');
+  drawStageNote.textContent = 'Нажмите на карту, чтобы открыть её';
+  drawCards.forEach((button) => {
+    button.classList.remove('is-selected');
+    button.setAttribute('aria-pressed', 'false');
+  });
+  drawResult.hidden = true;
+  drawIntro.hidden = false;
+  drawCards[0].focus();
+});
+
 function showRoute() {
   const hash = window.location.hash.replace('#', '');
   const page = hash === 'day' || hash === 'week' ? hash : 'home';

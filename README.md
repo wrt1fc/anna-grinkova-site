@@ -15,7 +15,7 @@ python -m http.server 4173 --directory prototype
 ## Состав
 
 - `prototype/` — сайт и его исходные изображения.
-- `design/svg/variant-1-*.svg` — четыре экрана для импорта в Figma.
+- `design/svg/variant-1-*.svg` — шесть экранов для импорта в Figma, включая состояние после выбора карты.
 - `design/svg/institute-emblem-gold.svg` — векторная эмблема Института.
 - `design/preview/` и `design/variant-1-svg.zip` — изображения для просмотра и архив SVG.
 - `PRODUCT.md` и `DESIGN.md` — продуктовые и визуальные решения.

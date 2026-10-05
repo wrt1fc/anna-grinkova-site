@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,500;1,600&family=Roboto:wght@400;500;600;700&family=Wix+Madefor+Display:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./styles.css" />
-    <script src="./app.js?v=2" defer></script>
+    <script src="./app.js?v=3" defer></script>
   </head>
   <body>
     <div class="site-shell">
@@ -53,15 +53,21 @@
               </div>
               <span class="section-note">День или неделя</span>
             </div>
-            <div class="forecast-feature">
-              <div class="forecast-feature-art" aria-hidden="true">
-                <div class="tarot-back"><span class="tarot-sun"></span><span class="tarot-line top"></span><span class="tarot-line bottom"></span></div>
+            <div class="daily-draw" aria-label="Карта дня">
+              <div class="daily-draw-stage" aria-label="Пять карт на выбор">
+                <div class="daily-draw-fan" role="group" aria-label="Выберите одну из пяти карт">
+                  <button class="draw-card" type="button" data-draw-card="0" aria-label="Выбрать первую карту" aria-pressed="false"><span class="draw-card-back" aria-hidden="true"><span class="draw-card-orbit"></span><span class="draw-card-star">✦</span></span><span class="draw-card-front" aria-hidden="true"><span class="draw-card-roman">VIII</span><span class="draw-card-mark">✧</span><span class="draw-card-name">Сила</span></span></button>
+                  <button class="draw-card" type="button" data-draw-card="1" aria-label="Выбрать вторую карту" aria-pressed="false"><span class="draw-card-back" aria-hidden="true"><span class="draw-card-orbit"></span><span class="draw-card-star">✦</span></span><span class="draw-card-front" aria-hidden="true"><span class="draw-card-roman">XVII</span><span class="draw-card-mark">✴</span><span class="draw-card-name">Звезда</span></span></button>
+                  <button class="draw-card" type="button" data-draw-card="2" aria-label="Выбрать третью карту" aria-pressed="false"><span class="draw-card-back" aria-hidden="true"><span class="draw-card-orbit"></span><span class="draw-card-star">✦</span></span><span class="draw-card-front" aria-hidden="true"><span class="draw-card-roman">I</span><span class="draw-card-mark">✳</span><span class="draw-card-name">Маг</span></span></button>
+                  <button class="draw-card" type="button" data-draw-card="3" aria-label="Выбрать четвёртую карту" aria-pressed="false"><span class="draw-card-back" aria-hidden="true"><span class="draw-card-orbit"></span><span class="draw-card-star">✦</span></span><span class="draw-card-front" aria-hidden="true"><span class="draw-card-roman">XIV</span><span class="draw-card-mark">◒</span><span class="draw-card-name">Умеренность</span></span></button>
+                  <button class="draw-card" type="button" data-draw-card="4" aria-label="Выбрать пятую карту" aria-pressed="false"><span class="draw-card-back" aria-hidden="true"><span class="draw-card-orbit"></span><span class="draw-card-star">✦</span></span><span class="draw-card-front" aria-hidden="true"><span class="draw-card-roman">X</span><span class="draw-card-mark">⊙</span><span class="draw-card-name">Колесо</span></span></button>
+                </div>
+                <span class="daily-draw-stage-note" id="draw-stage-note">Нажмите на карту, чтобы открыть её</span>
               </div>
-              <div class="forecast-feature-copy">
-                <span class="subtle-tag">Каждый день</span>
-                <h3>Карта дня</h3>
-                <p>Карта и вопрос, с которым можно свериться перед началом дня.</p>
-                <a class="inline-action" href="#day">Читать карту дня <span aria-hidden="true">↗</span></a>
+              <div class="daily-draw-copy" aria-live="polite">
+                <span class="daily-draw-kicker">Карта дня</span>
+                <div id="draw-intro"><h3 id="daily-draw-title">Выберите одну карту</h3><p>На обороте — тема и вопрос на сегодня. Открытый фрагмент можно читать без регистрации.</p></div>
+                <div id="draw-result" hidden><span class="draw-result-number" id="draw-result-number"></span><h3 id="draw-result-title"></h3><p id="draw-result-text"></p><blockquote id="draw-result-question"></blockquote><div class="draw-result-actions"><a class="inline-action" href="#day">Читать открытый фрагмент <span aria-hidden="true">↗</span></a><button type="button" id="draw-reset">Выбрать другую</button></div></div>
               </div>
             </div>
             <a class="week-feature" href="#week">
@@ -87,12 +93,12 @@
             <a class="back-link" href="#home"><span aria-hidden="true">←</span> На главную</a>
             <div class="forecast-hero-grid">
               <div class="forecast-hero-copy"><p class="forecast-kicker">На сегодня</p><h1>Карта <em>дня</em></h1><p>Прочитайте карту и выберите один вопрос, который стоит держать в уме сегодня.</p><span class="sample-label"><span class="sample-dot"></span> Открытый фрагмент</span></div>
-              <div class="forecast-visual daily-visual" aria-hidden="true"><div class="mini-card"><span class="mini-card-title">Сила</span><span class="mini-card-art">✧</span><span class="mini-card-footer">VIII · энергия дня</span></div></div>
+              <div class="forecast-visual daily-visual" aria-hidden="true"><div class="mini-card"><span class="mini-card-title" id="day-card-title">Сила</span><span class="mini-card-art" id="day-card-mark">✧</span><span class="mini-card-footer" id="day-card-footer">VIII · энергия дня</span></div></div>
             </div>
           </section>
           <section class="reading-section section-wrap" aria-labelledby="day-reading-title">
-            <div class="reading-meta"><span>Карта «Сила»</span><span>Часть 1 из 2</span></div>
-            <div class="reading-layout"><div class="reading-main"><h2 id="day-reading-title">Сила: говорите прямо, без нажима</h2><p>Если сегодня предстоит важный разговор, начните с того, что для вас действительно важно. Спокойный тон поможет не уйти в спор.</p><blockquote>Где я могу выбрать мягкость и при этом остаться верной себе?</blockquote></div><aside class="reading-side"><span class="reading-side-label">Фокус дня</span><p>Один честный разговор</p><span class="reading-side-label">Действие</span><p>Запишите мысль, которую давно откладывали.</p></aside></div>
+            <div class="reading-meta"><span id="day-reading-meta">Карта «Сила»</span><span>Часть 1 из 2</span></div>
+            <div class="reading-layout"><div class="reading-main"><h2 id="day-reading-title">Сила: говорите прямо, без нажима</h2><p id="day-reading-text">Если сегодня предстоит важный разговор, начните с того, что для вас действительно важно. Спокойный тон поможет не уйти в спор.</p><blockquote id="day-reading-question">Где я могу выбрать мягкость и при этом остаться верной себе?</blockquote></div><aside class="reading-side"><span class="reading-side-label">Фокус дня</span><p id="day-reading-focus">Один честный разговор</p><span class="reading-side-label">Действие</span><p id="day-reading-action">Запишите мысль, которую давно откладывали.</p></aside></div>
           </section>
           <section class="unlock-section section-wrap"><div class="unlock-text"><h2>Продолжить чтение</h2><p>Полный прогноз раскрывает тему карты и показывает, как она связана с вашим запросом.</p></div><button class="button button-gold" type="button" data-open-signup>Открыть полный прогноз <span aria-hidden="true">↗</span></button></section>
         </div>
