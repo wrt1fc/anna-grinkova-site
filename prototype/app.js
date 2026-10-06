@@ -18,28 +18,93 @@ async function api(path, options = {}) {
   return { response, data: await response.json() };
 }
 
+const tarotNumerals = ['0', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX', 'XXI'];
+const drawCards = [...document.querySelectorAll('[data-draw-card]')];
+const drawIntro = document.getElementById('draw-intro');
+const drawResult = document.getElementById('draw-result');
+const drawStage = document.querySelector('.daily-draw-stage');
+const drawStageNote = document.getElementById('draw-stage-note');
+const drawReset = document.getElementById('draw-reset');
+let selectedDraw = null;
+let drawRequest = 0;
+
+function renderDailyForecast(data) {
+  const numeral = tarotNumerals[data.tarot.number];
+  document.getElementById('day-card-title').textContent = data.tarot.name;
+  document.getElementById('day-card-footer').textContent = `${numeral} · карта дня`;
+  document.getElementById('day-card-label').textContent = `Карта «${data.tarot.name}»`;
+  document.getElementById('day-date-label').textContent = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' })
+    .format(new Date(`${data.date}T12:00:00+03:00`));
+  document.getElementById('day-reading-title').textContent = data.reading.title;
+  document.getElementById('day-reading-body').textContent = data.reading.body;
+  document.getElementById('day-reading-question').textContent = data.reading.question;
+  document.getElementById('day-reading-focus').textContent = data.reading.focus;
+  document.getElementById('day-reading-action').textContent = data.reading.action;
+  document.getElementById('day-scope-label').lastChild.textContent = data.scope === 'personal' ? ' Персональный прогноз' : ' Общий прогноз';
+  const sotisStatus = data.astronomy.sotis?.status === 'matched'
+    ? ' Положения Солнца и Луны сверены с Sotis.'
+    : data.astronomy.sotis?.status === 'unavailable' ? ' Сверка с Sotis сейчас недоступна.' : '';
+  document.getElementById('day-status').textContent = `Астрономические положения рассчитаны на 12:00 МСК. Карта выбрана для позиции ${data.tarot.position + 1}.${sotisStatus}`;
+}
+
 async function loadDailyForecast() {
   const status = document.getElementById('day-status');
   status.textContent = 'Загружаем прогноз…';
   try {
-    const { response, data } = await api('/api/forecast/day');
+    const { response, data } = await api(`/api/forecast/day?draw=${selectedDraw ?? 0}`);
     if (!response.ok) throw new Error(data.message || 'Не удалось загрузить прогноз.');
-    document.querySelector('#route-day .mini-card-title').textContent = data.tarot.name;
-    document.getElementById('day-card-label').textContent = `Карта «${data.tarot.name}»`;
-    document.getElementById('day-date-label').textContent = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' })
-      .format(new Date(`${data.date}T12:00:00+03:00`));
-    document.getElementById('day-reading-title').textContent = data.reading.title;
-    document.getElementById('day-reading-body').textContent = data.reading.body;
-    document.getElementById('day-reading-question').textContent = data.reading.question;
-    document.getElementById('day-reading-focus').textContent = data.reading.focus;
-    document.getElementById('day-reading-action').textContent = data.reading.action;
-    document.getElementById('day-scope-label').lastChild.textContent = data.scope === 'personal' ? ' Персональный прогноз' : ' Общий прогноз';
-    const sotisStatus = data.astronomy.sotis?.status === 'matched'
-      ? ' Положения Солнца и Луны сверены с Sotis.'
-      : data.astronomy.sotis?.status === 'unavailable' ? ' Сверка с Sotis сейчас недоступна.' : '';
-    status.textContent = `Астрономические положения рассчитаны на 12:00 МСК. Цифровая карта таро выбирается ${data.scope === 'personal' ? 'для вашего аккаунта и даты' : 'для этой даты'}.${sotisStatus}`;
+    renderDailyForecast(data);
   } catch (error) { status.textContent = error.message || 'Не удалось загрузить прогноз.'; }
 }
+
+function resetDraw(focus = false) {
+  drawRequest += 1;
+  selectedDraw = null;
+  drawStage.classList.remove('has-selection');
+  drawStageNote.textContent = 'Нажмите на карту, чтобы открыть её';
+  drawCards.forEach((button) => {
+    button.classList.remove('is-selected');
+    button.setAttribute('aria-pressed', 'false');
+  });
+  drawResult.hidden = true;
+  drawIntro.hidden = false;
+  if (focus) drawCards[0].focus();
+}
+
+async function selectDailyCard(index) {
+  if (!Number.isInteger(index) || index < 0 || index >= drawCards.length) return;
+  const requestId = ++drawRequest;
+  drawStageNote.textContent = 'Открываем карту…';
+  try {
+    const { response, data } = await api(`/api/forecast/day?draw=${index}`);
+    if (!response.ok) throw new Error(data.message || 'Не удалось открыть карту.');
+    if (requestId !== drawRequest) return;
+    selectedDraw = index;
+    const numeral = tarotNumerals[data.tarot.number];
+    const button = drawCards[index];
+    button.querySelector('.draw-card-roman').textContent = numeral;
+    button.querySelector('.draw-card-name').textContent = data.tarot.name;
+    drawStage.classList.add('has-selection');
+    drawStageNote.textContent = 'Можно открыть другую карту';
+    drawCards.forEach((cardButton, buttonIndex) => {
+      const selected = buttonIndex === index;
+      cardButton.classList.toggle('is-selected', selected);
+      cardButton.setAttribute('aria-pressed', String(selected));
+    });
+    drawIntro.hidden = true;
+    drawResult.hidden = false;
+    document.getElementById('draw-result-number').textContent = `${numeral} · карта дня`;
+    document.getElementById('draw-result-title').textContent = data.tarot.name;
+    document.getElementById('draw-result-text').textContent = `Тема: ${data.tarot.focus}.`;
+    document.getElementById('draw-result-question').textContent = data.reading.question;
+  } catch (error) {
+    if (requestId === drawRequest) drawStageNote.textContent = error.message || 'Не удалось открыть карту.';
+  }
+}
+
+drawCards.forEach((button) => button.addEventListener('click', () => selectDailyCard(Number(button.dataset.drawCard))));
+drawReset.addEventListener('click', () => resetDraw(true));
+
 
 function showRoute() {
   const hash = window.location.hash.replace('#', '');
@@ -225,6 +290,7 @@ document.getElementById('auth-resend').addEventListener('click', async () => {
 });
 
 function renderAccount(data) {
+  if ((currentUser?.id ?? null) !== (data?.user?.id ?? null)) resetDraw();
   currentUser = data?.user || null;
   document.getElementById('account-heading').textContent = currentUser ? 'Вы в кабинете' : 'Войдите в кабинет';
   document.getElementById('account-email').textContent = currentUser ? currentUser.email : 'Создайте аккаунт, чтобы подготовить профиль для персонального прогноза.';

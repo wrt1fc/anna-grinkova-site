@@ -123,6 +123,25 @@ test('daily API keeps two accounts and guest responses isolated', async () => fi
   assert.equal(guest.astronomy.natal, undefined);
 }));
 
+test('five-card draw returns the chosen card consistently to guest and account', async () => fixture(async ({ sent, request }) => {
+  assert.equal((await request('/api/forecast/day?draw=5')).response.status, 400);
+  const general = [];
+  for (let draw = 0; draw < 5; draw++) general.push((await request(`/api/forecast/day?draw=${draw}`)).data);
+  assert.equal(new Set(general.map((item) => item.tarot.number)).size, 5);
+  assert.equal(general[2].tarot.position, 2);
+  assert.match(general[2].reading.body, new RegExp(general[2].tarot.name));
+  const pending = await request('/api/auth/register', 'POST', signup);
+  const verified = await request('/api/auth/register/verify', 'POST', { challenge: pending.data.challenge, code: sent.at(-1).code });
+  const cookie = verified.response.headers.get('set-cookie').split(';')[0];
+  await request('/api/profile', 'PUT', { birthDate: '1990-03-10', birthTime: '10:45', birthCityId: 524901 }, cookie);
+  const personal = [];
+  for (let draw = 0; draw < 5; draw++) personal.push((await request(`/api/forecast/day?draw=${draw}`, 'GET', null, cookie)).data);
+  assert.equal(new Set(personal.map((item) => item.tarot.number)).size, 5);
+  assert.equal(personal[2].scope, 'personal');
+  assert.equal(personal[2].tarot.position, 2);
+  assert.equal((await request('/api/forecast/day?draw=2', 'GET', null, cookie)).data.tarot.number, personal[2].tarot.number);
+}));
+
 test('registration does not create an unverified account without a mail service', async () => fixture(async ({ store, request }) => {
   const result = await request('/api/auth/register', 'POST', signup);
   assert.equal(result.response.status, 503);

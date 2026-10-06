@@ -41,6 +41,8 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
   const rootPath = fileURLToPath(root);
   const sessionCookie = (value, maxAge) => `anna_session=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secureCookies ? '; Secure' : ''}`;
   let dailyCache = null;
+  let dailyDrawCacheDay = null;
+  const dailyDrawCache = new Map();
   let personalCacheDay = null;
   const personalCache = new Map();
   async function sendCode({ purpose, email, userId = null, passwordHash = null }) {
@@ -90,6 +92,11 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
           return json(res, 200, { cities: searchCities(url.searchParams.get('q') || '') });
         }
         if (path === '/api/forecast/day' && req.method === 'GET') {
+          const drawParameters = url.searchParams.getAll('draw');
+          if (drawParameters.length > 1 || (drawParameters.length === 1 && !/^[0-4]$/.test(drawParameters[0]))) {
+            return json(res, 400, { error: 'invalid_draw_position' });
+          }
+          const draw = drawParameters.length ? Number(drawParameters[0]) : 0;
           const day = moscowDate();
           if (dailyCache?.date !== day) {
             const calculated = forecastForDate(day);
@@ -116,20 +123,26 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
             dailyCache = { date: day, promise };
           }
           const common = await dailyCache.promise;
+          if (dailyDrawCacheDay !== day) { dailyDrawCache.clear(); dailyDrawCacheDay = day; }
+          if (!dailyDrawCache.has(draw)) {
+            const selected = draw === 0 ? common : forecastForDate(day, draw);
+            dailyDrawCache.set(draw, { ...selected, astronomy: { ...selected.astronomy, sotis: common.astronomy.sotis } });
+          }
+          const general = dailyDrawCache.get(draw);
           const dailyToken = cookieToken(req);
           const dailyUser = dailyToken ? store.userForSession(tokenHash(dailyToken)) : null;
           const profile = dailyUser ? store.getBirthProfile(dailyUser.id) : null;
           if (profile?.birthUtc) {
             if (personalCacheDay !== day) { personalCache.clear(); personalCacheDay = day; }
-            const key = `${dailyUser.id}:${profile.updatedAt}:${profile.birthUtc}`;
+            const key = `${dailyUser.id}:${profile.updatedAt}:${profile.birthUtc}:${draw}`;
             if (!personalCache.has(key)) {
-              const personal = personalForecastForDate(day, profile, dailyUser.id, common);
+              const personal = personalForecastForDate(day, profile, dailyUser.id, general, draw);
               if (personalCache.size >= 1000) personalCache.delete(personalCache.keys().next().value);
-              personalCache.set(key, { ...personal, astronomy: { ...personal.astronomy, sotis: common.astronomy.sotis } });
+              personalCache.set(key, { ...personal, astronomy: { ...personal.astronomy, sotis: general.astronomy.sotis } });
             }
             return json(res, 200, personalCache.get(key));
           }
-          return json(res, 200, common);
+          return json(res, 200, general);
         }
         if (path === '/api/forecast/week' && req.method === 'GET') {
           return json(res, 501, { error: 'forecast_unavailable', message: 'Прогноз на неделю пока готовится.' });

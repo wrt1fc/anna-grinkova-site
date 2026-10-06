@@ -42,11 +42,18 @@ const CARDS = [
   ['Мир', 'результат заслуживает признания', 'Отметьте завершённое дело.', 'Что я уже довела до конца?'],
 ];
 
-export function tarotForDate(day, userId = null) {
+export function tarotForDate(day, userId = null, position = 0) {
+  if (!Number.isInteger(position) || position < 0 || position > 4) throw new Error('invalid_draw_position');
   const key = userId == null ? `anna-day:${day}` : `anna-personal:${userId}:${day}`;
-  const number = createHash('sha256').update(key).digest().readUInt32BE(0) % CARDS.length;
+  const chosen = new Set();
+  let number;
+  for (let slot = 0; slot <= position; slot++) {
+    number = createHash('sha256').update(slot === 0 ? key : `${key}:draw:${slot}`).digest().readUInt32BE(0) % CARDS.length;
+    while (chosen.has(number)) number = (number + 1) % CARDS.length;
+    chosen.add(number);
+  }
   const [name, focus, action, question] = CARDS[number];
-  return { number, name, focus, action, question, method: 'digital-deterministic' };
+  return { number, name, focus, action, question, position, method: 'digital-deterministic' };
 }
 
 function signFor(longitude) {
@@ -76,7 +83,7 @@ export function planetPositionsAt(instant) {
   };
 }
 
-export function forecastForDate(day) {
+export function forecastForDate(day, position = 0) {
   if (typeof day !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(day)
     || new Date(`${day}T09:00:00Z`).toISOString().slice(0, 10) !== day) throw new Error('invalid_forecast_date');
   const instant = new Date(`${day}T09:00:00Z`);
@@ -85,7 +92,7 @@ export function forecastForDate(day) {
   const sun = signFor(positions.sun.longitude);
   const moon = signFor(positions.moon.longitude);
   const phase = positions.moonPhase;
-  const card = tarotForDate(day);
+  const card = tarotForDate(day, null, position);
   const { number: cardIndex, name, focus, action, question } = card;
   return {
     date: day,
@@ -99,7 +106,7 @@ export function forecastForDate(day) {
       moonIngresses: skyEvents.moonIngresses,
       exactAspects: skyEvents.exactAspects,
     },
-    tarot: { number: cardIndex, name, focus, method: card.method },
+    tarot: { number: cardIndex, name, focus, position, method: card.method },
     generation: { kind: 'rules' },
     reading: {
       title: `${name}: тема дня`,

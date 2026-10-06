@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,500;1,600&family=Roboto:wght@400;500;600;700&family=Wix+Madefor+Display:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./styles.css" />
-    <script src="./app.js?v=7" defer></script>
+    <script src="./app.js?v=8" defer></script>
   </head>
   <body>
     <div class="site-shell">
@@ -41,7 +41,9 @@
               </div>
             </div>
             <div class="hero-portrait-wrap" aria-label="Портрет Анны Гриньковой">
-              <img class="hero-portrait" src="./assets/anna-vertical.jpg" alt="Анна Гринькова в белом платье" />
+              <img class="hero-portrait" src="./assets/anna-vertical-branded.jpg" alt="Анна Гринькова в белом платье" />
+              <span class="hero-blend-left" aria-hidden="true"></span>
+              <span class="hero-blend-bottom" aria-hidden="true"></span>
             </div>
           </section>
 
@@ -53,15 +55,21 @@
               </div>
               <span class="section-note">День или неделя</span>
             </div>
-            <div class="forecast-feature">
-              <div class="forecast-feature-art" aria-hidden="true">
-                <div class="tarot-back"><span class="tarot-sun"></span><span class="tarot-line top"></span><span class="tarot-line bottom"></span></div>
+            <div class="daily-draw" aria-label="Карта дня">
+              <div class="daily-draw-stage" aria-label="Пять карт на выбор">
+                <div class="daily-draw-fan" role="group" aria-label="Выберите одну из пяти карт">
+                  <button class="draw-card" type="button" data-draw-card="0" aria-label="Выбрать первую карту" aria-pressed="false"><span class="draw-card-back" aria-hidden="true"><span class="draw-card-orbit"></span><span class="draw-card-star">✦</span></span><span class="draw-card-front" aria-hidden="true"><span class="draw-card-roman"></span><span class="draw-card-mark">✧</span><span class="draw-card-name"></span></span></button>
+                  <button class="draw-card" type="button" data-draw-card="1" aria-label="Выбрать вторую карту" aria-pressed="false"><span class="draw-card-back" aria-hidden="true"><span class="draw-card-orbit"></span><span class="draw-card-star">✦</span></span><span class="draw-card-front" aria-hidden="true"><span class="draw-card-roman"></span><span class="draw-card-mark">✧</span><span class="draw-card-name"></span></span></button>
+                  <button class="draw-card" type="button" data-draw-card="2" aria-label="Выбрать третью карту" aria-pressed="false"><span class="draw-card-back" aria-hidden="true"><span class="draw-card-orbit"></span><span class="draw-card-star">✦</span></span><span class="draw-card-front" aria-hidden="true"><span class="draw-card-roman"></span><span class="draw-card-mark">✧</span><span class="draw-card-name"></span></span></button>
+                  <button class="draw-card" type="button" data-draw-card="3" aria-label="Выбрать четвёртую карту" aria-pressed="false"><span class="draw-card-back" aria-hidden="true"><span class="draw-card-orbit"></span><span class="draw-card-star">✦</span></span><span class="draw-card-front" aria-hidden="true"><span class="draw-card-roman"></span><span class="draw-card-mark">✧</span><span class="draw-card-name"></span></span></button>
+                  <button class="draw-card" type="button" data-draw-card="4" aria-label="Выбрать пятую карту" aria-pressed="false"><span class="draw-card-back" aria-hidden="true"><span class="draw-card-orbit"></span><span class="draw-card-star">✦</span></span><span class="draw-card-front" aria-hidden="true"><span class="draw-card-roman"></span><span class="draw-card-mark">✧</span><span class="draw-card-name"></span></span></button>
+                </div>
+                <span class="daily-draw-stage-note" id="draw-stage-note" role="status">Нажмите на карту, чтобы открыть её</span>
               </div>
-              <div class="forecast-feature-copy">
-                <span class="subtle-tag">Каждый день</span>
-                <h3>Карта дня</h3>
-                <p>Карта и вопрос, с которым можно свериться перед началом дня.</p>
-                <a class="inline-action" href="#day">Читать карту дня <span aria-hidden="true">↗</span></a>
+              <div class="daily-draw-copy" aria-live="polite">
+                <span class="daily-draw-kicker">Карта дня</span>
+                <div id="draw-intro"><h3 id="daily-draw-title">Выберите одну карту</h3><p>Откройте тему и вопрос на сегодня. Прогноз доступен без регистрации.</p></div>
+                <div id="draw-result" hidden><span class="draw-result-number" id="draw-result-number"></span><h3 id="draw-result-title"></h3><p id="draw-result-text"></p><blockquote id="draw-result-question"></blockquote><div class="draw-result-actions"><a class="inline-action" href="#day">Читать прогноз <span aria-hidden="true">↗</span></a><button type="button" id="draw-reset">Выбрать другую</button></div></div>
               </div>
             </div>
             <a class="week-feature" href="#week">
@@ -78,7 +86,7 @@
               <p>Астропсихолог и основатель Института астрологии и психологии. На этой странице Анна делится картой дня и прогнозом на неделю.</p>
               <a class="inline-action" href="https://www.instagram.com/anna__grinkova" target="_blank" rel="noopener noreferrer">Анна в Instagram <span aria-hidden="true">↗</span></a>
             </div>
-            <div class="about-image"><img src="./assets/anna-horizontal.jpg" alt="Портрет Анны Гриньковой" /></div>
+            <div class="about-image"><img src="./assets/anna-horizontal-branded.jpg" alt="Портрет Анны Гриньковой" /><span class="about-blend-left" aria-hidden="true"></span><span class="about-blend-right" aria-hidden="true"></span><span class="about-blend-top" aria-hidden="true"></span><span class="about-blend-bottom" aria-hidden="true"></span></div>
           </section>
         </div>
 
@@ -87,7 +95,7 @@
             <a class="back-link" href="#home"><span aria-hidden="true">←</span> На главную</a>
             <div class="forecast-hero-grid">
               <div class="forecast-hero-copy"><p class="forecast-kicker">Таро и астропсихология</p><h1>Карта <em>дня</em></h1><p>Прочитайте карту и выберите один вопрос, который стоит держать в уме.</p><span class="sample-label" id="day-scope-label"><span class="sample-dot"></span> Общий прогноз</span></div>
-              <div class="forecast-visual daily-visual" aria-hidden="true"><div class="mini-card"><span class="mini-card-title">Карта дня</span><span class="mini-card-art">✧</span><span class="mini-card-footer">12:00 МСК</span></div></div>
+              <div class="forecast-visual daily-visual" aria-hidden="true"><div class="mini-card"><span class="mini-card-title" id="day-card-title">Карта дня</span><span class="mini-card-art" id="day-card-mark">✧</span><span class="mini-card-footer" id="day-card-footer">12:00 МСК</span></div></div>
             </div>
           </section>
           <section class="reading-section section-wrap" aria-labelledby="day-reading-title">

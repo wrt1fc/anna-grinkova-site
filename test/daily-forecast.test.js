@@ -32,6 +32,14 @@ test('tarot rotation varies across dates and invalid days are rejected', () => {
   assert.throws(() => forecastForDate('2026-02-30'));
 });
 
+test('five visible draw positions have distinct stable cards for a date', () => {
+  const cards = Array.from({ length: 5 }, (_, index) => forecastForDate('2026-10-07', index).tarot.number);
+  assert.equal(new Set(cards).size, 5);
+  assert.deepEqual(cards, Array.from({ length: 5 }, (_, index) => forecastForDate('2026-10-07', index).tarot.number));
+  assert.equal(forecastForDate('2026-10-07').tarot.number, cards[0]);
+  assert.throws(() => forecastForDate('2026-10-07', 5), /invalid_draw_position/);
+});
+
 test('Sun and Moon longitudes agree with a Sotis reference chart', () => {
   // Sotis chart: 28.09.2026 10:41:54 +03:00, Sun 5°12′30″ Libra, Moon 25°56′07″ Aries.
   const positions = planetPositionsAt(new Date('2026-09-28T07:41:54Z'));
