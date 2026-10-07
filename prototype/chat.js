@@ -12,6 +12,15 @@ let chatRequest = 0;
 let chatSlowTimer;
 
 function scrollChatToEnd() { chatTranscript.scrollTop = chatTranscript.scrollHeight; }
+function chatIcon(name) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.classList.add('ui-icon');
+  svg.setAttribute('aria-hidden', 'true');
+  const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+  use.setAttribute('href', `./assets/icons.svg#${name}`);
+  svg.append(use);
+  return svg;
+}
 
 function chatMessage(role, content, context = null) {
   const article = document.createElement('article');
@@ -28,10 +37,12 @@ function chatMessage(role, content, context = null) {
     actions.className = 'chat-message-actions';
     const copy = document.createElement('button');
     copy.type = 'button';
-    copy.textContent = 'Скопировать';
+    const copyLabel = document.createElement('span');
+    copyLabel.textContent = 'Скопировать';
+    copy.append(chatIcon('copy'), copyLabel);
     copy.addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(content); copy.textContent = 'Скопировано'; }
-      catch { copy.textContent = 'Не удалось скопировать'; }
+      try { await navigator.clipboard.writeText(content); copyLabel.textContent = 'Скопировано'; }
+      catch { copyLabel.textContent = 'Не удалось скопировать'; }
     });
     actions.append(copy);
     if (context) {
@@ -49,11 +60,34 @@ function chatMessage(role, content, context = null) {
 
 function thinkingMessage() {
   const article = chatMessage('assistant', '');
+  article.classList.add('chat-message-thinking');
+  const stage = document.createElement('div');
+  stage.className = 'chat-thinking-stage';
+  stage.setAttribute('role', 'status');
+  stage.setAttribute('aria-label', 'Помощник печатает, карты перебираются');
+  const cards = document.createElement('span');
+  cards.className = 'chat-thinking-cards';
+  cards.setAttribute('aria-hidden', 'true');
+  for (let index = 0; index < 5; index += 1) {
+    const card = document.createElement('i');
+    const star = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    star.setAttribute('viewBox', '0 0 24 24');
+    const mark = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    mark.setAttribute('href', './assets/icons.svg#star');
+    star.append(mark);
+    card.append(star);
+    cards.append(card);
+  }
+  const line = document.createElement('span');
+  line.className = 'chat-thinking-line';
+  line.textContent = 'Помощник печатает';
   const dots = document.createElement('span');
   dots.className = 'chat-thinking-dots';
-  dots.setAttribute('aria-label', 'Готовим ответ');
-  dots.innerHTML = '<i></i><i></i><i></i>';
-  article.querySelector('p').replaceWith(dots);
+  dots.setAttribute('aria-hidden', 'true');
+  for (let index = 0; index < 3; index += 1) dots.append(document.createElement('i'));
+  line.append(dots);
+  stage.append(cards, line);
+  article.querySelector('p').replaceWith(stage);
   return article;
 }
 
@@ -64,6 +98,7 @@ async function sendChat(message, existingUserMessage = false) {
   const text = message.trim();
   if (!text || text.length > 600) return;
   const request = ++chatRequest;
+  const started = performance.now();
   chatEmpty.hidden = true;
   if (!existingUserMessage) chatMessage('user', text);
   chatInput.value = '';
@@ -71,7 +106,7 @@ async function sendChat(message, existingUserMessage = false) {
   const controller = new AbortController();
   chatAbort = controller;
   chatStop.hidden = false;
-  chatStatus.textContent = 'Готовим ответ…';
+  chatStatus.textContent = '';
   chatSlowTimer = window.setTimeout(() => { if (request === chatRequest) chatStatus.textContent = 'Модель отвечает дольше обычного…'; }, 2500);
   updateChatSend();
   try {
@@ -84,7 +119,10 @@ async function sendChat(message, existingUserMessage = false) {
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.message || 'Ответ сейчас недоступен.');
+    const remaining = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 1100 - (performance.now() - started);
+    if (remaining > 0) await new Promise((resolve) => window.setTimeout(resolve, remaining));
     if (request !== chatRequest) return;
+    if (controller.signal.aborted) throw new DOMException('Ответ остановлен', 'AbortError');
     thinking.remove();
     chatMessage('assistant', data.answer, data.context);
     chatHistory.push({ role: 'user', content: text }, { role: 'assistant', content: data.answer });
@@ -100,6 +138,7 @@ async function sendChat(message, existingUserMessage = false) {
     const retry = document.createElement('button');
     retry.type = 'button';
     retry.textContent = 'Повторить';
+    retry.prepend(chatIcon('refresh'));
     retry.addEventListener('click', () => { card.remove(); sendChat(text, true); });
     actions.append(retry);
     card.append(actions);

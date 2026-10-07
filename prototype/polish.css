@@ -1,0 +1,99 @@
+/* One engraved line language for navigation, actions and card marks. */
+.ui-icon { display: inline-block; width: 21px; height: 21px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.55; stroke-linecap: round; stroke-linejoin: round; }
+.mobile-nav .ui-icon { width: 24px; height: 24px; stroke-width: 1.5; }
+.mobile-nav a { min-width: 0; }
+.mobile-nav a[aria-current="page"] .ui-icon { filter: drop-shadow(0 0 6px rgba(245,217,133,.35)); }
+.chat-panel-mark .ui-icon { width: 26px; height: 26px; stroke-width: 1.25; }
+.chat-empty-mark .ui-icon { width: 47px; height: 47px; stroke-width: 1.1; }
+#chat-send .ui-icon { width: 23px; height: 23px; stroke-width: 1.6; }
+
+.button > span[aria-hidden="true"],
+.header-entry > span[aria-hidden="true"],
+.text-link > span[aria-hidden="true"],
+.inline-action > span[aria-hidden="true"],
+.week-feature-cta > span[aria-hidden="true"],
+.chat-invite-action > span[aria-hidden="true"] { display: none; }
+.button::after,
+.header-entry::after,
+.text-link::after,
+.inline-action::after,
+.week-feature-cta::after,
+.chat-invite-action::after,
+.chat-prompt-list button::after,
+.week-arrow::after,
+.back-link::before {
+  content: "";
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  background: currentColor;
+  -webkit-mask: url('./assets/icon-arrow-up-right.svg') center / contain no-repeat;
+  mask: url('./assets/icon-arrow-up-right.svg') center / contain no-repeat;
+}
+.header-entry { display: inline-flex; align-items: center; gap: 14px; }
+.header-entry::after { width: 16px; height: 16px; }
+@media (max-width: 980px) { .header-entry { display: none; } }
+.text-link,.inline-action { display: inline-flex; align-items: center; gap: 10px; }
+.text-link::after,.inline-action::after { width: 16px; height: 16px; }
+.week-feature-cta { align-items: center; }
+.week-arrow { font-size: 0; }
+.week-arrow::after { width: 27px; height: 27px; }
+.chat-invite-action { display: inline-flex; gap: 10px; align-items: center; }
+.chat-invite-action::after { width: 16px; height: 16px; }
+.chat-prompt-list button { display: flex; align-items: center; justify-content: space-between; gap: 15px; }
+.chat-prompt-list button::after { float: none; width: 19px; height: 19px; font-size: 0; }
+.back-link { gap: 11px; }
+.back-link > span[aria-hidden="true"] { display: none; }
+.back-link::before { width: 20px; height: 20px; -webkit-mask-image: url('./assets/icon-arrow-left.svg'); mask-image: url('./assets/icon-arrow-left.svg'); }
+.footer-links a[href*="instagram.com"] { display: inline-flex; align-items: center; gap: 4px; }
+.footer-links a[href*="instagram.com"]::after,
+#account-change-password::after,
+#account-verify-email::after { content: ""; display: inline-block; width: 15px; height: 15px; margin-left: 8px; vertical-align: -2px; background: currentColor; -webkit-mask: url('./assets/icon-arrow-up-right.svg') center / contain no-repeat; mask: url('./assets/icon-arrow-up-right.svg') center / contain no-repeat; }
+.dialog-close,.birth-calendar-heading button,.birth-time-heading button { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; font-size: 0 !important; }
+.dialog-close::before,.birth-calendar-heading button::before,.birth-time-heading button::before { content: ""; display: block; width: 19px; height: 19px; background: currentColor; -webkit-mask: url('./assets/icon-close.svg') center / contain no-repeat; mask: url('./assets/icon-close.svg') center / contain no-repeat; }
+.birth-calendar-controls > button { display: grid; place-items: center; font-size: 0 !important; }
+.birth-calendar-controls > button::before { content: ""; display: block; width: 18px; height: 18px; background: currentColor; -webkit-mask: url('./assets/icon-chevron-left.svg') center / contain no-repeat; mask: url('./assets/icon-chevron-left.svg') center / contain no-repeat; }
+#birth-calendar-next::before { -webkit-mask-image: url('./assets/icon-chevron-right.svg'); mask-image: url('./assets/icon-chevron-right.svg'); }
+
+.draw-card-star,.draw-card-mark,.mini-card-art { font-size: 0; }
+.draw-card-star::before,.draw-card-mark::before,.mini-card-art::before {
+  content: "";
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: currentColor;
+  -webkit-mask: url('./assets/icon-star.svg') center / contain no-repeat;
+  mask: url('./assets/icon-star.svg') center / contain no-repeat;
+}
+.draw-card-star { width: 16px; height: 16px; }
+.draw-card-mark { display: block; width: 74px; height: 74px; }
+.mini-card-art { display: grid; place-items: center; }
+.mini-card-art::before { width: 70%; height: 70%; }
+.birth-date-toggle svg,.birth-time-toggle svg,.password-toggle svg { stroke-linecap: round; stroke-linejoin: round; }
+
+/* Align cards and calls to action to the same mobile inset. */
+.account-card { min-width: 0; }
+@media (max-width: 760px) {
+  .site-header { padding-inline: 20px; }
+  .account-layout { min-width: 0; }
+  .account-card { width: 100%; padding: 26px 22px; }
+  .account-card h2 { overflow-wrap: anywhere; }
+  .account-actions { min-width: 0; }
+  .account-actions .button { width: 100%; min-width: 0; white-space: normal; text-align: left; gap: 14px; }
+  .account-actions .button::after { margin-left: auto; }
+  .birth-form { min-width: 0; }
+  .chat-invite { align-items: center; }
+  .chat-invite-copy { min-width: 0; }
+  .chat-invite-copy strong { line-height: 1.16; }
+}
+@media (max-width: 370px) {
+  .simple-hero h1 { font-size: clamp(37px, 11vw, 43px); }
+  .chat-transcript { overflow-x: hidden; }
+  .chat-message-thinking { max-width: 100%; }
+  .chat-thinking-stage { flex-direction: column; align-items: flex-start; gap: 0; }
+  .chat-thinking-cards { transform: scale(.75); transform-origin: left top; width: 148px; height: 64px; }
+  .chat-thinking-line { font-size: 14px; white-space: normal; }
+  .mobile-nav { padding-inline: 4px; }
+  .mobile-nav a { font-size: 9px; }
+}
