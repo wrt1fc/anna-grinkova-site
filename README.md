@@ -48,6 +48,7 @@ npm start
 - `design/svg/variant-1-*.svg` — экраны для импорта в Figma, включая выбор карты; `design/preview/` и `design/variant-1-svg.zip` — материалы просмотра.
 - `PRODUCT.md` и `DESIGN.md` — продуктовые и визуальные решения.
 - `server/db.js`, `server/schema.js`, `server/store*.js` — подключение к PostgreSQL, миграции и хранилище (см. [docs/database.md](docs/database.md)).
+- `docs/project-analysis.md` — источники, гипотезы о ЦА, путь пользователя и ход разработки; отдельная страница анализа есть в Figma.
 - `server/http.js` — API регистрации, входа, подтверждения почты, смены пароля и профиля.
 - `server/mail.js` — адаптер Unisender Go.
 - `test/` — проверки кодов, аккаунтов, профиля и миграции.
