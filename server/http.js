@@ -12,6 +12,8 @@ import { personalForecastForDate } from './personal-forecast.js';
 import { createConcurrencyGate, createHistorySigner } from './chat-safety.js';
 import { createChatRoutes } from './routes/chat.js';
 import { handleProfileRoutes } from './routes/profiles.js';
+import { createBillingRoutes } from './routes/billing.js';
+import { createBilling } from './billing/service.js';
 import { NULL_METRICS } from './metrics.js';
 
 const SESSION_AGE = 30 * 24 * 60 * 60;
@@ -47,12 +49,14 @@ function cookieToken(req) {
 export function createServer({ store, mailer = null, codeSecret, root = new URL('../prototype/', import.meta.url), secureCookies = false,
   mailDailyLimit = 0, trafficLimiter = createTrafficLimiter(), chatLimiter = createTrafficLimiter({ perIpLimit: 6, globalLimit: 300 }),
   chatGate = createConcurrencyGate(2), loginGuard = createLoginGuard(), trustProxy = false, forecastWriter = null, chatWriter = null,
-  sotisVerifier = null, metrics = NULL_METRICS, knowledge = null,
+  sotisVerifier = null, metrics = NULL_METRICS, knowledge = null, paymentProvider = null, publicUrl = 'http://localhost:3000',
   pageViewLimiter = createTrafficLimiter({ perIpLimit: 30, globalLimit: 3000 }) }) {
   if (!codeSecret || String(codeSecret).length < 32) throw new Error('AUTH_CODE_SECRET must have at least 32 characters');
   if (!Number.isSafeInteger(mailDailyLimit) || mailDailyLimit < 0) throw new Error('MAIL_DAILY_LIMIT must be a non-negative integer');
   const rootPath = fileURLToPath(root);
   const historySigner = createHistorySigner(codeSecret);
+  const billing = createBilling({ store, provider: paymentProvider, publicUrl });
+  const handleBillingRoutes = createBillingRoutes({ store, billing, provider: paymentProvider, trustProxy, metrics });
   const handleChatRoutes = createChatRoutes({ store, chatWriter, chatLimiter, chatGate, historySigner, metrics, knowledge });
   const sessionCookie = (value, maxAge) => `anna_session=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secureCookies ? '; Secure' : ''}`;
   let dailyCache = null;
@@ -108,6 +112,7 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
         const user = token ? store.userForSession(tokenHash(token)) : null;
         const ctx = { req, res, path, user, json, readJson };
         if (await handleChatRoutes(ctx)) return;
+        if (await handleBillingRoutes(ctx)) return;
         if (path === '/api/health' && req.method === 'GET') {
           const healthy = store.health();
           return json(res, healthy ? 200 : 503, { status: healthy ? 'ok' : 'unavailable' });

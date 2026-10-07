@@ -1,0 +1,11 @@
+{
+  "note": "Цены — черновик для разработки, утвердить с Анной до запуска. Суммы в рублях; в базе хранятся в копейках. vatCode 1 = «без НДС» (ИП на УСН); уточнить у бухгалтера.",
+  "currency": "RUB",
+  "vatCode": 1,
+  "products": [
+    { "id": "trial-7d", "label": "Тест-драйв на 7 дней", "plan": "individual", "periodDays": 7, "priceRub": 190, "oncePerUser": true, "autoRenewable": false },
+    { "id": "individual-30d", "label": "Индивидуальный, 30 дней", "plan": "individual", "periodDays": 30, "priceRub": 690, "autoRenewable": true },
+    { "id": "partner-30d", "label": "Партнёрский, 30 дней", "plan": "partner", "periodDays": 30, "priceRub": 990, "autoRenewable": true },
+    { "id": "family-30d", "label": "Семейный, 30 дней", "plan": "family", "periodDays": 30, "priceRub": 1290, "autoRenewable": true }
+  ]
+}

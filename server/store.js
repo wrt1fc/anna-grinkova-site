@@ -1,6 +1,8 @@
 import { DatabaseSync } from 'node:sqlite';
 import { timingSafeEqual } from 'node:crypto';
 import { createExtras, migrateExtras } from './store-extras.js';
+import { createBillingStore, migrateBilling } from './store-billing.js';
+import { DEFAULT_PLAN } from './plans.js';
 
 const CODE_LIFETIME = 10 * 60 * 1000;
 const SEND_COOLDOWN = 60 * 1000;
@@ -53,6 +55,8 @@ export function createStore(path) {
   }
 
   migrateExtras(db);
+  migrateBilling(db);
+  const billing = createBillingStore(db, { defaultPlan: DEFAULT_PLAN });
 
   function createUser(email, passwordHash, now = Date.now(), verifiedAt = null) {
     const result = db.prepare('INSERT INTO users (email, password_hash, created_at, email_verified_at) VALUES (?, ?, ?, ?)')
@@ -164,6 +168,8 @@ export function createStore(path) {
 
   return {
     ...createExtras(db),
+    ...billing,
+    getPlan: (userId, now) => billing.planState(userId, now).plan,
     createUser, findUserByEmail, findUserById, saveSession, userForSession, deleteSession,
     getBirthProfile, saveBirthProfile, issueChallenge, deleteChallenge, consumeChallenge, consumeDailyQuota, refundDailyQuota,
     health: () => db.prepare('SELECT 1 AS ok').get().ok === 1,

@@ -45,10 +45,10 @@ function parseSse(text) {
   });
 }
 
-test('an individual plan allows no extra people; partner allows one, family two', async () => fixture(async ({ store, request, signIn }) => {
+test('the free plan allows no extra people; partner allows one, family two', async () => fixture(async ({ store, request, signIn }) => {
   const cookie = await signIn();
   const plan = await request('/api/plan', { cookie });
-  assert.equal(plan.data.plan.id, 'individual');
+  assert.equal(plan.data.plan.id, 'free');
   assert.equal(plan.data.people, 1);
   assert.equal((await request('/api/profiles', { method: 'POST', body: partnerBirth, cookie })).response.status, 400);
 

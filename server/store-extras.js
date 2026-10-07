@@ -38,10 +38,8 @@ export function createExtras(db) {
   const profileRow = (row) => row && { id: row.id, relation: row.relation, label: row.label, ...Object.fromEntries(
     Object.entries(row).filter(([key]) => key.startsWith('birth'))), updatedAt: row.updatedAt };
 
-  function getPlan(userId) {
-    return db.prepare('SELECT plan FROM users WHERE id = ?').get(userId)?.plan ?? DEFAULT_PLAN;
-  }
-  function setPlan(userId, plan) { db.prepare('UPDATE users SET plan = ? WHERE id = ?').run(plan, userId); }
+  // The effective plan honours the paid period: see planState in store-billing.js.
+  function setPlan(userId, plan) { db.prepare('UPDATE users SET plan = ?, plan_expires_at = NULL WHERE id = ?').run(plan, userId); }
   function findUserIdByEmail(email) { return db.prepare('SELECT id FROM users WHERE email = ?').get(email)?.id ?? null; }
 
   function listChartProfiles(userId) {
@@ -127,7 +125,7 @@ export function createExtras(db) {
     return db.prepare('SELECT day, metric, value FROM metrics_daily WHERE day >= ? ORDER BY day, metric').all(fromDay);
   }
 
-  return { getPlan, setPlan, findUserIdByEmail, listChartProfiles, getChartProfile, createChartProfile, updateChartProfile,
+  return { setPlan, findUserIdByEmail, listChartProfiles, getChartProfile, createChartProfile, updateChartProfile,
     deleteChartProfile, chatConsent, setChatConsent, appendChatMessages, listChatMessages, deleteChatMessages,
     incrementMetric, markVisitor, listMetrics };
 }

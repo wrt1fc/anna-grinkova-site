@@ -10,6 +10,8 @@ import { createLocalChat } from './local-chat.js';
 import { createConcurrencyGate } from './chat-safety.js';
 import { createMetrics } from './metrics.js';
 import { loadKnowledge } from './knowledge.js';
+import { createYooKassa } from './billing/yookassa.js';
+import { createTestProvider } from './billing/test-provider.js';
 import { createSotisVerifier } from './sotis.js';
 
 // Newly created SQLite, WAL and directory files must not be readable by other local users on POSIX hosts.
@@ -34,9 +36,16 @@ const sotisVerifier = process.env.SOTIS_VERIFY === '0' ? null : createSotisVerif
 // Approved materials for retrieval live outside Git, like the recordings they come from.
 const knowledge = process.env.KNOWLEDGE_PATH ? loadKnowledge(resolve(process.env.KNOWLEDGE_PATH)) : null;
 if (knowledge) console.log(`Knowledge: ${knowledge.size} approved fragments`);
+// Payments are off unless a provider is configured; the test provider is refused in production.
+if (process.env.BILLING_PROVIDER === 'test' && process.env.NODE_ENV === 'production') throw new Error('Test payment provider is not allowed in production');
+const paymentProvider = process.env.BILLING_PROVIDER === 'yookassa'
+  ? createYooKassa({ shopId: process.env.YOOKASSA_SHOP_ID, secretKey: process.env.YOOKASSA_SECRET_KEY })
+  : process.env.BILLING_PROVIDER === 'test' ? createTestProvider() : null;
+if (process.env.BILLING_PROVIDER && !paymentProvider) throw new Error('Payment provider is set but its keys are missing');
 const server = createServer({ store, mailer, codeSecret, trafficLimiter,
   mailDailyLimit: Number(process.env.MAIL_DAILY_LIMIT ?? 0), forecastWriter, chatWriter, sotisVerifier,
-  chatGate: createConcurrencyGate(Number(process.env.CHAT_MAX_CONCURRENT ?? 2)), metrics: createMetrics(store), knowledge,
+  chatGate: createConcurrencyGate(Number(process.env.CHAT_MAX_CONCURRENT ?? 2)), metrics: createMetrics(store), knowledge, paymentProvider,
+  publicUrl: process.env.PUBLIC_URL || `http://${host}:${port}`,
   secureCookies: process.env.NODE_ENV === 'production', trustProxy: process.env.TRUST_PROXY === '1' });
 if (mailer && !Number(process.env.MAIL_DAILY_LIMIT)) console.warn('MAIL_DAILY_LIMIT is 0: registration and password reset emails are disabled.');
 server.listen(port, host, () => console.log(`Anna site: http://${host}:${port}`));
