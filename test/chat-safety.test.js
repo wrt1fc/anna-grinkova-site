@@ -69,3 +69,12 @@ test('an honest negation of a guarantee is not blocked, a promise still is', () 
   assert.equal(unsafeChatAnswer('Я гарантирую, что он вернётся.', '2026-10-07'), true);
   assert.equal(unsafeChatAnswer('Это обязательно случится в этом месяце.', '2026-10-07'), true);
 });
+
+test('chart positions are not mistaken for prices, real prices still are', () => {
+  for (const ok of ['Управитель 2 дома, Венера, стоит в 7 доме.', 'Солнце стоит на 12° Рыб.', 'Марс стоит в 10-м доме, это про карьеру.']) {
+    assert.equal(unsafeChatAnswer(ok, '2026-10-08'), false, ok);
+  }
+  for (const bad of ['Консультация стоит 5000.', 'Разбор стоит около трёх тысяч.', 'Венера стоит в 7 доме, а консультация стоит 5000.']) {
+    assert.equal(unsafeChatAnswer(bad, '2026-10-08'), true, bad);
+  }
+});

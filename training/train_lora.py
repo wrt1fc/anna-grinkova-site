@@ -67,6 +67,10 @@ def main():
         logging_steps=5,
         eval_strategy='epoch' if 'eval' in files else 'no',
         save_strategy='epoch',
+        # With a held-out set the adapter from the epoch with the lowest eval loss is kept, not simply the last one.
+        load_best_model_at_end='eval' in files,
+        metric_for_best_model='eval_loss',
+        greater_is_better=False,
         save_total_limit=2,
         report_to='none',
     )

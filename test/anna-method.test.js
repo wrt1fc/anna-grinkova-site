@@ -75,5 +75,6 @@ test('targeted queries find the exact slide for the chart', () => {
 test('money questions are recognised', () => {
   assert.ok(asksAboutMoney('Как мне увеличить доход?'));
   assert.ok(asksAboutMoney('Какая у меня финансовая стратегия?'));
+  assert.ok(asksAboutMoney('Откуда мне лучше зарабатывать?'));
   assert.equal(asksAboutMoney('Почему я срываюсь на близких?'), false);
 });

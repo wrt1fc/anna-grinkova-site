@@ -40,8 +40,9 @@ const UNSAFE_PATTERNS = [
   /меня\s+зовут\s+анна/iu,
   /(?<!\p{L})(?:с\s+вами|вам)\s+пишет\s+анна/iu,
   /\d[\d\s]*(?:₽|руб|р\.|\$|€|usd|eur|долл|евро)/iu,
-  // A named price, in digits or words; an honest "the price is not known" passes.
-  /(?<!\p{L})(?:стоимость|цена|стоит|обойд[её]тся)[^.!?]{0,40}(?:\d|тысяч|сотен|сотни)/iu,
+  // A named price, in digits or words; an honest "the price is not known" passes, and so does a chart position
+  // ("Венера стоит в 7 доме", "Солнце стоит на 12°").
+  /(?<!\p{L})(?:стоимость|цена|стоит|обойд[её]тся)(?![^.!?]{0,40}?\d+(?:-?[а-я]{1,2})?\s*(?:дом|°|градус))[^.!?]{0,40}(?:\d|тысяч|сотен|сотни)/iu,
   /https?:\/\/|www\.|t\.me\/|(?<![\p{L}\d.])@[a-z0-9_]{3,}/iu,
   // A promise of an outcome; an honest negation ("не гарантирует") is fine.
   /(?<!не\s{1,3})гарантир|(?<!не\s{1,3})непременно\s+(?:случится|произойд)|(?<!не\s{1,3})обязательно\s+(?:случится|произойд|сбудет)/iu,

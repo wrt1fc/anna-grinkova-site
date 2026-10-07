@@ -84,8 +84,30 @@ python D:/AnnaAI/tmp/to_md.py   # → D:/AnnaAI/knowledge/methodics/*.md
 
 Что не воспроизводится: «Сильные объекты» и «Формулы домов» Chronos — это закрытый алгоритм программы, публичного API у Chronos нет. Стратегия считается без бонуса сильных планет, это указано в ответе. Не описано в инструкции, какая стратегия у карты с перевесом воздуха или с равенством стихий, — это вопрос к Анне.
 
+## Сборка датасета и обучение
+
+```bash
+# черновики + карточки по методичке; материалы ищутся так же, как в чате; 8% вопросов — на проверку
+node training/build-dataset.js D:/AnnaAI/data/dataset/cards.jsonl,D:/AnnaAI/data/dataset/cards-methodics.jsonl   D:/AnnaAI/data/dataset/build-v1 --include-drafts --knowledge D:/AnnaAI/knowledge --holdout 0.08
+python training/train_lora.py --base Qwen/Qwen3.5-4B --data D:/AnnaAI/data/dataset/build-v1 --out D:/AnnaAI/adapters/anna-v1 --epochs 2 --max-length 3400
+```
+
+Карточка с полем `chartFor` (`{ birthUtc, latitude, longitude }`) получает в запрос ту же рассчитанную карту и денежный блок, что и чат: модель учится объяснять именно переданный расчёт. Все длины одного вопроса попадают либо в обучение, либо в проверку. При проверочной выборке сохраняется адаптер лучшей эпохи по `eval_loss`. Карточки по методичке генерирует `D:/AnnaAI/data/dataset/methodics-cards.mjs` (вне Git, черновики для Анны).
+
+## Модель в Ollama
+
+Ollama — программа, которая запускает модель на компьютере или сервере и отдаёт ответы сайту (`CHAT_LOCAL_MODEL`). Обучение даёт не новую модель, а адаптер — небольшую «надстройку» над базовой Qwen3.5-4B. Чтобы Ollama могла её запустить, адаптер вливается в базовую модель и сохраняется в формате GGUF:
+
+```powershell
+powershell -File scripts/start-local-ollama.ps1        # сервер Ollama, модели на D:
+powershell -File training/export_ollama.ps1 -Name anna-v1 -Adapter D:\AnnaAIdaptersnna-v1
+node training/eval-chat.js anna-v1 D:/AnnaAI/reports/eval-anna-v1.md
+```
+
+Что делает скрипт: `merge_adapter.py` вливает адаптер (на процессоре, около 10 ГБ ОЗУ) и возвращает блок MTP, который нужен llama.cpp; конвертер llama.cpp (`D:\AnnaAI	ools\llama.cpp`) пишет GGUF в q8_0 (4,5 ГБ); `ollama create` регистрирует модель. Сжатие в q4 средствами Ollama на Windows недоступно (нужен MLX), q8_0 качественнее и помещается в 8 ГБ видеопамяти.
+
 ## После обучения
 
-1. Прогнать эталонные вопросы через базовую и дообученную модели, а ответы показать Анне вслепую.
-2. Если дообученная модель лучше, на сервере запустить базовую модель в vLLM с адаптером (`--enable-lora`). Другой вариант — слить адаптер с моделью и конвертировать в GGUF для Ollama.
-3. Указать модель в `CHAT_LOCAL_MODEL`. Проверка ответов (`server/chat-safety.js`) работает независимо от модели.
+1. Прогнать контрольные вопросы (`eval-chat.js`) и сравнить ответы базовой и дообученной модели вслепую с Анной.
+2. Если дообученная лучше — указать её в `CHAT_LOCAL_MODEL` (на сервере с GPU тот же GGUF-файл и Modelfile).
+3. Проверка ответов (`server/chat-safety.js`) работает независимо от модели.
