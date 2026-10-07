@@ -78,3 +78,23 @@ test('outbound mail quota persists and stops at its daily cap', async () => {
     await reopened.close();
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('wrong codes are counted per address across re-issued codes', async () => {
+  const store = await createStore('pglite:memory');
+  try {
+    const now = Date.parse('2026-10-08T10:00:00Z');
+    let challenge = 0;
+    const issue = async (at) => {
+      challenge++;
+      await store.issueChallenge({ challengeHash: `c${challenge}`, purpose: 'registration', email: 'guess@example.com', passwordHash: 'h', codeHash: 'a'.repeat(64) }, at);
+      return `c${challenge}`;
+    };
+    // Two codes × five wrong attempts reach the daily cap of ten; a third code is refused even with the right digits.
+    for (const at of [now, now + 61_000]) {
+      const id = await issue(at);
+      for (let i = 0; i < 5; i++) assert.equal(await store.consumeChallenge(id, 'b'.repeat(64), 'registration', at), null);
+    }
+    const last = await issue(now + 122_000);
+    assert.equal(await store.consumeChallenge(last, 'a'.repeat(64), 'registration', now + 122_000), null);
+  } finally { await store.close(); }
+});

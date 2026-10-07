@@ -1,0 +1,20 @@
+# /etc/systemd/system/anna-daily.service — cleanup, payment reconciliation, renewals and a database copy.
+[Unit]
+Description=Anna site daily jobs
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=anna
+Group=anna
+WorkingDirectory=/opt/anna-site
+EnvironmentFile=/etc/anna/site.env
+ExecStart=/usr/bin/node scripts/daily.js
+# Extra copy on top of the provider's point-in-time backups; upload /var/backups/anna to S3 separately.
+ExecStart=/bin/sh -c 'node scripts/db.js backup /var/backups/anna/anna-$(date +%%F).dump && find /var/backups/anna -name "*.dump" -mtime +14 -delete'
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/backups/anna
+UMask=0077

@@ -6,13 +6,15 @@ import { planFor } from '../plans.js';
 import { CRISIS_ANSWER, isCrisisMessage } from '../crisis.js';
 import { profilesWithAccess } from './profiles.js';
 import { chartContext, findMaterials } from '../chat-grounding.js';
+import { clientAddress } from '../traffic.js';
 
 const MAX_MESSAGE_CHARS = 600;
 // Seeds the personal tarot card for a partner/family profile apart from any account id.
 const PROFILE_SEED_OFFSET = 1_000_000_000;
 const MAX_HISTORY_ITEMS = 6;
 // Detailed answers come back in the signed history, so chat bodies may be larger than other requests.
-const MAX_CHAT_BODY_CHARS = 48_000;
+// In bytes, matching nginx client_max_body_size 64k (Cyrillic takes two bytes per letter).
+const MAX_CHAT_BODY_BYTES = 64_000;
 // Keeps history from pushing the rules and facts out of the model's context window.
 const MAX_HISTORY_CHARS = 6000;
 // Text held back from the stream until it has passed the safety check, so a blocked phrase is never shown.
@@ -57,16 +59,20 @@ function replyCrisis(req, res, json) {
   return res.end();
 }
 
-export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, historySigner, metrics, knowledge = null }) {
-  // One answer at a time per account, so a single user cannot hold every model slot.
+export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, historySigner, metrics, knowledge = null, trustProxy = false }) {
+  // One answer at a time per account; one visitor address may hold at most half of the model slots, so a few accounts
+  // cannot take them all, while people behind the same mobile-carrier address (CGNAT) still get answers.
   const answering = new Set();
+  const answeringIps = new Map();
+  const perIpSlots = Math.max(1, Math.floor((chatGate.limit ?? 2) / 2));
 
   async function postChat({ req, res, user, json, readJson }) {
     if (!chatWriter) return json(res, 503, { error: 'chat_unavailable', message: 'Чат пока недоступен. Попробуйте позже.' });
     if (!user) return json(res, 401, { error: 'login_required', message: 'Чат доступен после входа в личный кабинет.' });
-    const body = await readJson(req, MAX_CHAT_BODY_CHARS);
+    const body = await readJson(req, MAX_CHAT_BODY_BYTES);
     if (invalidChatBody(body)) return json(res, 400, { error: 'invalid_chat_message', message: 'Проверьте текст сообщения.' });
     if (isCrisisMessage(body.message)) { metrics.count('chat_crisis'); return replyCrisis(req, res, json); }
+    const ip = clientAddress(req, trustProxy);
     if (answering.has(user.id)) return json(res, 429, { error: 'chat_in_progress', message: 'Дождитесь ответа на предыдущий вопрос.' });
     // Counted only after validation, so malformed requests cannot use up the shared budget.
     const limit = chatLimiter.check(`user:${user.id}`);
@@ -78,14 +84,21 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
     const chart = await chartFor(store, user, body.profileId ?? null);
     if (chart.error) return json(res, ...chart.error);
 
-    const releaseGate = chatGate.tryAcquire();
+    // Another person behind the same address sees an ordinary "busy", not someone else's "wait for your answer".
+    const releaseGate = (answeringIps.get(ip) ?? 0) < perIpSlots ? chatGate.tryAcquire() : null;
     if (!releaseGate) {
       metrics.count('chat_busy');
       return json(res, 503, { error: 'chat_busy', message: 'Помощник сейчас отвечает другим посетителям. Попробуйте через минуту.' },
         { 'Retry-After': '20' });
     }
     answering.add(user.id);
-    const release = () => { answering.delete(user.id); releaseGate(); };
+    answeringIps.set(ip, (answeringIps.get(ip) ?? 0) + 1);
+    const release = () => {
+      answering.delete(user.id);
+      const left = (answeringIps.get(ip) ?? 1) - 1;
+      if (left > 0) answeringIps.set(ip, left); else answeringIps.delete(ip);
+      releaseGate();
+    };
     const day = moscowDate();
     const quotaKind = `chat:${user.id}`;
     // A database failure here must still free the slot and the per-user lock, or chat would stay blocked.
@@ -102,14 +115,22 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
 
     const message = body.message.trim();
     const draw = body.draw ?? 0;
-    const general = forecastForDate(day, draw);
-    const forecast = chart.profile?.birthUtc
-      ? personalForecastForDate(day, chart.profile, chart.profileId ? PROFILE_SEED_OFFSET + chart.profileId : user.id, general, draw)
-      : general;
-    const context = chatForecastContext(forecast, chart.subject);
-    // Only the text goes to the model; file names and scores stay on the server.
-    const astro = chartContext(chart.profile, message);
-    const materials = findMaterials(knowledge, message, astro.queries);
+    // Any failure while preparing the prompt frees the slot and gives the message back.
+    let context, astro, materials;
+    try {
+      const general = forecastForDate(day, draw);
+      const forecast = chart.profile?.birthUtc
+        ? personalForecastForDate(day, chart.profile, chart.profileId ? PROFILE_SEED_OFFSET + chart.profileId : user.id, general, draw)
+        : general;
+      context = chatForecastContext(forecast, chart.subject);
+      astro = chartContext(chart.profile, message);
+      // Only the text goes to the model; file names and scores stay on the server.
+      materials = findMaterials(knowledge, message, astro.queries);
+    } catch (error) {
+      release();
+      await store.refundDailyQuota(quotaKind, day).catch(() => {});
+      throw error;
+    }
     const streaming = String(req.headers.accept ?? '').includes('text/event-stream');
     const send = streaming ? sse(res) : null;
     const abort = new AbortController();

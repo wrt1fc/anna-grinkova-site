@@ -90,6 +90,12 @@ const MIGRATIONS = [
     provider TEXT NOT NULL, event_key TEXT NOT NULL, received_at BIGINT NOT NULL, PRIMARY KEY (provider, event_key)
   );
   `,
+  // 2: consent to personal data processing at registration (152-FZ, GDPR): when and which policy version.
+  `
+  ALTER TABLE users ADD COLUMN privacy_consent_at BIGINT;
+  ALTER TABLE users ADD COLUMN privacy_policy_version TEXT;
+  ALTER TABLE auth_challenges ADD COLUMN privacy_policy_version TEXT;
+  `,
 ];
 
 const MIGRATION_LOCK = 71_412_026; // any constant shared by all app servers

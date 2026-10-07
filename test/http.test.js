@@ -6,11 +6,11 @@ import { createTrafficLimiter } from '../server/traffic.js';
 import { createLoginGuard } from '../server/login-guard.js';
 import { SAFE_FALLBACK_ANSWER, createConcurrencyGate } from '../server/chat-safety.js';
 
-async function fixture(run, { mailEnabled = true, mailDailyLimit = 100, trafficLimiter, chatLimiter, chatGate, loginGuard, trustProxy, secureCookies, forecastWriter, chatWriter, sotisVerifier } = {}) {
+async function fixture(run, { mailEnabled = true, mailDailyLimit = 100, trafficLimiter, chatLimiter, chatGate, loginGuard, trustProxy, secureCookies, forecastWriter, chatWriter, sotisVerifier, requirePrivacyConsent } = {}) {
   const store = await createStore('pglite:memory');
   const sent = [];
   const mailer = mailEnabled ? { async sendCode(message) { sent.push(message); } } : null;
-  const server = createServer({ store, mailer, mailDailyLimit, trafficLimiter, chatLimiter, chatGate, loginGuard, trustProxy, secureCookies, forecastWriter, chatWriter, sotisVerifier,
+  const server = createServer({ store, mailer, mailDailyLimit, trafficLimiter, chatLimiter, chatGate, loginGuard, trustProxy, secureCookies, forecastWriter, chatWriter, sotisVerifier, requirePrivacyConsent,
     codeSecret: 'test-secret-with-at-least-thirty-two-characters' });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -246,8 +246,10 @@ test('registration does not create an unverified account without a mail service'
 test('reset request does not reveal whether an email is registered', async () => fixture(async ({ sent, request }) => {
   const first = await request('/api/auth/reset/request', 'POST', { email: 'unknown@example.com' });
   const second = await request('/api/auth/reset/request', 'POST', { email: 'unknown@example.com' });
+  // Unknown and known addresses get the same immediate 202; nothing is stored or mailed for an unknown one.
   assert.equal(first.response.status, 202);
-  assert.equal(second.response.status, 429);
+  assert.equal(second.response.status, 202);
+  assert.notEqual(first.data.challenge, second.data.challenge);
   assert.equal(sent.length, 0);
   assert.equal((await request('/api/auth/reset/confirm', 'POST', {
     challenge: first.data.challenge, code: '000000', password: 'Another-long-password2!', confirmPassword: 'Another-long-password2!',
@@ -312,15 +314,15 @@ test('Sotis is contacted once for the daily result and its values are recorded',
 
 test('behind a trusted proxy each visitor address gets its own API limit', async () => fixture(async ({ request }) => {
   const first = { 'X-Real-IP': '203.0.113.1' }, second = { 'X-Real-IP': '203.0.113.2' };
-  assert.equal((await request('/api/health', 'GET', null, null, first)).response.status, 200);
-  assert.equal((await request('/api/health', 'GET', null, null, first)).response.status, 200);
-  assert.equal((await request('/api/health', 'GET', null, null, first)).response.status, 429);
-  assert.equal((await request('/api/health', 'GET', null, null, second)).response.status, 200);
+  assert.equal((await request('/api/forecast/card', 'GET', null, null, first)).response.status, 200);
+  assert.equal((await request('/api/forecast/card', 'GET', null, null, first)).response.status, 200);
+  assert.equal((await request('/api/forecast/card', 'GET', null, null, first)).response.status, 429);
+  assert.equal((await request('/api/forecast/card', 'GET', null, null, second)).response.status, 200);
 }, { trustProxy: true, trafficLimiter: createTrafficLimiter({ perIpLimit: 2, globalLimit: 10 }) }));
 
 test('X-Real-IP is ignored unless the proxy is trusted', async () => fixture(async ({ request }) => {
-  assert.equal((await request('/api/health', 'GET', null, null, { 'X-Real-IP': '203.0.113.1' })).response.status, 200);
-  assert.equal((await request('/api/health', 'GET', null, null, { 'X-Real-IP': '203.0.113.2' })).response.status, 429);
+  assert.equal((await request('/api/forecast/card', 'GET', null, null, { 'X-Real-IP': '203.0.113.1' })).response.status, 200);
+  assert.equal((await request('/api/forecast/card', 'GET', null, null, { 'X-Real-IP': '203.0.113.2' })).response.status, 429);
 }, { trafficLimiter: createTrafficLimiter({ perIpLimit: 1, globalLimit: 10 }) }));
 
 test('an unparseable Origin is rejected instead of crashing the handler', async () => fixture(async ({ request }) => {
@@ -462,3 +464,56 @@ test('a database failure before the answer frees the chat slot for the next requ
     assert.equal((await request('/api/chat', 'POST', { message: 'Что означает карта?' }, cookie)).response.status, 200);
   }, { chatWriter: { async answer() { return { answer: 'Посмотрите на один доступный выбор.' }; } } });
 });
+
+test('health and payment notifications are not blocked by the visitor API budget', async () => fixture(async ({ request }) => {
+  assert.equal((await request('/api/forecast/card')).response.status, 200);
+  assert.equal((await request('/api/forecast/card')).response.status, 429);
+  assert.equal((await request('/api/health')).response.status, 200);
+  // No provider is configured here, so the webhook answers 404 — but not 429.
+  assert.equal((await request('/api/billing/webhook/yookassa', 'POST', {})).response.status, 404);
+}, { trafficLimiter: createTrafficLimiter({ perIpLimit: 1, globalLimit: 1 }) }));
+
+test('one visitor cannot spend the code-mail budget on many addresses', async () => fixture(async ({ sent, request }) => {
+  const replies = [];
+  for (let i = 0; i < 11; i++) replies.push(await request('/api/auth/register', 'POST', { ...signup, email: `bulk${i}@example.com` }));
+  assert.deepEqual(replies.slice(0, 10).map((reply) => reply.response.status), Array(10).fill(202));
+  assert.equal(replies[10].response.status, 429);
+  assert.equal(replies[10].data.error, 'mail_limit');
+  assert.equal(sent.length, 10);
+}));
+
+test('sign-up records consent to data processing with the policy version, and can require it', async () => fixture(async ({ store, sent, request }) => {
+  assert.equal((await request('/api/auth/register', 'POST', signup)).data.error, 'consent_required');
+  const pending = await request('/api/auth/register', 'POST', { ...signup, privacyConsent: true });
+  assert.equal(pending.response.status, 202);
+  await request('/api/auth/register/verify', 'POST', { challenge: pending.data.challenge, code: sent.at(-1).code });
+  const row = await store.q.one('SELECT privacy_consent_at, privacy_policy_version FROM users WHERE email = $1', [signup.email]);
+  assert.ok(row.privacy_consent_at > 0);
+  assert.equal(row.privacy_policy_version, (await import('../config/legal.json', { with: { type: 'json' } })).default.privacyPolicyVersion);
+}, { requirePrivacyConsent: true }));
+
+test('a person can download their data and delete the account; paid orders stay anonymised', async () => fixture(async ({ store, request }) => {
+  const cookie = await signIn(store, request, 'leaving@example.com');
+  const { id } = await store.findUserByEmail('leaving@example.com');
+  await request('/api/profile', 'PUT', { birthDate: '1990-03-10', birthTime: '10:45', birthCityId: 524901 }, cookie);
+  await store.createOrder({ userId: id, productId: 'individual-30d', plan: 'individual', periodDays: 30, amountKop: 69_000, provider: 'test' });
+  const exported = await request('/api/me/export', 'GET', null, cookie);
+  assert.match(exported.response.headers.get('content-disposition'), /attachment/);
+  assert.equal(exported.data.user.email, 'leaving@example.com');
+  assert.equal(exported.data.birthProfile.birthDate, '1990-03-10');
+  assert.equal(exported.data.orders.length, 1);
+
+  assert.equal((await request('/api/me', 'DELETE', { password: 'wrong' }, cookie)).response.status, 403);
+  const removed = await request('/api/me', 'DELETE', { password: signup.password }, cookie);
+  assert.equal(removed.data.deleted, true);
+  assert.match(removed.response.headers.get('set-cookie'), /Max-Age=0/);
+  assert.equal(await store.findUserByEmail('leaving@example.com'), null);
+  assert.equal(await store.getBirthProfile(id), null);
+  assert.equal((await store.listOrders(id)).length, 1);
+  assert.equal((await request('/api/me', 'GET', null, cookie)).response.status, 401);
+
+  // Without orders the account row itself goes.
+  const other = await signIn(store, request, 'no-orders@example.com');
+  await request('/api/me', 'DELETE', { password: signup.password }, other);
+  assert.equal(await store.q.one("SELECT id FROM users WHERE email LIKE 'deleted-%' AND id <> $1", [id]), null);
+}));

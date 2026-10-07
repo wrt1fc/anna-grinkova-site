@@ -1,0 +1,11 @@
+# /etc/systemd/system/anna-daily.timer — enable with: systemctl enable --now anna-daily.timer
+[Unit]
+Description=Run Anna site daily jobs at 04:30 Moscow time
+
+[Timer]
+OnCalendar=*-*-* 04:30:00 Europe/Moscow
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

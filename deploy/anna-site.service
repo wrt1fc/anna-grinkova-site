@@ -1,0 +1,26 @@
+# /etc/systemd/system/anna-site.service — the site process behind Nginx.
+# Secrets live in /etc/anna/site.env (mode 600, owner root), built from deploy/env.example.
+[Unit]
+Description=Anna Grinkova site
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=anna
+Group=anna
+WorkingDirectory=/opt/anna-site
+EnvironmentFile=/etc/anna/site.env
+ExecStart=/usr/bin/node server/index.js
+Restart=on-failure
+RestartSec=5
+# The process only needs its code and the network: no write access to the system.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/log/anna
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

@@ -60,6 +60,9 @@ export function createBillingStore(q, { defaultPlan }) {
     return q.query(`SELECT ${ORDER_COLUMNS} FROM orders WHERE status = 'pending' AND provider_payment_id IS NOT NULL
       AND created_at >= $1 AND created_at <= $2 ORDER BY created_at LIMIT 500`, [after, before]);
   }
+  async function countRecentPending(userId, since) {
+    return (await q.one(`SELECT COUNT(*) AS count FROM orders WHERE user_id = $1 AND status = 'pending' AND created_at >= $2`, [userId, since])).count;
+  }
   async function hasPaidProduct(userId, productId) {
     return (await q.one(`SELECT 1 AS found FROM orders WHERE user_id = $1 AND product_id = $2 AND status IN ('paid', 'refunded') LIMIT 1`,
       [userId, productId])) != null;
@@ -71,5 +74,5 @@ export function createBillingStore(q, { defaultPlan }) {
   }
 
   return { planState, setPlanPeriod, setAutoRenewMethod, autoRenewMethod, dueRenewals, createOrder, getOrder, getOrderByProviderId,
-    listOrders, setOrderProviderId, transitionOrder, pendingOrders, hasPaidProduct, recordPaymentEvent };
+    listOrders, setOrderProviderId, transitionOrder, pendingOrders, countRecentPending, hasPaidProduct, recordPaymentEvent };
 }

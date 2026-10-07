@@ -33,3 +33,22 @@ test('the web app manifest, service worker and icons are served with the right t
     await store.close();
   }
 });
+
+test('the page carries an absolute link preview and robots.txt keeps crawlers off the API', async () => {
+  const store = await createStore('pglite:memory');
+  const server = createServer({ store, codeSecret: 'test-secret-with-at-least-thirty-two-characters', publicUrl: 'https://anna.example/' });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const html = await (await fetch(base)).text();
+    assert.match(html, /<meta property="og:image" content="https:\/\/anna\.example\/assets\/app\/og-image\.jpg" \/>/);
+    assert.equal(html.includes('__PUBLIC_URL__'), false);
+    assert.equal((await fetch(`${base}/assets/app/og-image.jpg`)).status, 200);
+    const robots = await fetch(`${base}/robots.txt`);
+    assert.match(robots.headers.get('content-type'), /^text\/plain/);
+    assert.match(await robots.text(), /Disallow: \/api\//);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    await store.close();
+  }
+});

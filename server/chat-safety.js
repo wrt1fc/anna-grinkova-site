@@ -12,6 +12,7 @@ export function createConcurrencyGate(limit = 2) {
       return () => { if (!released) { released = true; active--; } };
     },
     get active() { return active; },
+    limit,
   };
 }
 

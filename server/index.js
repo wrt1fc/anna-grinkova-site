@@ -20,6 +20,13 @@ if (process.platform !== 'win32') process.umask(0o077);
 if (process.env.NODE_ENV === 'production' && !/^postgres(ql)?:\/\//.test(process.env.DATABASE_URL ?? '')) {
   throw new Error('DATABASE_URL=postgres://… is required in production');
 }
+// Behind nginx without TRUST_PROXY every visitor shares one address (one rate limit for all, a broken YooKassa
+// allow-list), and without PUBLIC_URL payment return links point to localhost. Both are refused in production.
+if (process.env.NODE_ENV === 'production') {
+  if (process.env.TRUST_PROXY !== '1') throw new Error('TRUST_PROXY=1 is required in production (the site runs behind nginx)');
+  if (!/^https:\/\/[^/]+/.test(process.env.PUBLIC_URL ?? '')) throw new Error('PUBLIC_URL=https://… is required in production');
+  if (process.env.REQUIRE_PRIVACY_CONSENT !== '1') throw new Error('REQUIRE_PRIVACY_CONSENT=1 is required in production (152-FZ consent at sign-up)');
+}
 const store = await createStore(process.env.DATABASE_URL || 'pglite:./data/pglite');
 const port = Number(process.env.PORT || 3000);
 const host = process.env.HOST || '127.0.0.1';
@@ -60,7 +67,7 @@ if (process.env.ROBOKASSA_TEST === '1' && process.env.NODE_ENV === 'production')
 const server = createServer({ store, mailer, codeSecret, trafficLimiter,
   mailDailyLimit: Number(process.env.MAIL_DAILY_LIMIT ?? 0), forecastWriter, chatWriter, sotisVerifier,
   chatGate: createConcurrencyGate(Number(process.env.CHAT_MAX_CONCURRENT ?? 2)), metrics: createMetrics(store), knowledge, paymentProviders: { ru: paymentProvider, intl: intlProvider },
-  publicUrl: process.env.PUBLIC_URL || `http://${host}:${port}`,
+  publicUrl: process.env.PUBLIC_URL || `http://${host}:${port}`, requirePrivacyConsent: process.env.REQUIRE_PRIVACY_CONSENT === '1',
   secureCookies: process.env.NODE_ENV === 'production', trustProxy: process.env.TRUST_PROXY === '1' });
 if (mailer && !Number(process.env.MAIL_DAILY_LIMIT)) console.warn('MAIL_DAILY_LIMIT is 0: registration and password reset emails are disabled.');
 server.listen(port, host, () => console.log(`Anna site: http://${host}:${port}`));

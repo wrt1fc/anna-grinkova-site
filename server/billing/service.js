@@ -2,6 +2,7 @@ import catalog from '../../config/products.json' with { type: 'json' };
 import { planFor } from '../plans.js';
 
 const DAY_MS = 86_400_000;
+const MAX_PENDING_PER_HOUR = 5;
 const FINAL_OUTCOMES = new Set(['paid', 'canceled', 'refunded', 'mismatch', 'noop']);
 // Orders still pending after this long are re-checked with the provider by the daily job.
 const RECONCILE_AFTER_MS = 15 * 60_000;
@@ -62,6 +63,10 @@ export function createBilling({ store, provider = null, providers = null, public
     const product = productById.get(productId);
     if (!product) throw new BillingError(404, 'product_not_found', 'Такого тарифа нет.');
     const picked = pickRegion(region, currency);
+    // Each checkout creates a payment at the provider; a few unpaid attempts an hour are plenty for a person.
+    if (await store.countRecentPending(user.id, now() - 3_600_000) >= MAX_PENDING_PER_HOUR) {
+      throw new BillingError(429, 'too_many_checkouts', 'Слишком много неоплаченных заказов. Завершите начатую оплату или попробуйте через час.');
+    }
     const amountKop = priceMinor(product, picked.currency);
     if (!amountKop) throw new BillingError(400, 'invalid_currency', 'Для этого тарифа нет цены в выбранной валюте.');
     if (product.oncePerUser && await store.hasPaidProduct(user.id, product.id)) {

@@ -14,31 +14,39 @@ import { createChatRoutes } from './routes/chat.js';
 import { handleProfileRoutes } from './routes/profiles.js';
 import { createBillingRoutes } from './routes/billing.js';
 import { createBilling } from './billing/service.js';
+import legal from '../config/legal.json' with { type: 'json' };
 import { NULL_METRICS } from './metrics.js';
 
 const SESSION_AGE = 30 * 24 * 60 * 60;
+// Per-visitor and per-address caps on code mails, on top of MAIL_DAILY_LIMIT for the whole site.
+const MAIL_PER_IP_PER_DAY = 10;
+const MAIL_PER_ADDRESS_PER_DAY = 5;
 const CONTENT_SECURITY_POLICY = [
-  "default-src 'self'", "script-src 'self'", "style-src 'self' https://fonts.googleapis.com",
-  "font-src 'self' https://fonts.gstatic.com", "img-src 'self' data:", "connect-src 'self'",
+  "default-src 'self'", "script-src 'self'", "style-src 'self'",
+  "font-src 'self'", "img-src 'self' data:", "connect-src 'self'",
   "manifest-src 'self'", "worker-src 'self'",
   "form-action 'self'", "base-uri 'self'", "object-src 'none'", "frame-ancestors 'none'",
 ].join('; ');
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.webp': 'image/webp',
-  '.png': 'image/png', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json; charset=utf-8' };
+  '.png': 'image/png', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json; charset=utf-8',
+  '.txt': 'text/plain; charset=utf-8' };
 
 function json(res, status, data, headers = {}) {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...headers });
   res.end(JSON.stringify(data));
 }
 
-async function readJson(req, maxChars = 16_384) {
+// Bytes are collected first and decoded once, so a Cyrillic character split between chunks stays intact.
+async function readJson(req, maxBytes = 16_384) {
   if (!req.headers['content-type']?.startsWith('application/json')) throw new Error('expected_json');
-  let data = '';
+  const chunks = [];
+  let size = 0;
   for await (const chunk of req) {
-    data += chunk;
-    if (data.length > maxChars) throw new Error('body_too_large');
+    size += chunk.length;
+    if (size > maxBytes) throw new Error('body_too_large');
+    chunks.push(chunk);
   }
-  const value = JSON.parse(data || '{}');
+  const value = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('invalid_json');
   return value;
 }
@@ -51,39 +59,59 @@ function cookieToken(req) {
 export function createServer({ store, mailer = null, codeSecret, root = new URL('../prototype/', import.meta.url), secureCookies = false,
   mailDailyLimit = 0, trafficLimiter = createTrafficLimiter(), chatLimiter = createTrafficLimiter({ perIpLimit: 6, globalLimit: 300 }),
   chatGate = createConcurrencyGate(2), loginGuard = createLoginGuard(), trustProxy = false, forecastWriter = null, chatWriter = null,
-  sotisVerifier = null, metrics = NULL_METRICS, knowledge = null, paymentProvider = null, paymentProviders = null, publicUrl = 'http://localhost:3000',
+  requirePrivacyConsent = false, sotisVerifier = null, metrics = NULL_METRICS, knowledge = null, paymentProvider = null, paymentProviders = null, publicUrl = 'http://localhost:3000',
   pageViewLimiter = createTrafficLimiter({ perIpLimit: 30, globalLimit: 3000 }) }) {
   if (!codeSecret || String(codeSecret).length < 32) throw new Error('AUTH_CODE_SECRET must have at least 32 characters');
   if (!Number.isSafeInteger(mailDailyLimit) || mailDailyLimit < 0) throw new Error('MAIL_DAILY_LIMIT must be a non-negative integer');
   const rootPath = fileURLToPath(root);
   const historySigner = createHistorySigner(codeSecret);
+  // Only the origin of PUBLIC_URL is used in pages; it is escaped so a misconfigured value cannot inject markup.
+  const publicOrigin = new URL(publicUrl).origin.replace(/[<>"'&]/g, '');
   const billing = createBilling({ store, provider: paymentProvider, providers: paymentProviders, publicUrl });
   const handleBillingRoutes = createBillingRoutes({ store, billing, trustProxy, metrics });
-  const handleChatRoutes = createChatRoutes({ store, chatWriter, chatLimiter, chatGate, historySigner, metrics, knowledge });
+  const handleChatRoutes = createChatRoutes({ store, chatWriter, chatLimiter, chatGate, historySigner, metrics, knowledge, trustProxy });
   const sessionCookie = (value, maxAge) => `anna_session=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secureCookies ? '; Secure' : ''}`;
   let dailyCache = null;
   let dailyDrawCacheDay = null;
   const dailyDrawCache = new Map();
   let personalCacheDay = null;
   const personalCache = new Map();
-  async function sendCode({ purpose, email, userId = null, passwordHash = null }) {
+  // Issues a code and its mail. Besides the site-wide daily budget, each address and each visitor IP gets
+  // its own small daily cap, so one visitor cannot spend everyone's budget or mail strangers in bulk.
+  async function prepareCode({ purpose, email, userId = null, passwordHash = null, ip, policyVersion = null }) {
     if (!mailer || mailDailyLimit === 0) return { status: 503, data: { error: 'mail_unavailable', message: 'Отправка кодов временно недоступна.' } };
+    const today = new Date().toISOString().slice(0, 10);
+    if (!(await store.consumeDailyQuota(`mail-ip:${ip}`, today, MAIL_PER_IP_PER_DAY))
+      || !(await store.consumeDailyQuota(`mail-to:${email}`, today, MAIL_PER_ADDRESS_PER_DAY))) {
+      return { status: 429, data: { error: 'mail_limit', message: 'Слишком много писем с кодом за сегодня. Попробуйте завтра.' } };
+    }
     const challenge = newChallenge();
     const code = newEmailCode();
     const challengeHash = tokenHash(challenge);
-    const issued = await store.issueChallenge({ challengeHash, purpose, email, userId, passwordHash, codeHash: emailCodeHash(codeSecret, challenge, code) });
+    const issued = await store.issueChallenge({ challengeHash, purpose, email, userId, passwordHash, policyVersion, codeHash: emailCodeHash(codeSecret, challenge, code) });
     if (!issued) return { status: 429, data: { error: 'too_soon', message: 'Новый код можно запросить через минуту.' } };
-    if (!await store.consumeDailyQuota('mail', new Date().toISOString().slice(0, 10), mailDailyLimit)) {
+    if (!(await store.consumeDailyQuota('mail', today, mailDailyLimit))) {
       await store.deleteChallenge(challengeHash);
       return { status: 429, data: { error: 'mail_quota_exceeded', message: 'Лимит писем на сегодня исчерпан. Попробуйте завтра.' } };
     }
-    try { await mailer.sendCode({ to: email, purpose, code }); }
-    catch (error) {
-      await store.deleteChallenge(challengeHash);
-      console.error('Mail delivery failed:', error.message);
+    const deliver = async () => {
+      try { await mailer.sendCode({ to: email, purpose, code }); return true; }
+      catch (error) {
+        await store.deleteChallenge(challengeHash).catch(() => {});
+        console.error('Mail delivery failed:', error.message);
+        return false;
+      }
+    };
+    return { status: 202, data: { challenge, message: 'Код отправлен на вашу почту.' }, deliver };
+  }
+
+  async function sendCode(options) {
+    const prepared = await prepareCode(options);
+    if (prepared.status !== 202) return prepared;
+    if (!(await prepared.deliver())) {
       return { status: 503, data: { error: 'mail_unavailable', message: 'Не удалось отправить код. Попробуйте позже.' } };
     }
-    return { status: 202, data: { challenge, message: 'Код отправлен на вашу почту.' } };
+    return prepared;
   }
 
   async function sessionFor(res, user) {
@@ -101,8 +129,16 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
     try {
       const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
       const path = url.pathname;
+      // Monitoring must see the real state even when the API budget is spent or the database is down.
+      if (path === '/api/health' && req.method === 'GET') {
+        let healthy = false;
+        try { healthy = await store.health(); } catch (error) { console.error('Health check: database unavailable:', error.message); }
+        return json(res, healthy ? 200 : 503, { status: healthy ? 'ok' : 'unavailable' });
+      }
+      // Payment notifications have their own checks (provider IPs or signatures) and must not lose to visitor traffic.
+      const isWebhook = path.startsWith('/api/billing/webhook/');
       if (path.startsWith('/api/')) {
-        const traffic = trafficLimiter.check(clientAddress(req, trustProxy));
+        const traffic = isWebhook ? { allowed: true } : trafficLimiter.check(clientAddress(req, trustProxy));
         if (!traffic.allowed) return json(res, 429, { error: 'rate_limited', message: 'Слишком много запросов. Попробуйте позже.' }, { 'Retry-After': String(traffic.retryAfter) });
         if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) && req.headers.origin) {
           let originHost = null;
@@ -115,10 +151,6 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
         const ctx = { req, res, path, user, json, readJson };
         if (await handleChatRoutes(ctx)) return;
         if (await handleBillingRoutes(ctx)) return;
-        if (path === '/api/health' && req.method === 'GET') {
-          const healthy = await store.health();
-          return json(res, healthy ? 200 : 503, { status: healthy ? 'ok' : 'unavailable' });
-        }
         if (path === '/api/cities' && req.method === 'GET') {
           return json(res, 200, { cities: searchCities(url.searchParams.get('q') || '') });
         }
@@ -197,8 +229,14 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
           const body = await readJson(req);
           const email = normalizeEmail(body.email);
           if (!email || !validPassword(body.password) || body.password !== body.confirmPassword) return json(res, 400, { error: 'invalid_credentials', message: 'Проверьте email и совпадение паролей. Пароль: от 8 символов, с заглавной буквой, цифрой и спецсимволом.' });
+          // Consent to personal data processing is recorded with the policy version the person saw (152-FZ).
+          const consented = body.privacyConsent === true;
+          if (requirePrivacyConsent && !consented) {
+            return json(res, 400, { error: 'consent_required', message: 'Чтобы создать аккаунт, подтвердите согласие на обработку персональных данных.' });
+          }
           if (await store.findUserByEmail(email)) return json(res, 409, { error: 'email_exists', message: 'Этот email уже зарегистрирован.' });
-          const sent = await sendCode({ purpose: 'registration', email, passwordHash: await hashPassword(body.password) });
+          const sent = await sendCode({ purpose: 'registration', email, passwordHash: await hashPassword(body.password), ip: clientAddress(req, trustProxy),
+            policyVersion: consented ? legal.privacyPolicyVersion : null });
           return json(res, sent.status, sent.data);
         }
         if (path === '/api/auth/register/verify' && req.method === 'POST') {
@@ -212,15 +250,18 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
         }
         if (path === '/api/auth/login' && req.method === 'POST') {
           const body = await readJson(req);
-          const email = normalizeEmail(body.email) || '';
-          const guard = loginGuard.check(email);
+          const email = normalizeEmail(body.email);
+          const ip = clientAddress(req, trustProxy);
+          // An invalid address is answered like a wrong password, without touching the shared lockout state.
+          if (!email) { await verifyLogin(body.password, null); return json(res, 401, { error: 'invalid_credentials', message: 'Неверный email или пароль.' }); }
+          const guard = loginGuard.check(email, ip);
           if (!guard.allowed) return json(res, 429, { error: 'too_many_attempts', message: 'Слишком много неудачных попыток входа. Попробуйте позже или восстановите пароль.' }, { 'Retry-After': String(guard.retryAfter) });
           const found = await store.findUserByEmail(email);
           if (!(await verifyLogin(body.password, found?.password_hash))) {
-            loginGuard.fail(email);
+            loginGuard.fail(email, ip);
             return json(res, 401, { error: 'invalid_credentials', message: 'Неверный email или пароль.' });
           }
-          loginGuard.succeed(email);
+          loginGuard.succeed(email, ip);
           const session = await sessionFor(res, found);
           metrics.count('logins');
           return json(res, 200, { user: session.user }, { 'Set-Cookie': session.cookie });
@@ -230,20 +271,14 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
           const email = normalizeEmail(body.email);
           if (!email) return json(res, 400, { error: 'invalid_email' });
           if (!mailer) return json(res, 503, { error: 'mail_unavailable', message: 'Отправка кодов временно недоступна.' });
-          const found = await store.findUserByEmail(email);
+          // The same answer for every address, without waiting for the mail service: neither the reply nor its
+          // timing tells whether an account exists. Unknown addresses get a random challenge and nothing is stored.
           const generic = { message: 'Если аккаунт существует, код отправлен на почту.' };
-          if (!found) {
-            const challenge = newChallenge();
-            const code = newEmailCode();
-            const issued = await store.issueChallenge({ challengeHash: tokenHash(challenge), purpose: 'reset', email,
-              codeHash: emailCodeHash(codeSecret, challenge, code) });
-            return issued ? json(res, 202, { ...generic, challenge })
-              : json(res, 429, { error: 'too_soon', message: 'Новый код можно запросить через минуту.' });
-          }
-          const sent = await sendCode({ purpose: 'reset', email, userId: found.id });
-          if (sent.status === 429) return json(res, 429, sent.data);
-          if (sent.status !== 202) return json(res, sent.status, sent.data);
-          return json(res, 202, { ...generic, challenge: sent.data.challenge });
+          const found = await store.findUserByEmail(email);
+          const prepared = found ? await prepareCode({ purpose: 'reset', email, userId: found.id, ip: clientAddress(req, trustProxy) }) : null;
+          if (prepared?.status === 202) prepared.deliver().catch(() => {});
+          else if (prepared) console.warn(`Reset code not sent: ${prepared.data.error}`);
+          return json(res, 202, { ...generic, challenge: prepared?.status === 202 ? prepared.data.challenge : newChallenge() });
         }
         if (path === '/api/auth/reset/confirm' && req.method === 'POST') {
           const body = await readJson(req);
@@ -263,7 +298,7 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
         if (await handleProfileRoutes({ ...ctx, store })) return;
         if (path === '/api/auth/email/request' && req.method === 'POST') {
           if (user.emailVerified) return json(res, 409, { error: 'already_verified' });
-          const sent = await sendCode({ purpose: 'verify', email: user.email, userId: user.id });
+          const sent = await sendCode({ purpose: 'verify', email: user.email, userId: user.id, ip: clientAddress(req, trustProxy) });
           return json(res, sent.status, sent.data);
         }
         if (path === '/api/auth/email/verify' && req.method === 'POST') {
@@ -272,6 +307,21 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
           const verified = await store.consumeChallenge(tokenHash(body.challenge), emailCodeHash(codeSecret, body.challenge, body.code), 'verify', Date.now(), null, user.id);
           if (!verified) return json(res, 400, { error: 'invalid_code', message: 'Код неверный или срок его действия истёк.' });
           return json(res, 200, { ok: true });
+        }
+        if (path === '/api/me/export' && req.method === 'GET') {
+          const data = await store.exportAccount(user.id);
+          return json(res, 200, data, { 'Content-Disposition': 'attachment; filename="anna-grinkova-data.json"' });
+        }
+        // Deleting the account needs the password again, so a stolen or forgotten-open session cannot do it alone.
+        if (path === '/api/me' && req.method === 'DELETE') {
+          const body = await readJson(req);
+          const found = await store.findUserByEmail(user.email);
+          if (!(await verifyLogin(body.password, found?.password_hash))) {
+            return json(res, 403, { error: 'invalid_password', message: 'Неверный пароль.' });
+          }
+          await store.deleteAccount(user.id);
+          metrics.count('accounts_deleted');
+          return json(res, 200, { deleted: true }, { 'Set-Cookie': sessionCookie('', 0) });
         }
         if (path === '/api/me' && req.method === 'GET') {
           return json(res, 200, { user, birthProfile: await store.getBirthProfile(user.id) });
@@ -305,8 +355,10 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
         if (extname(target) === '.html' && req.method === 'GET' && pageViewLimiter.check(clientAddress(req, trustProxy)).allowed) {
           metrics.pageView(req, trustProxy);
         }
+        // Link previews (Instagram, Telegram) need absolute URLs, so the public address is filled in when the page is served.
+        const body = extname(target) === '.html' ? Buffer.from(file.toString('utf8').replaceAll('__PUBLIC_URL__', publicOrigin)) : file;
         res.writeHead(200, { 'Content-Type': MIME[extname(target)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
-        return res.end(req.method === 'HEAD' ? undefined : file);
+        return res.end(req.method === 'HEAD' ? undefined : body);
       } catch { res.writeHead(404); return res.end(); }
     } catch (error) {
       // A stream already started cannot switch to a JSON error; close it instead of throwing again.
