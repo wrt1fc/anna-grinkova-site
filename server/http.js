@@ -9,7 +9,7 @@ import { createLoginGuard } from './login-guard.js';
 import { getCityById, searchCities } from './cities.js';
 import { birthInstant } from './birth-time.js';
 import { personalForecastForDate } from './personal-forecast.js';
-import { chatForecastContext } from './local-chat.js';
+import { ANSWER_LENGTHS, DEFAULT_ANSWER_LENGTH, MAX_ANSWER_CHARS, chatForecastContext } from './local-chat.js';
 import { SAFE_FALLBACK_ANSWER, createConcurrencyGate, createHistorySigner, unsafeChatAnswer } from './chat-safety.js';
 
 const SESSION_AGE = 30 * 24 * 60 * 60;
@@ -25,12 +25,12 @@ function json(res, status, data, headers = {}) {
   res.end(JSON.stringify(data));
 }
 
-async function readJson(req) {
+async function readJson(req, maxChars = 16_384) {
   if (!req.headers['content-type']?.startsWith('application/json')) throw new Error('expected_json');
   let data = '';
   for await (const chunk of req) {
     data += chunk;
-    if (data.length > 16_384) throw new Error('body_too_large');
+    if (data.length > maxChars) throw new Error('body_too_large');
   }
   const value = JSON.parse(data || '{}');
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('invalid_json');
@@ -114,14 +114,16 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
           const limit = chatLimiter.check(`user:${user.id}`);
           if (!limit.allowed) return json(res, 429, { error: 'chat_rate_limited',
             message: 'Слишком много сообщений. Попробуйте через минуту.' }, { 'Retry-After': String(limit.retryAfter) });
-          const body = await readJson(req);
+          // Detailed answers come back in the signed history, so chat bodies may be larger.
+          const body = await readJson(req, 48_000);
           const message = typeof body.message === 'string' ? body.message.trim() : '';
           const history = body.history ?? [];
           if (!message || message.length > 600 || !Array.isArray(history) || history.length > 6 ||
             history.some((item) => !item || !['user', 'assistant'].includes(item.role) ||
-              typeof item.content !== 'string' || !item.content.trim() || item.content.length > 1200 ||
+              typeof item.content !== 'string' || !item.content.trim() || item.content.length > MAX_ANSWER_CHARS ||
               (item.signature !== undefined && typeof item.signature !== 'string')) ||
-            !Number.isInteger(body.draw ?? 0) || (body.draw ?? 0) < 0 || (body.draw ?? 0) > 4) {
+            !Number.isInteger(body.draw ?? 0) || (body.draw ?? 0) < 0 || (body.draw ?? 0) > 4 ||
+            (body.length !== undefined && !Object.hasOwn(ANSWER_LENGTHS, body.length))) {
             return json(res, 400, { error: 'invalid_chat_message', message: 'Проверьте текст сообщения.' });
           }
           const day = moscowDate();
@@ -138,7 +140,8 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
           const onClose = () => { if (!res.writableEnded) abort.abort(); };
           res.on('close', onClose);
           try {
-            const reply = await chatWriter.answer({ message, history: historySigner.trusted(history), forecast: context, signal: abort.signal });
+            const reply = await chatWriter.answer({ message, history: historySigner.trusted(history), forecast: context,
+              length: body.length ?? DEFAULT_ANSWER_LENGTH, signal: abort.signal });
             const filtered = unsafeChatAnswer(reply.answer, day);
             if (filtered) console.warn('Chat answer rejected by safety check');
             const answer = filtered ? SAFE_FALLBACK_ANSWER : reply.answer;

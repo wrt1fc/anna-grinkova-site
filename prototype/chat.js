@@ -12,12 +12,26 @@ let chatRequest = 0;
 let chatSlowTimer;
 let chatSignedIn = false;
 const chatLocked = document.getElementById('chat-locked');
+const chatLength = document.getElementById('chat-length');
+const lengthKey = 'anna-chat-length';
+
+// The chosen answer length is a per-visitor convenience, so browser storage is enough.
+try {
+  const saved = localStorage.getItem(lengthKey);
+  const option = saved && chatLength.querySelector(`input[value="${CSS.escape(saved)}"]`);
+  if (option) option.checked = true;
+} catch { /* storage unavailable: keep the default */ }
+chatLength.addEventListener('change', (event) => {
+  try { localStorage.setItem(lengthKey, event.target.value); } catch { /* not critical */ }
+});
+function selectedLength() { return chatLength.querySelector('input:checked')?.value || 'medium'; }
 const chatPrompts = document.querySelectorAll('[data-chat-prompt]');
 
 function setChatAccess(signedIn) {
   chatSignedIn = signedIn;
   chatLocked.hidden = signedIn;
   chatForm.hidden = !signedIn;
+  chatLength.hidden = !signedIn;
   for (const button of chatPrompts) button.disabled = !signedIn;
 }
 
@@ -124,7 +138,7 @@ async function sendChat(message, existingUserMessage = false) {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: text, history: chatHistory.slice(-6), draw: window.chatDrawPosition() }),
+      body: JSON.stringify({ message: text, history: chatHistory.slice(-6), draw: window.chatDrawPosition(), length: selectedLength() }),
       signal: controller.signal,
     });
     const data = await response.json();

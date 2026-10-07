@@ -23,10 +23,24 @@ export function chatForecastContext(forecast) {
   };
 }
 
+export const ANSWER_LENGTHS = chatContext.answerLengths;
+export const DEFAULT_ANSWER_LENGTH = chatContext.defaultAnswerLength;
+const MAX_ANSWER_CHARS = Math.max(...Object.values(ANSWER_LENGTHS).map((item) => item.maxChars));
+
+// The same prompt shape is used for training examples, so the tuned model learns to follow length.
+export function chatPrompt({ message, history, forecast, length = DEFAULT_ANSWER_LENGTH }) {
+  return JSON.stringify({ facts: chatContext.facts, forecast, history, length,
+    lengthInstruction: ANSWER_LENGTHS[length].instruction, question: message });
+}
+
+export { MAX_ANSWER_CHARS };
+
 export function createLocalChat({ model, fetchImpl = fetch }) {
   if (typeof model !== 'string' || !/^[\w./:-]{2,80}$/.test(model)) throw new Error('Invalid local model name');
   return {
-    async answer({ message, history, forecast, signal }) {
+    async answer({ message, history, forecast, signal, length = DEFAULT_ANSWER_LENGTH }) {
+      const size = ANSWER_LENGTHS[length];
+      if (!size) throw new Error('Unknown answer length');
       const response = await fetchImpl(ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -35,9 +49,10 @@ export function createLocalChat({ model, fetchImpl = fetch }) {
           stream: false,
           think: false,
           format: OUTPUT_SCHEMA,
-          options: { temperature: 0.25, num_predict: 450, num_ctx: 4096 },
+          // Fixed context size: Ollama reloads the model whenever num_ctx changes between requests.
+          options: { temperature: 0.25, num_predict: size.numPredict, num_ctx: 8192 },
           system: chatContext.systemInstructions.join(' '),
-          prompt: JSON.stringify({ facts: chatContext.facts, forecast, history, question: message }),
+          prompt: chatPrompt({ message, history, forecast, length }),
         }),
         // Also stops generation when the visitor presses Stop or leaves the page.
         signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(45_000)]) : AbortSignal.timeout(45_000),
@@ -49,10 +64,10 @@ export function createLocalChat({ model, fetchImpl = fetch }) {
       }
       const output = JSON.parse(result.response);
       const answer = output.answer?.trim();
-      if (typeof answer !== 'string' || answer.length < 15 || answer.length > 1200) {
+      if (typeof answer !== 'string' || answer.length < 15 || answer.length > size.maxChars) {
         throw new Error('Local chat returned an invalid answer');
       }
-      return { answer, model, contextVersion: chatContext.version };
+      return { answer, model, length, contextVersion: chatContext.version };
     },
   };
 }

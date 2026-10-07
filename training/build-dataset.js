@@ -5,7 +5,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import chatContext from '../config/chat-context.json' with { type: 'json' };
 import { forecastForDate } from '../server/daily-forecast.js';
-import { chatForecastContext } from '../server/local-chat.js';
+import { DEFAULT_ANSWER_LENGTH, chatForecastContext, chatPrompt } from '../server/local-chat.js';
 import { cardProblems, readCards } from './cards.js';
 
 const [cardsPath, outDir, flag] = process.argv.slice(2);
@@ -27,13 +27,14 @@ let skipped = 0;
 readCards(cardsPath).forEach((card, index) => {
   const usable = card.status === 'approved' || (includeDrafts && card.status === 'draft');
   if (!usable || cardProblems(card).length) { skipped++; return; }
-  const prompt = { facts: chatContext.facts, forecast: forecastFor(card, index), history: [], question: card.question.trim() };
+  const prompt = chatPrompt({ message: card.question.trim(), history: [], forecast: forecastFor(card, index),
+    length: card.length ?? DEFAULT_ANSWER_LENGTH });
   split[card.split === 'eval' ? 'eval' : 'train'].push({
     id: card.id,
     // Conversational prompt/completion: the trainer computes loss on the completion only.
     prompt: [
       { role: 'system', content: system },
-      { role: 'user', content: JSON.stringify(prompt) },
+      { role: 'user', content: prompt },
     ],
     completion: [{ role: 'assistant', content: JSON.stringify({ answer: card.answer.trim() }) }],
   });

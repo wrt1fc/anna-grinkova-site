@@ -45,3 +45,21 @@ test('chat passes the visitor abort signal to the model request', async () => {
   controller.abort();
   assert.equal(signal.aborted, true);
 });
+
+test('chat prompt carries the length instruction and enforces its size limit', async () => {
+  const forecast = chatForecastContext(forecastForDate('2026-10-07'));
+  let payload;
+  const reply = (answer) => createLocalChat({ model: 'qwen3.5:4b', fetchImpl: async (url, options) => {
+    payload = JSON.parse(options.body);
+    return { ok: true, async json() { return { response: JSON.stringify({ answer }), done_reason: 'stop' }; } };
+  } });
+  const short = await reply('Луна показывает, через что вы чувствуете заботу.').answer({ message: 'Тест', history: [], forecast, length: 'short' });
+  assert.equal(short.length, 'short');
+  const prompt = JSON.parse(payload.prompt);
+  assert.equal(prompt.length, 'short');
+  assert.match(prompt.lengthInstruction, /1–2 предложения/);
+  assert.ok(payload.options.num_predict < 300);
+  await assert.rejects(reply('Слово. '.repeat(80)).answer({ message: 'Тест', history: [], forecast, length: 'short' }));
+  await reply('Слово. '.repeat(80)).answer({ message: 'Тест', history: [], forecast, length: 'detailed' });
+  await assert.rejects(reply('Тест').answer({ message: 'Тест', history: [], forecast, length: 'huge' }));
+});

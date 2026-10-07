@@ -1,8 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { unsafeChatAnswer } from '../server/chat-safety.js';
+import { ANSWER_LENGTHS, DEFAULT_ANSWER_LENGTH } from '../server/local-chat.js';
 
 export const STATUSES = new Set(['draft', 'approved', 'rejected']);
 export const SPLITS = new Set(['train', 'eval']);
+// Lower bounds keep each mode distinct: a "detailed" card must really be detailed.
+const MIN_CHARS = { short: 40, medium: 180, detailed: 450 };
 
 // Personal details that must never reach a training set: contacts, exact birth data, self-introductions.
 const PERSONAL_PATTERNS = [
@@ -28,7 +31,11 @@ export function cardProblems(card, { forbiddenNames = [] } = {}) {
   if (!STATUSES.has(card.status)) problems.push(`status должен быть одним из: ${[...STATUSES].join(', ')}`);
   if (card.split !== undefined && !SPLITS.has(card.split)) problems.push('split должен быть train или eval');
   if (typeof card.question !== 'string' || card.question.trim().length < 5 || card.question.length > 600) problems.push('вопрос: 5–600 символов');
-  if (typeof card.answer !== 'string' || card.answer.trim().length < 40 || card.answer.length > 1200) problems.push('ответ: 40–1200 символов');
+  const length = card.length ?? DEFAULT_ANSWER_LENGTH;
+  if (!Object.hasOwn(ANSWER_LENGTHS, length)) problems.push(`length должен быть одним из: ${Object.keys(ANSWER_LENGTHS).join(', ')}`);
+  else if (typeof card.answer !== 'string' || card.answer.trim().length < MIN_CHARS[length] || card.answer.length > ANSWER_LENGTHS[length].maxChars) {
+    problems.push(`ответ (${length}): ${MIN_CHARS[length]}–${ANSWER_LENGTHS[length].maxChars} символов`);
+  }
   if (problems.length) return problems;
   const text = `${card.question}\n${card.answer}`;
   for (const [pattern, label] of PERSONAL_PATTERNS) if (pattern.test(text)) problems.push(`персональные данные: ${label}`);

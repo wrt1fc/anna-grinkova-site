@@ -410,3 +410,14 @@ test('chat requires a signed-in account and limits each account separately', asy
   assert.equal((await request('/api/chat', 'POST', { message: 'Вопрос' }, second)).response.status, 200);
 }, { chatLimiter: createTrafficLimiter({ perIpLimit: 1, globalLimit: 10 }),
   chatWriter: { async answer() { return { answer: 'Ответ по проверенному контексту.' }; } } }));
+
+test('chat passes the chosen answer length and rejects unknown ones', async () => {
+  const seen = [];
+  await fixture(async ({ store, request }) => {
+    const cookie = await signIn(store, request);
+    assert.equal((await request('/api/chat', 'POST', { message: 'Вопрос', length: 'huge' }, cookie)).response.status, 400);
+    await request('/api/chat', 'POST', { message: 'Вопрос' }, cookie);
+    await request('/api/chat', 'POST', { message: 'Вопрос', length: 'detailed' }, cookie);
+    assert.deepEqual(seen, ['medium', 'detailed']);
+  }, { chatWriter: { async answer(input) { seen.push(input.length); return { answer: 'Ответ по проверенному контексту.' }; } } });
+});
