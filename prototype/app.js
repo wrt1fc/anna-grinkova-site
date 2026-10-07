@@ -20,6 +20,69 @@ async function api(path, options = {}) {
 
 const tarotNumerals = ['0', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX', 'XXI'];
 function tarotArt(number) { return `url("./assets/tarot/${String(number).padStart(2, '0')}.webp")`; }
+const dayCard = document.getElementById('day-interactive-card');
+const dayCardHint = document.getElementById('day-card-hint');
+let dayCardTurn = 0;
+let dayCardTilt = 0;
+let dayCardName = 'дня';
+let dayCardDrag = null;
+let ignoreDayCardClickUntil = 0;
+
+function updateDayCard() {
+  dayCard.style.setProperty('--card-turn', `${dayCardTurn}deg`);
+  dayCard.style.setProperty('--card-tilt', `${dayCardTilt}deg`);
+  const backVisible = Math.abs(Math.round(dayCardTurn / 180)) % 2 === 1;
+  dayCard.setAttribute('aria-pressed', String(backVisible));
+  dayCard.setAttribute('aria-label', backVisible ? `Показать лицевую сторону карты «${dayCardName}»` : `Показать рубашку карты «${dayCardName}»`);
+  dayCardHint.textContent = backVisible ? 'Потяните карту или нажмите, чтобы вернуть её' : 'Потяните карту или нажмите, чтобы перевернуть';
+}
+
+dayCard.addEventListener('pointerdown', (event) => {
+  if (event.pointerType === 'mouse' && event.button !== 0) return;
+  dayCardDrag = { id: event.pointerId, x: event.clientX, y: event.clientY, startTurn: dayCardTurn, moved: false };
+  dayCard.setPointerCapture(event.pointerId);
+  dayCard.classList.add('is-dragging');
+});
+dayCard.addEventListener('pointermove', (event) => {
+  if (!dayCardDrag || event.pointerId !== dayCardDrag.id) return;
+  const dx = event.clientX - dayCardDrag.x;
+  const dy = event.clientY - dayCardDrag.y;
+  if (Math.abs(dx) + Math.abs(dy) > 5) dayCardDrag.moved = true;
+  if (!dayCardDrag.moved) return;
+  dayCardTurn = dayCardDrag.startTurn + dx * .9;
+  dayCardTilt = Math.max(-23, Math.min(23, -dy * .25));
+  updateDayCard();
+});
+function finishDayCardDrag(event) {
+  if (!dayCardDrag || event.pointerId !== dayCardDrag.id) return;
+  if (dayCardDrag.moved) {
+    dayCardTurn = Math.round(dayCardTurn / 180) * 180;
+    ignoreDayCardClickUntil = performance.now() + 300;
+  }
+  dayCardTilt = 0;
+  dayCardDrag = null;
+  dayCard.classList.remove('is-dragging');
+  updateDayCard();
+}
+dayCard.addEventListener('pointerup', finishDayCardDrag);
+dayCard.addEventListener('pointercancel', finishDayCardDrag);
+dayCard.addEventListener('click', () => {
+  if (performance.now() < ignoreDayCardClickUntil) return;
+  dayCardTurn += 180;
+  updateDayCard();
+});
+dayCard.addEventListener('keydown', (event) => {
+  if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+    event.preventDefault();
+    dayCardTurn += event.key === 'ArrowRight' ? 180 : -180;
+    updateDayCard();
+  } else if (event.key === 'Home') {
+    event.preventDefault();
+    dayCardTurn = 0;
+    updateDayCard();
+  }
+});
+updateDayCard();
 const drawCards = [...document.querySelectorAll('[data-draw-card]')];
 const drawIntro = document.getElementById('draw-intro');
 const drawResult = document.getElementById('draw-result');
@@ -29,10 +92,13 @@ const drawReset = document.getElementById('draw-reset');
 let selectedDraw = null;
 window.chatDrawPosition = () => selectedDraw ?? 0;
 let drawRequest = 0;
+let dayForecastRequest = 0;
 let revealTimer;
 
 function renderDailyForecast(data) {
   const numeral = tarotNumerals[data.tarot.number];
+  dayCardName = data.tarot.name;
+  updateDayCard();
   document.getElementById('day-card-title').textContent = data.tarot.name;
   document.querySelector('.daily-visual .mini-card').style.setProperty('--tarot-art', tarotArt(data.tarot.number));
   document.getElementById('day-card-footer').textContent = `${numeral} · карта дня`;
@@ -49,13 +115,28 @@ function renderDailyForecast(data) {
 }
 
 async function loadDailyForecast() {
+  const requestId = ++dayForecastRequest;
+  const draw = selectedDraw ?? 0;
   const status = document.getElementById('day-status');
   status.textContent = 'Загружаем прогноз…';
   try {
-    const { response, data } = await api(`/api/forecast/day?draw=${selectedDraw ?? 0}`);
+    const preview = api(`/api/forecast/card?draw=${draw}`).then(({ response, data }) => {
+      if (!response.ok || requestId !== dayForecastRequest) return;
+      dayCardName = data.tarot.name;
+      dayCard.style.setProperty('--tarot-art', tarotArt(data.tarot.number));
+      document.getElementById('day-card-title').textContent = data.tarot.name;
+      document.getElementById('day-card-footer').textContent = `${tarotNumerals[data.tarot.number]} · карта дня`;
+      updateDayCard();
+    }).catch(() => {});
+    const fullForecast = api(`/api/forecast/day?draw=${draw}`);
+    await preview;
+    const { response, data } = await fullForecast;
+    if (requestId !== dayForecastRequest) return;
     if (!response.ok) throw new Error(data.message || 'Не удалось загрузить прогноз.');
     renderDailyForecast(data);
-  } catch (error) { status.textContent = error.message || 'Не удалось загрузить прогноз.'; }
+  } catch (error) {
+    if (requestId === dayForecastRequest) status.textContent = error.message || 'Не удалось загрузить прогноз.';
+  }
 }
 
 function resetDraw(focus = false) {
@@ -132,7 +213,12 @@ function showRoute() {
   document.title = { home: 'Анна Гринькова — карта дня и прогноз недели', day: 'Карта дня — Анна Гринькова', week: 'Прогноз на неделю — Анна Гринькова', chat: 'Чат с Анной — Анна Гринькова', account: 'Личный кабинет — Анна Гринькова' }[page];
   window.scrollTo({ top: 0, behavior: 'auto' });
   if (hash === 'about') requestAnimationFrame(() => document.getElementById('about').scrollIntoView({ behavior: 'smooth' }));
-  if (page === 'day') loadDailyForecast();
+  if (page === 'day') {
+    dayCardTurn = 0;
+    dayCardTilt = 0;
+    updateDayCard();
+    loadDailyForecast();
+  }
   if (page === 'account' || page === 'chat') refreshAccount();
 }
 

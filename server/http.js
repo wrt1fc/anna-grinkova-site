@@ -120,6 +120,18 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
         if (path === '/api/cities' && req.method === 'GET') {
           return json(res, 200, { cities: searchCities(url.searchParams.get('q') || '') });
         }
+        if (path === '/api/forecast/card' && req.method === 'GET') {
+          const drawParameters = url.searchParams.getAll('draw');
+          if (drawParameters.length > 1 || (drawParameters.length === 1 && !/^[0-4]$/.test(drawParameters[0]))) {
+            return json(res, 400, { error: 'invalid_draw_position' });
+          }
+          const draw = drawParameters.length ? Number(drawParameters[0]) : 0;
+          const day = moscowDate();
+          const general = forecastForDate(day, draw);
+          const profile = user ? store.getBirthProfile(user.id) : null;
+          const forecast = profile?.birthUtc ? personalForecastForDate(day, profile, user.id, general, draw) : general;
+          return json(res, 200, { date: day, tarot: { number: forecast.tarot.number, name: forecast.tarot.name } });
+        }
         if (path === '/api/forecast/day' && req.method === 'GET') {
           const drawParameters = url.searchParams.getAll('draw');
           if (drawParameters.length > 1 || (drawParameters.length === 1 && !/^[0-4]$/.test(drawParameters[0]))) {

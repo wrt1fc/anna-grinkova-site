@@ -178,9 +178,17 @@ test('daily API keeps two accounts and guest responses isolated', async () => fi
 
 test('five-card draw returns the chosen card consistently to guest and account', async () => fixture(async ({ sent, request }) => {
   assert.equal((await request('/api/forecast/day?draw=5')).response.status, 400);
+  assert.equal((await request('/api/forecast/card?draw=5')).response.status, 400);
   const general = [];
   for (let draw = 0; draw < 5; draw++) general.push((await request(`/api/forecast/day?draw=${draw}`)).data);
   assert.equal(new Set(general.map((item) => item.tarot.number)).size, 5);
+  for (let draw = 0; draw < 5; draw++) {
+    const preview = await request(`/api/forecast/card?draw=${draw}`);
+    assert.equal(preview.response.status, 200);
+    assert.equal(preview.data.date, general[draw].date);
+    assert.equal(preview.data.tarot.number, general[draw].tarot.number);
+    assert.equal(preview.data.tarot.name, general[draw].tarot.name);
+  }
   assert.equal(general[2].tarot.position, 2);
   assert.match(general[2].reading.body, new RegExp(general[2].tarot.name));
   const pending = await request('/api/auth/register', 'POST', signup);
@@ -193,6 +201,10 @@ test('five-card draw returns the chosen card consistently to guest and account',
   assert.equal(personal[2].scope, 'personal');
   assert.equal(personal[2].tarot.position, 2);
   assert.equal((await request('/api/forecast/day?draw=2', 'GET', null, cookie)).data.tarot.number, personal[2].tarot.number);
+  const personalPreview = await request('/api/forecast/card?draw=2', 'GET', null, cookie);
+  assert.equal(personalPreview.response.status, 200);
+  assert.equal(personalPreview.data.tarot.number, personal[2].tarot.number);
+  assert.equal(personalPreview.data.tarot.name, personal[2].tarot.name);
 }));
 
 test('local writer refines each selected general card once, including concurrent requests', async () => {

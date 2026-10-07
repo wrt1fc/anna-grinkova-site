@@ -14,10 +14,10 @@
     <link rel="stylesheet" href="./birth-time.css?v=1" />
     <link rel="stylesheet" href="./chat.css?v=11" />
     <link rel="stylesheet" href="./polish.css?v=6" />
-    <link rel="stylesheet" href="./tarot.css?v=1" />
+    <link rel="stylesheet" href="./tarot.css?v=2" />
     <script src="./birth-ui.js?v=1" defer></script>
     <script src="./birth-time.js?v=1" defer></script>
-    <script src="./app.js?v=17" defer></script>
+    <script src="./app.js?v=18" defer></script>
     <script src="./chat.js?v=12" defer></script>
   </head>
   <body>
@@ -103,7 +103,7 @@
             <a class="back-link" href="#home"><span aria-hidden="true">←</span> На главную</a>
             <div class="forecast-hero-grid">
               <div class="forecast-hero-copy"><p class="forecast-kicker">Таро и астропсихология</p><h1>Карта <em>дня</em></h1><p>Прочитайте карту и выберите один вопрос, который стоит держать в уме.</p><span class="sample-label" id="day-scope-label"><span class="sample-dot"></span> Общий прогноз</span></div>
-              <div class="forecast-visual daily-visual" aria-hidden="true"><div class="mini-card"><span class="mini-card-title" id="day-card-title">Карта дня</span><span class="mini-card-art" id="day-card-mark">✧</span><span class="mini-card-footer" id="day-card-footer">12:00 МСК</span></div></div>
+              <div class="forecast-visual daily-visual"><div class="day-card-scene"><button class="mini-card" id="day-interactive-card" type="button" aria-label="Перевернуть карту дня" aria-describedby="day-card-hint" aria-pressed="false"><span class="mini-card-face mini-card-face-front"><span class="mini-card-title" id="day-card-title">Карта дня</span><span class="mini-card-footer" id="day-card-footer">12:00 МСК</span></span><span class="mini-card-face mini-card-face-back" aria-hidden="true"><span class="mini-card-back-orbit"><img src="./assets/institute-emblem-gold.svg" alt="" /></span><span class="mini-card-back-name">Анна Гринькова</span><span class="mini-card-back-caption">Карта дня</span></span></button></div><p class="day-card-hint" id="day-card-hint">Потяните карту или нажмите, чтобы перевернуть</p></div>
             </div>
           </section>
           <section class="reading-section section-wrap" aria-labelledby="day-reading-title">

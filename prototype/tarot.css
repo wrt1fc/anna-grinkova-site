@@ -44,21 +44,105 @@
 }
 .draw-card-mark::before { display: none; }
 
-.daily-visual .mini-card {
-  overflow: hidden;
-  padding: 9px;
-  background: #1a110d;
-  isolation: isolate;
+.daily-visual {
+  border: 1px solid rgba(226, 185, 102, .42);
+  border-radius: 18px;
 }
-.daily-visual .mini-card::before {
+.daily-visual::after { border-radius: 12px; }
+.day-card-scene {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  perspective: 1000px;
+  transform: rotate(6deg);
+}
+#route-day:not([hidden]) .daily-visual .mini-card {
+  display: block;
+  position: relative;
+  width: clamp(215px, 17vw, 300px);
+  height: clamp(320px, 25vw, 430px);
+  padding: 0;
+  border: 0;
+  border-radius: 13px;
+  background: transparent;
+  box-shadow: none;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  transform-style: preserve-3d;
+  transform: rotateX(var(--card-tilt, 0deg)) rotateY(var(--card-turn, 0deg));
+  transition: transform 400ms var(--ease-out);
+  animation: none;
+}
+.daily-visual .mini-card.is-dragging { cursor: grabbing; transition: none !important; }
+.daily-visual .mini-card:focus-visible { outline: 2px solid #f7df98; outline-offset: 10px; }
+.mini-card-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px;
+  overflow: hidden;
+  border: 1px solid var(--gold-light);
+  border-radius: 13px;
+  background: #1a110d;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  pointer-events: none;
+  box-shadow: 0 20px 32px rgba(0,0,0,.46), 0 0 0 7px rgba(15,10,8,.75), 0 0 0 8px rgba(222,184,88,.5);
+}
+.mini-card-face-front::before {
   content: "";
   position: absolute;
   z-index: 0;
   inset: 9px;
+  border-radius: 8px;
   background: var(--tarot-art) center / cover no-repeat;
   filter: sepia(.23) saturate(.82) contrast(1.04);
 }
-.daily-visual .mini-card-art { display: none; }
+.mini-card-face-back {
+  justify-content: center;
+  gap: 20px;
+  transform: rotateY(180deg);
+  background: radial-gradient(circle at 50% 47%, #493015, #24160e 48%, #140d0b 78%);
+  color: #f4d47f;
+}
+.mini-card-face-back::before {
+  content: "";
+  position: absolute;
+  inset: 12px;
+  border: 1px solid rgba(241, 208, 129, .65);
+  border-radius: 7px;
+}
+.mini-card-back-orbit {
+  width: 57%;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(241, 208, 129, .8);
+  border-radius: 50%;
+  box-shadow: 0 0 0 13px rgba(226, 185, 102, .08), 0 0 0 28px rgba(226, 185, 102, .035);
+}
+.mini-card-back-orbit img { width: 55%; height: 55%; object-fit: contain; }
+.mini-card-back-name { font: 600 clamp(14px, 1.5vw, 19px)/1.15 var(--display); }
+.mini-card-back-caption { font: italic clamp(14px, 1.5vw, 18px)/1 var(--accent); }
+.day-card-hint {
+  position: absolute;
+  z-index: 2;
+  left: 16px;
+  right: 16px;
+  bottom: 19px;
+  margin: 0;
+  color: #f1dba7;
+  font-size: 12px;
+  letter-spacing: .02em;
+  text-align: center;
+  text-shadow: 0 1px 8px #130c09;
+  pointer-events: none;
+}
 .daily-visual .mini-card-title,
 .daily-visual .mini-card-footer {
   width: 100%;
@@ -76,6 +160,14 @@
 .daily-visual .mini-card-footer {
   padding: 28px 5px 13px;
   background: linear-gradient(transparent, #160d0bf0 42%);
+}
+@media (max-width: 760px) {
+  #route-day:not([hidden]) .daily-visual .mini-card { width: 172px; height: 258px; }
+  .day-card-scene { transform: translateY(-10px) rotate(6deg); }
+  .day-card-hint { bottom: 13px; font-size: 11px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #route-day:not([hidden]) .daily-visual .mini-card { transition-duration: .01ms; }
 }
 
 .account-name-form { margin: 22px 0 0; }
