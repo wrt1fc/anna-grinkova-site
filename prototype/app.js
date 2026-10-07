@@ -4,6 +4,7 @@ const dialog = document.getElementById('signup-dialog');
 const signupForm = document.getElementById('signup-form');
 const signupEmail = document.getElementById('signup-email');
 const formMessage = document.getElementById('form-message');
+const siteShell = document.querySelector('.site-shell');
 let focusBeforeDialog = null;
 
 const dailyCards = [
@@ -60,6 +61,28 @@ const drawResult = document.getElementById('draw-result');
 const drawStage = document.querySelector('.daily-draw-stage');
 const drawStageNote = document.getElementById('draw-stage-note');
 const drawReset = document.getElementById('draw-reset');
+const drawStorageKey = 'daily-draw';
+
+function todayKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+}
+
+function saveDailyCard(index) {
+  try {
+    if (index === null) localStorage.removeItem(drawStorageKey);
+    else localStorage.setItem(drawStorageKey, JSON.stringify({ date: todayKey(), index }));
+  } catch {}
+}
+
+function loadDailyCard() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(drawStorageKey));
+    return saved && saved.date === todayKey() ? saved.index : null;
+  } catch {
+    return null;
+  }
+}
 
 function selectDailyCard(index) {
   const card = dailyCards[index];
@@ -88,8 +111,13 @@ function selectDailyCard(index) {
   document.getElementById('day-reading-action').textContent = card.action;
 }
 
-drawCards.forEach((button) => button.addEventListener('click', () => selectDailyCard(Number(button.dataset.drawCard))));
+drawCards.forEach((button) => button.addEventListener('click', () => {
+  const index = Number(button.dataset.drawCard);
+  selectDailyCard(index);
+  saveDailyCard(index);
+}));
 drawReset.addEventListener('click', () => {
+  saveDailyCard(null);
   drawStage.classList.remove('has-selection');
   drawStageNote.textContent = 'Нажмите на карту, чтобы открыть её';
   drawCards.forEach((button) => {
@@ -130,6 +158,7 @@ function showRoute() {
 function openSignup(event) {
   focusBeforeDialog = event.currentTarget;
   dialog.hidden = false;
+  siteShell.inert = true;
   document.body.classList.add('dialog-open');
   formMessage.textContent = '';
   signupEmail.focus();
@@ -137,6 +166,7 @@ function openSignup(event) {
 
 function closeSignup() {
   dialog.hidden = true;
+  siteShell.inert = false;
   document.body.classList.remove('dialog-open');
   if (focusBeforeDialog) focusBeforeDialog.focus();
 }
@@ -166,4 +196,6 @@ signupForm.addEventListener('submit', (event) => {
   signupForm.reset();
 });
 window.addEventListener('hashchange', showRoute);
+const savedCard = loadDailyCard();
+if (savedCard !== null) selectDailyCard(savedCard);
 showRoute();
