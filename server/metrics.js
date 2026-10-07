@@ -7,9 +7,9 @@ import { clientAddress } from './traffic.js';
 export function createMetrics(store, { day = moscowDate } = {}) {
   let saltDay = null;
   let salt = null;
+  // Fire and forget: counters never delay or break a request.
   function count(metric, by = 1) {
-    try { store.incrementMetric(day(), metric, by); }
-    catch (error) { console.warn(`Metric ${metric} not recorded:`, error.message); }
+    store.incrementMetric(day(), metric, by).catch((error) => console.warn(`Metric ${metric} not recorded:`, error.message));
   }
   return {
     count,
@@ -23,8 +23,8 @@ export function createMetrics(store, { day = moscowDate } = {}) {
       if (saltDay !== today) { saltDay = today; salt = randomBytes(16); }
       const visitor = createHash('sha256').update(salt).update(clientAddress(req, trustProxy))
         .update(String(req.headers['user-agent'] ?? '')).digest('hex');
-      try { if (store.markVisitor(today, visitor)) count('unique_visitors'); }
-      catch (error) { console.warn('Visitor not recorded:', error.message); }
+      store.markVisitor(today, visitor).then((first) => { if (first) count('unique_visitors'); })
+        .catch((error) => console.warn('Visitor not recorded:', error.message));
     },
   };
 }

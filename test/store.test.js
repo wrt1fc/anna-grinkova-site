@@ -3,78 +3,78 @@ import { test } from 'node:test';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
 import { createStore } from '../server/store.js';
 
-test('existing account database migrates without losing its users', () => {
+test('migrations run once and keep data when the database is opened again', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'anna-store-'));
-  const path = join(dir, 'site.sqlite');
   try {
-    const old = new DatabaseSync(path);
-    old.exec('CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL, created_at INTEGER NOT NULL)');
-    old.prepare('INSERT INTO users (email,password_hash,created_at) VALUES (?,?,?)').run('existing@example.com', 'hash', 1);
-    old.close();
-    const store = createStore(path);
-    assert.equal(store.findUserByEmail('existing@example.com').email_verified_at, null);
-    store.close();
+    const first = await createStore(`pglite:${dir}`);
+    await first.createUser('existing@example.com', 'hash', 1);
+    const applied = await first.q.query('SELECT version FROM schema_migrations ORDER BY version');
+    await first.close();
+    const reopened = await createStore(`pglite:${dir}`);
+    assert.equal((await reopened.findUserByEmail('existing@example.com')).email_verified_at, null);
+    assert.deepEqual(await reopened.q.query('SELECT version FROM schema_migrations ORDER BY version'), applied);
+    assert.equal(await reopened.health(), true);
+    await reopened.close();
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('code expires, allows only five attempts, and cannot be resent immediately', () => {
-  const store = createStore(':memory:');
+test('code expires, allows only five attempts, and cannot be resent immediately', async () => {
+  const store = await createStore('pglite:memory');
   const first = { challengeHash: 'one', purpose: 'registration', email: 'anna@example.com', passwordHash: 'hash', codeHash: 'a'.repeat(64) };
-  assert.equal(store.issueChallenge(first, 1000), true);
-  assert.equal(store.issueChallenge({ ...first, challengeHash: 'two' }, 2000), false);
-  for (let i = 0; i < 5; i++) assert.equal(store.consumeChallenge('one', 'b'.repeat(64), 'registration', 3000), null);
-  assert.equal(store.consumeChallenge('one', 'a'.repeat(64), 'registration', 3000), null);
-  assert.equal(store.issueChallenge({ ...first, challengeHash: 'two' }, 62_000), true);
-  assert.equal(store.consumeChallenge('two', 'a'.repeat(64), 'registration', 62_000 + 10 * 60 * 1000), null);
-  store.close();
+  assert.equal(await store.issueChallenge(first, 1000), true);
+  assert.equal(await store.issueChallenge({ ...first, challengeHash: 'two' }, 2000), false);
+  for (let i = 0; i < 5; i++) assert.equal(await store.consumeChallenge('one', 'b'.repeat(64), 'registration', 3000), null);
+  assert.equal(await store.consumeChallenge('one', 'a'.repeat(64), 'registration', 3000), null);
+  assert.equal(await store.issueChallenge({ ...first, challengeHash: 'two' }, 62_000), true);
+  assert.equal(await store.consumeChallenge('two', 'a'.repeat(64), 'registration', 62_000 + 10 * 60 * 1000), null);
+  await store.close();
 });
 
-test('account and birth profile remain after reopening the database', () => {
+test('account and birth profile remain after reopening the database', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'anna-profile-'));
-  const path = join(dir, 'site.sqlite');
+  const path = join(dir, 'pgdata');
   try {
-    const first = createStore(path);
-    const user = first.createUser('person@example.com', 'hash', 1000, 1000);
-    first.saveBirthProfile(user.id, { birthDate: '1990-03-10', birthTime: '10:45', birthPlace: 'Москва' }, 2000);
-    first.close();
-    const reopened = createStore(path);
-    assert.equal(reopened.findUserByEmail('person@example.com').email_verified_at, 1000);
-    assert.equal(reopened.getBirthProfile(user.id).birthPlace, 'Москва');
-    reopened.close();
+    const first = await createStore(`pglite:${path}`);
+    const user = await first.createUser('person@example.com', 'hash', 1000, 1000);
+    await first.saveBirthProfile(user.id, { birthDate: '1990-03-10', birthTime: '10:45', birthPlace: 'Москва' }, 2000);
+    await first.close();
+    const reopened = await createStore(`pglite:${path}`);
+    assert.equal((await reopened.findUserByEmail('person@example.com')).email_verified_at, 1000);
+    assert.equal((await reopened.getBirthProfile(user.id)).birthPlace, 'Москва');
+    await reopened.close();
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('resolved birth coordinates survive schema migration and reopen', () => {
+test('resolved birth coordinates survive schema migration and reopen', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'anna-resolved-'));
-  const path = join(dir, 'site.sqlite');
+  const path = join(dir, 'pgdata');
   try {
-    const first = createStore(path);
-    const user = first.createUser('resolved@example.com', 'hash', 1000, 1000);
-    first.saveBirthProfile(user.id, { birthDate: '1990-03-10', birthTime: '10:45', birthPlace: 'Moscow',
+    const first = await createStore(`pglite:${path}`);
+    const user = await first.createUser('resolved@example.com', 'hash', 1000, 1000);
+    await first.saveBirthProfile(user.id, { birthDate: '1990-03-10', birthTime: '10:45', birthPlace: 'Moscow',
       birthCityId: 524901, birthLatitude: 55.75222, birthLongitude: 37.61556,
       birthTimeZone: 'Europe/Moscow', birthUtc: '1990-03-10T07:45:00.000Z', birthUtcOffsetMinutes: 180 });
-    first.close();
-    const reopened = createStore(path);
-    assert.equal(reopened.getBirthProfile(user.id).birthCityId, 524901);
-    assert.equal(reopened.getBirthProfile(user.id).birthUtc, '1990-03-10T07:45:00.000Z');
-    reopened.close();
+    await first.close();
+    const reopened = await createStore(`pglite:${path}`);
+    assert.equal((await reopened.getBirthProfile(user.id)).birthCityId, 524901);
+    assert.equal((await reopened.getBirthProfile(user.id)).birthUtc, '1990-03-10T07:45:00.000Z');
+    await reopened.close();
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('outbound mail quota persists and stops at its daily cap', () => {
+test('outbound mail quota persists and stops at its daily cap', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'anna-quota-'));
-  const path = join(dir, 'site.sqlite');
+  const path = join(dir, 'pgdata');
   try {
-    const first = createStore(path);
-    assert.equal(first.consumeDailyQuota('mail', '2026-10-03', 2), true);
-    first.close();
-    const reopened = createStore(path);
-    assert.equal(reopened.consumeDailyQuota('mail', '2026-10-03', 2), true);
-    assert.equal(reopened.consumeDailyQuota('mail', '2026-10-03', 2), false);
-    assert.equal(reopened.consumeDailyQuota('mail', '2026-10-04', 2), true);
-    reopened.close();
+    const first = await createStore(`pglite:${path}`);
+    assert.equal(await first.consumeDailyQuota('mail', '2026-10-03', 2), true);
+    await first.close();
+    const reopened = await createStore(`pglite:${path}`);
+    assert.equal(await reopened.consumeDailyQuota('mail', '2026-10-03', 2), true);
+    assert.equal(await reopened.consumeDailyQuota('mail', '2026-10-03', 2), false);
+    assert.equal(await reopened.consumeDailyQuota('mail', '2026-10-04', 2), true);
+    await reopened.close();
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });

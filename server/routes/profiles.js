@@ -6,9 +6,9 @@ const PROFILE_PATH = /^\/api\/profiles\/(\d{1,12})$/;
 const LABEL_PATTERN = /^[\p{L}\p{M}\d][\p{L}\p{M}\d .'-]{0,39}$/u;
 
 // Profiles past the plan limit (after a downgrade) stay stored but cannot be used.
-export function profilesWithAccess(store, userId) {
-  const limit = extraProfileLimit(store.getPlan(userId));
-  return store.listChartProfiles(userId).map((profile, index) => ({ ...profile, locked: index >= limit }));
+export async function profilesWithAccess(store, userId) {
+  const limit = extraProfileLimit(await store.getPlan(userId));
+  return (await store.listChartProfiles(userId)).map((profile, index) => ({ ...profile, locked: index >= limit }));
 }
 
 function parseProfileBody(body, plan) {
@@ -25,18 +25,18 @@ function parseProfileBody(body, plan) {
 
 export async function handleProfileRoutes({ req, res, path, user, store, json, readJson }) {
   if (path === '/api/plan' && req.method === 'GET') {
-    const plan = store.getPlan(user.id);
-    return json(res, 200, { plan: publicPlan(plan), people: 1 + store.listChartProfiles(user.id).length }), true;
+    const plan = await store.getPlan(user.id);
+    return json(res, 200, { plan: publicPlan(plan), people: 1 + (await store.listChartProfiles(user.id)).length }), true;
   }
   if (path === '/api/profiles' && req.method === 'GET') {
-    return json(res, 200, { plan: publicPlan(store.getPlan(user.id)), self: store.getBirthProfile(user.id),
-      profiles: profilesWithAccess(store, user.id), relationLabels: RELATION_LABELS }), true;
+    return json(res, 200, { plan: publicPlan(await store.getPlan(user.id)), self: await store.getBirthProfile(user.id),
+      profiles: await profilesWithAccess(store, user.id), relationLabels: RELATION_LABELS }), true;
   }
   if (path === '/api/profiles' && req.method === 'POST') {
-    const plan = store.getPlan(user.id);
+    const plan = await store.getPlan(user.id);
     const parsed = parseProfileBody(await readJson(req), plan);
     if (!parsed.ok) return json(res, parsed.status, parsed.data), true;
-    const created = store.createChartProfile(user.id, parsed.profile, extraProfileLimit(plan));
+    const created = await store.createChartProfile(user.id, parsed.profile, extraProfileLimit(plan));
     if (!created) {
       return json(res, 403, { error: 'plan_limit', message: `По тарифу «${planFor(plan).label}» можно добавить не больше ${planFor(plan).maxPeople} человек вместе с вами.` }), true;
     }
@@ -46,13 +46,13 @@ export async function handleProfileRoutes({ req, res, path, user, store, json, r
   if (!match) return false;
   const id = Number(match[1]);
   if (req.method === 'PUT') {
-    const parsed = parseProfileBody(await readJson(req), store.getPlan(user.id));
+    const parsed = parseProfileBody(await readJson(req), await store.getPlan(user.id));
     if (!parsed.ok) return json(res, parsed.status, parsed.data), true;
-    const updated = store.updateChartProfile(user.id, id, parsed.profile);
+    const updated = await store.updateChartProfile(user.id, id, parsed.profile);
     return (updated ? json(res, 200, { profile: updated }) : json(res, 404, { error: 'not_found' })), true;
   }
   if (req.method === 'DELETE') {
-    return (store.deleteChartProfile(user.id, id) ? json(res, 200, { ok: true }) : json(res, 404, { error: 'not_found' })), true;
+    return ((await store.deleteChartProfile(user.id, id)) ? json(res, 200, { ok: true }) : json(res, 404, { error: 'not_found' })), true;
   }
   return false;
 }

@@ -4,7 +4,7 @@ import { createServer } from '../server/http.js';
 import { createStore } from '../server/store.js';
 
 test('the web app manifest, service worker and icons are served with the right types', async () => {
-  const store = createStore(':memory:');
+  const store = await createStore('pglite:memory');
   const server = createServer({ store, codeSecret: 'test-secret-with-at-least-thirty-two-characters' });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -30,6 +30,6 @@ test('the web app manifest, service worker and icons are served with the right t
     assert.match(html, /viewport-fit=cover/);
   } finally {
     await new Promise((resolve) => server.close(resolve));
-    store.close();
+    await store.close();
   }
 });

@@ -71,24 +71,24 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
     const challenge = newChallenge();
     const code = newEmailCode();
     const challengeHash = tokenHash(challenge);
-    const issued = store.issueChallenge({ challengeHash, purpose, email, userId, passwordHash, codeHash: emailCodeHash(codeSecret, challenge, code) });
+    const issued = await store.issueChallenge({ challengeHash, purpose, email, userId, passwordHash, codeHash: emailCodeHash(codeSecret, challenge, code) });
     if (!issued) return { status: 429, data: { error: 'too_soon', message: 'Новый код можно запросить через минуту.' } };
-    if (!store.consumeDailyQuota('mail', new Date().toISOString().slice(0, 10), mailDailyLimit)) {
-      store.deleteChallenge(challengeHash);
+    if (!await store.consumeDailyQuota('mail', new Date().toISOString().slice(0, 10), mailDailyLimit)) {
+      await store.deleteChallenge(challengeHash);
       return { status: 429, data: { error: 'mail_quota_exceeded', message: 'Лимит писем на сегодня исчерпан. Попробуйте завтра.' } };
     }
     try { await mailer.sendCode({ to: email, purpose, code }); }
     catch (error) {
-      store.deleteChallenge(challengeHash);
+      await store.deleteChallenge(challengeHash);
       console.error('Mail delivery failed:', error.message);
       return { status: 503, data: { error: 'mail_unavailable', message: 'Не удалось отправить код. Попробуйте позже.' } };
     }
     return { status: 202, data: { challenge, message: 'Код отправлен на вашу почту.' } };
   }
 
-  function sessionFor(res, user) {
+  async function sessionFor(res, user) {
     const newToken = newSessionToken();
-    store.saveSession(tokenHash(newToken), user.id, Date.now() + SESSION_AGE * 1000);
+    await store.saveSession(tokenHash(newToken), user.id, Date.now() + SESSION_AGE * 1000);
     return { cookie: sessionCookie(newToken, SESSION_AGE), user: { id: user.id, email: user.email, emailVerified: !!user.emailVerified || user.email_verified_at != null } };
   }
 
@@ -111,12 +111,12 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
         }
         metrics.count('api_requests');
         const token = cookieToken(req);
-        const user = token ? store.userForSession(tokenHash(token)) : null;
+        const user = token ? await store.userForSession(tokenHash(token)) : null;
         const ctx = { req, res, path, user, json, readJson };
         if (await handleChatRoutes(ctx)) return;
         if (await handleBillingRoutes(ctx)) return;
         if (path === '/api/health' && req.method === 'GET') {
-          const healthy = store.health();
+          const healthy = await store.health();
           return json(res, healthy ? 200 : 503, { status: healthy ? 'ok' : 'unavailable' });
         }
         if (path === '/api/cities' && req.method === 'GET') {
@@ -130,7 +130,7 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
           const draw = drawParameters.length ? Number(drawParameters[0]) : 0;
           const day = moscowDate();
           const general = forecastForDate(day, draw);
-          const profile = user ? store.getBirthProfile(user.id) : null;
+          const profile = user ? await store.getBirthProfile(user.id) : null;
           const forecast = profile?.birthUtc ? personalForecastForDate(day, profile, user.id, general, draw) : general;
           return json(res, 200, { date: day, tarot: { number: forecast.tarot.number, name: forecast.tarot.name } });
         }
@@ -177,7 +177,7 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
           }
           const general = await dailyDrawCache.get(draw);
           const dailyUser = user;
-          const profile = dailyUser ? store.getBirthProfile(dailyUser.id) : null;
+          const profile = dailyUser ? await store.getBirthProfile(dailyUser.id) : null;
           if (profile?.birthUtc) {
             if (personalCacheDay !== day) { personalCache.clear(); personalCacheDay = day; }
             const key = `${dailyUser.id}:${profile.updatedAt}:${profile.birthUtc}:${draw}`;
@@ -197,16 +197,16 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
           const body = await readJson(req);
           const email = normalizeEmail(body.email);
           if (!email || !validPassword(body.password) || body.password !== body.confirmPassword) return json(res, 400, { error: 'invalid_credentials', message: 'Проверьте email и совпадение паролей. Пароль: от 8 символов, с заглавной буквой, цифрой и спецсимволом.' });
-          if (store.findUserByEmail(email)) return json(res, 409, { error: 'email_exists', message: 'Этот email уже зарегистрирован.' });
+          if (await store.findUserByEmail(email)) return json(res, 409, { error: 'email_exists', message: 'Этот email уже зарегистрирован.' });
           const sent = await sendCode({ purpose: 'registration', email, passwordHash: await hashPassword(body.password) });
           return json(res, sent.status, sent.data);
         }
         if (path === '/api/auth/register/verify' && req.method === 'POST') {
           const body = await readJson(req);
           if (typeof body.challenge !== 'string' || !/^\d{6}$/.test(body.code || '')) return json(res, 400, { error: 'invalid_code' });
-          const created = store.consumeChallenge(tokenHash(body.challenge), emailCodeHash(codeSecret, body.challenge, body.code), 'registration');
+          const created = await store.consumeChallenge(tokenHash(body.challenge), emailCodeHash(codeSecret, body.challenge, body.code), 'registration');
           if (!created) return json(res, 400, { error: 'invalid_code', message: 'Код неверный или срок его действия истёк.' });
-          const session = sessionFor(res, created);
+          const session = await sessionFor(res, created);
           metrics.count('signups');
           return json(res, 201, { user: session.user }, { 'Set-Cookie': session.cookie });
         }
@@ -215,13 +215,13 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
           const email = normalizeEmail(body.email) || '';
           const guard = loginGuard.check(email);
           if (!guard.allowed) return json(res, 429, { error: 'too_many_attempts', message: 'Слишком много неудачных попыток входа. Попробуйте позже или восстановите пароль.' }, { 'Retry-After': String(guard.retryAfter) });
-          const found = store.findUserByEmail(email);
+          const found = await store.findUserByEmail(email);
           if (!(await verifyLogin(body.password, found?.password_hash))) {
             loginGuard.fail(email);
             return json(res, 401, { error: 'invalid_credentials', message: 'Неверный email или пароль.' });
           }
           loginGuard.succeed(email);
-          const session = sessionFor(res, found);
+          const session = await sessionFor(res, found);
           metrics.count('logins');
           return json(res, 200, { user: session.user }, { 'Set-Cookie': session.cookie });
         }
@@ -230,12 +230,12 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
           const email = normalizeEmail(body.email);
           if (!email) return json(res, 400, { error: 'invalid_email' });
           if (!mailer) return json(res, 503, { error: 'mail_unavailable', message: 'Отправка кодов временно недоступна.' });
-          const found = store.findUserByEmail(email);
+          const found = await store.findUserByEmail(email);
           const generic = { message: 'Если аккаунт существует, код отправлен на почту.' };
           if (!found) {
             const challenge = newChallenge();
             const code = newEmailCode();
-            const issued = store.issueChallenge({ challengeHash: tokenHash(challenge), purpose: 'reset', email,
+            const issued = await store.issueChallenge({ challengeHash: tokenHash(challenge), purpose: 'reset', email,
               codeHash: emailCodeHash(codeSecret, challenge, code) });
             return issued ? json(res, 202, { ...generic, challenge })
               : json(res, 429, { error: 'too_soon', message: 'Новый код можно запросить через минуту.' });
@@ -251,12 +251,12 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
             || !validPassword(body.password) || body.password !== body.confirmPassword) {
             return json(res, 400, { error: 'invalid_request', message: 'Проверьте код и совпадение новых паролей. Пароль: от 8 символов, с заглавной буквой, цифрой и спецсимволом.' });
           }
-          const changed = store.consumeChallenge(tokenHash(body.challenge), emailCodeHash(codeSecret, body.challenge, body.code), 'reset', Date.now(), await hashPassword(body.password));
+          const changed = await store.consumeChallenge(tokenHash(body.challenge), emailCodeHash(codeSecret, body.challenge, body.code), 'reset', Date.now(), await hashPassword(body.password));
           if (!changed) return json(res, 400, { error: 'invalid_code', message: 'Код неверный или срок его действия истёк.' });
           return json(res, 200, { ok: true, message: 'Пароль изменён. Войдите с новым паролем.' }, { 'Set-Cookie': sessionCookie('', 0) });
         }
         if (path === '/api/auth/logout' && req.method === 'POST') {
-          if (token) store.deleteSession(tokenHash(token));
+          if (token) await store.deleteSession(tokenHash(token));
           return json(res, 200, { ok: true }, { 'Set-Cookie': sessionCookie('', 0) });
         }
         if (!user) return json(res, 401, { error: 'login_required' });
@@ -269,12 +269,12 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
         if (path === '/api/auth/email/verify' && req.method === 'POST') {
           const body = await readJson(req);
           if (typeof body.challenge !== 'string' || !/^\d{6}$/.test(body.code || '')) return json(res, 400, { error: 'invalid_code' });
-          const verified = store.consumeChallenge(tokenHash(body.challenge), emailCodeHash(codeSecret, body.challenge, body.code), 'verify', Date.now(), null, user.id);
+          const verified = await store.consumeChallenge(tokenHash(body.challenge), emailCodeHash(codeSecret, body.challenge, body.code), 'verify', Date.now(), null, user.id);
           if (!verified) return json(res, 400, { error: 'invalid_code', message: 'Код неверный или срок его действия истёк.' });
           return json(res, 200, { ok: true });
         }
         if (path === '/api/me' && req.method === 'GET') {
-          return json(res, 200, { user, birthProfile: store.getBirthProfile(user.id) });
+          return json(res, 200, { user, birthProfile: await store.getBirthProfile(user.id) });
         }
         if (path === '/api/me/name' && req.method === 'PUT') {
           const body = await readJson(req);
@@ -283,13 +283,13 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
           if (name.length < 2 || name.length > 40 || !/^[\p{L}]+(?:[ '\u2019\-][\p{L}]+)*$/u.test(name)) {
             return json(res, 400, { error: 'invalid_name', message: 'Укажите имя буквами, от 2 до 40 символов.' });
           }
-          store.saveDisplayName(user.id, name);
+          await store.saveDisplayName(user.id, name);
           return json(res, 200, { name });
         }
         if (path === '/api/profile' && req.method === 'PUT') {
           const parsed = parseBirthInput(await readJson(req));
           if (!parsed.ok) return json(res, parsed.status, parsed.data);
-          return json(res, 200, { birthProfile: store.saveBirthProfile(user.id, parsed.profile) });
+          return json(res, 200, { birthProfile: await store.saveBirthProfile(user.id, parsed.profile) });
         }
         return json(res, 404, { error: 'not_found' });
       }
@@ -312,7 +312,8 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
       // A stream already started cannot switch to a JSON error; close it instead of throwing again.
       if (res.headersSent) { console.error(error); if (!res.writableEnded) res.end(); return undefined; }
       if (error instanceof SyntaxError || ['expected_json', 'body_too_large', 'invalid_json'].includes(error.message)) return json(res, 400, { error: 'invalid_request' });
-      if (error?.code === 'SQLITE_CONSTRAINT_UNIQUE') return json(res, 409, { error: 'email_exists' });
+      // 23505 = unique_violation in PostgreSQL (a second registration with the same email racing the first).
+      if (error?.code === '23505') return json(res, 409, { error: 'email_exists' });
       console.error(error);
       return json(res, 500, { error: 'internal_error' });
     }

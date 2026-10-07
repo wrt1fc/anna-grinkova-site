@@ -13,7 +13,7 @@ const DAY = 86_400_000;
 const PASSWORD = 'Very-long-password1!';
 
 async function fixture(run, { provider = createTestProvider(), trustProxy = false } = {}) {
-  const store = createStore(':memory:');
+  const store = await createStore('pglite:memory');
   const server = createServer({ store, paymentProvider: provider, trustProxy, publicUrl: 'https://anna.example',
     codeSecret: 'test-secret-with-at-least-thirty-two-characters', trafficLimiter: createTrafficLimiter({ perIpLimit: 500, globalLimit: 1000 }) });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -24,7 +24,7 @@ async function fixture(run, { provider = createTestProvider(), trustProxy = fals
     return { response, data: await response.json() };
   };
   async function signIn(email = 'buyer@example.com') {
-    store.createUser(email, await hashPassword(PASSWORD), Date.now(), Date.now());
+    await store.createUser(email, await hashPassword(PASSWORD), Date.now(), Date.now());
     const login = await fetch(`${base}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password: PASSWORD }) });
     return login.headers.get('set-cookie').split(';')[0];
@@ -32,7 +32,7 @@ async function fixture(run, { provider = createTestProvider(), trustProxy = fals
   const notify = (event, id, headers) => request('/api/billing/webhook/test', { method: 'POST', headers,
     body: { type: 'notification', event, object: event.startsWith('refund.') ? { id: 'r1', payment_id: id } : { id } } });
   try { await run({ store, request, signIn, notify, provider }); }
-  finally { await new Promise((resolve) => server.close(resolve)); store.close(); }
+  finally { await new Promise((resolve) => server.close(resolve)); await store.close(); }
 }
 
 async function buy(request, cookie, productId, extra = {}) {
@@ -52,7 +52,7 @@ test('a paid notification activates the plan; the return link alone does not', a
   const checkout = await buy(request, cookie, 'partner-30d');
   assert.match(checkout.confirmationUrl, /^https:\/\/anna\.example\/#account\?payment=.+&test_payment=/);
   assert.equal((await request('/api/plan', { cookie })).data.plan.id, 'free');
-  const order = store.getOrder(checkout.orderId);
+  const order = await store.getOrder(checkout.orderId);
   provider.settle(order.providerPaymentId, { status: 'succeeded', paid: true });
   assert.equal((await notify('payment.succeeded', order.providerPaymentId)).response.status, 200);
   const subscription = (await request('/api/billing/subscription', { cookie })).data;
@@ -65,40 +65,40 @@ test('a paid notification activates the plan; the return link alone does not', a
 test('notifications from outside the provider network are refused', async () => fixture(async ({ store, request, signIn, notify, provider }) => {
   const cookie = await signIn();
   const { orderId } = await buy(request, cookie, 'individual-30d');
-  const order = store.getOrder(orderId);
+  const order = await store.getOrder(orderId);
   provider.settle(order.providerPaymentId, { status: 'succeeded', paid: true });
   assert.equal((await notify('payment.succeeded', order.providerPaymentId, { 'X-Real-IP': '8.8.8.8' })).response.status, 403);
-  assert.equal(store.getOrder(orderId).status, 'pending');
+  assert.equal((await store.getOrder(orderId)).status, 'pending');
 }, { trustProxy: true }));
 
 test('a forged "succeeded" notification without a real payment changes nothing', async () => fixture(async ({ store, request, signIn, notify }) => {
   const cookie = await signIn();
   const { orderId } = await buy(request, cookie, 'family-30d');
-  await notify('payment.succeeded', store.getOrder(orderId).providerPaymentId);
-  assert.equal(store.getOrder(orderId).status, 'pending');
+  await notify('payment.succeeded', (await store.getOrder(orderId)).providerPaymentId);
+  assert.equal((await store.getOrder(orderId)).status, 'pending');
   assert.equal((await request('/api/plan', { cookie })).data.plan.id, 'free');
 }));
 
 test('a repeated notification is applied once and a wrong amount is never applied', async () => fixture(async ({ store, request, signIn, notify, provider }) => {
   const cookie = await signIn();
-  const first = store.getOrder((await buy(request, cookie, 'individual-30d')).orderId);
+  const first = await store.getOrder((await buy(request, cookie, 'individual-30d')).orderId);
   provider.settle(first.providerPaymentId, { status: 'succeeded', paid: true });
   await notify('payment.succeeded', first.providerPaymentId);
   const expiresAt = (await request('/api/billing/subscription', { cookie })).data.plan.expiresAt;
   await notify('payment.succeeded', first.providerPaymentId);
   assert.equal((await request('/api/billing/subscription', { cookie })).data.plan.expiresAt, expiresAt);
 
-  const second = store.getOrder((await buy(request, cookie, 'family-30d')).orderId);
+  const second = await store.getOrder((await buy(request, cookie, 'family-30d')).orderId);
   provider.settle(second.providerPaymentId, { status: 'succeeded', paid: true, amountKop: 100 });
   await notify('payment.succeeded', second.providerPaymentId);
-  assert.equal(store.getOrder(second.id).status, 'pending');
+  assert.equal((await store.getOrder(second.id)).status, 'pending');
   assert.equal((await request('/api/plan', { cookie })).data.plan.id, 'individual');
 }));
 
 test('the same plan extends the period, and the trial can be bought once', async () => fixture(async ({ store, request, signIn, notify, provider }) => {
   const cookie = await signIn();
   for (const productId of ['trial-7d', 'individual-30d']) {
-    const order = store.getOrder((await buy(request, cookie, productId)).orderId);
+    const order = await store.getOrder((await buy(request, cookie, productId)).orderId);
     provider.settle(order.providerPaymentId, { status: 'succeeded', paid: true });
     await notify('payment.succeeded', order.providerPaymentId);
   }
@@ -108,23 +108,23 @@ test('the same plan extends the period, and the trial can be bought once', async
   assert.equal(again.response.status, 409);
 }));
 
-test('an expired period falls back to the free plan and locks extra profiles', () => {
-  const store = createStore(':memory:');
+test('an expired period falls back to the free plan and locks extra profiles', async () => {
+  const store = await createStore('pglite:memory');
   try {
-    const user = store.createUser('late@example.com', 'scrypt:x:y');
-    store.setPlanPeriod(user.id, 'family', Date.now() - 1000);
-    assert.equal(store.getPlan(user.id), 'free');
-    store.setPlanPeriod(user.id, 'family', Date.now() + DAY);
-    assert.equal(store.getPlan(user.id), 'family');
-    store.setPlan(user.id, 'partner');
-    assert.equal(store.planState(user.id).expiresAt, null);
-    assert.equal(store.getPlan(user.id), 'partner');
-  } finally { store.close(); }
+    const user = await store.createUser('late@example.com', 'scrypt:x:y');
+    await store.setPlanPeriod(user.id, 'family', Date.now() - 1000);
+    assert.equal(await store.getPlan(user.id), 'free');
+    await store.setPlanPeriod(user.id, 'family', Date.now() + DAY);
+    assert.equal(await store.getPlan(user.id), 'family');
+    await store.setPlan(user.id, 'partner');
+    assert.equal((await store.planState(user.id)).expiresAt, null);
+    assert.equal(await store.getPlan(user.id), 'partner');
+  } finally { await store.close(); }
 });
 
 test('a full refund ends the period and cancels auto-renewal', async () => fixture(async ({ store, request, signIn, notify, provider }) => {
   const cookie = await signIn();
-  const order = store.getOrder((await buy(request, cookie, 'partner-30d', { autoRenew: true })).orderId);
+  const order = await store.getOrder((await buy(request, cookie, 'partner-30d', { autoRenew: true })).orderId);
   provider.settle(order.providerPaymentId, { status: 'succeeded', paid: true });
   await notify('payment.succeeded', order.providerPaymentId);
   assert.equal((await request('/api/billing/subscription', { cookie })).data.plan.autoRenew, true);
@@ -137,23 +137,23 @@ test('a full refund ends the period and cancels auto-renewal', async () => fixtu
 
 test('auto-renewal charges the saved method and extends the plan after the notification', async () => {
   const provider = createTestProvider();
-  const store = createStore(':memory:');
+  const store = await createStore('pglite:memory');
   let clock = Date.now();
   try {
     const billing = createBilling({ store, provider, publicUrl: 'https://anna.example', now: () => clock });
-    const user = store.createUser('renew@example.com', 'scrypt:x:y');
+    const user = await store.createUser('renew@example.com', 'scrypt:x:y');
     const { orderId } = await billing.checkout(user, 'individual-30d', { autoRenew: true });
-    const order = store.getOrder(orderId);
+    const order = await store.getOrder(orderId);
     provider.settle(order.providerPaymentId, { status: 'succeeded', paid: true });
     assert.equal(await billing.handleNotification('payment.succeeded', order.providerPaymentId), 'paid');
     clock += 29.5 * DAY;
     const [renewal] = await billing.renewDue();
     assert.equal(renewal.status, 'succeeded');
-    const renewed = store.getOrder(renewal.orderId);
+    const renewed = await store.getOrder(renewal.orderId);
     assert.equal(await billing.handleNotification('payment.succeeded', renewed.providerPaymentId), 'paid');
-    assert.ok(Math.abs(store.planState(user.id, clock).expiresAt - (order.createdAt + 60 * DAY)) < 60_000);
+    assert.ok(Math.abs((await store.planState(user.id, clock)).expiresAt - (order.createdAt + 60 * DAY)) < 60_000);
     assert.equal(renewed.renewal, true);
-  } finally { store.close(); }
+  } finally { await store.close(); }
 });
 
 test('orders of other users are not visible', async () => fixture(async ({ request, signIn }) => {
@@ -171,7 +171,7 @@ test('without a configured provider checkout says payments are off', async () =>
   assert.equal((await request('/api/billing/webhook/yookassa', { method: 'POST', body: {} })).response.status, 404);
 }, { provider: null }));
 
-test('YooKassa allow-list matches its published networks only', () => {
+test('YooKassa allow-list matches its published networks only', async () => {
   const trusted = createAllowList(YOOKASSA_NETWORKS);
   for (const ip of ['185.71.76.1', '185.71.77.30', '77.75.153.100', '77.75.154.200', '77.75.156.11', '::ffff:185.71.76.1', '2a02:5180::1']) assert.equal(trusted(ip), true, ip);
   for (const ip of ['185.71.76.40', '77.75.156.12', '127.0.0.1', '8.8.8.8', 'not-an-ip']) assert.equal(trusted(ip), false, ip);

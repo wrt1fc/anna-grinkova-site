@@ -1,111 +1,75 @@
 // Orders, provider notifications and plan periods. Money is stored in minor units (kopecks, cents) to avoid float rounding;
-// the amount_kop column keeps its name from the rouble-only first version.
+// the amount_kop column keeps its name from the rouble-only first version. The schema is in schema.js.
 import { randomUUID } from 'node:crypto';
 
 export const ORDER_STATUSES = ['pending', 'paid', 'canceled', 'failed', 'refunded'];
 
-export function migrateBilling(db) {
-  const userColumns = new Set(db.prepare('PRAGMA table_info(users)').all().map((row) => row.name));
-  if (!userColumns.has('plan_expires_at')) db.exec('ALTER TABLE users ADD COLUMN plan_expires_at INTEGER');
-  for (const column of ['autorenew_method_id', 'autorenew_provider', 'autorenew_currency']) {
-    if (!userColumns.has(column)) db.exec(`ALTER TABLE users ADD COLUMN ${column} TEXT`);
-  }
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS orders (
-      id TEXT PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-      product_id TEXT NOT NULL, plan TEXT NOT NULL, period_days INTEGER NOT NULL,
-      amount_kop INTEGER NOT NULL CHECK(amount_kop > 0), currency TEXT NOT NULL DEFAULT 'RUB',
-      status TEXT NOT NULL CHECK(status IN (${ORDER_STATUSES.map((s) => `'${s}'`).join(',')})),
-      provider TEXT NOT NULL, provider_payment_id TEXT UNIQUE, auto_renew INTEGER NOT NULL DEFAULT 0,
-      renewal INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, paid_at INTEGER
-    );
-    CREATE INDEX IF NOT EXISTS orders_user ON orders(user_id, created_at);
-    CREATE TABLE IF NOT EXISTS payment_events (
-      provider TEXT NOT NULL, event_key TEXT NOT NULL, received_at INTEGER NOT NULL, PRIMARY KEY(provider, event_key)
-    );
-  `);
-  // Numeric invoice numbers for providers that cannot take a UUID (Robokassa InvId).
-  const orderColumns = new Set(db.prepare('PRAGMA table_info(orders)').all().map((row) => row.name));
-  if (!orderColumns.has('invoice_no')) {
-    db.exec('ALTER TABLE orders ADD COLUMN invoice_no INTEGER');
-    db.exec('UPDATE orders SET invoice_no = rowid');
-  }
-  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS orders_invoice ON orders(invoice_no)');
-}
+const ORDER_COLUMNS = `id, user_id AS "userId", product_id AS "productId", plan, period_days AS "periodDays", amount_kop AS "amountKop",
+  currency, status, provider, provider_payment_id AS "providerPaymentId", invoice_no AS "invoiceNo", auto_renew AS "autoRenew", renewal,
+  created_at AS "createdAt", updated_at AS "updatedAt", paid_at AS "paidAt"`;
 
-const ORDER_COLUMNS = `id, user_id AS userId, product_id AS productId, plan, period_days AS periodDays, amount_kop AS amountKop,
-  currency, status, provider, provider_payment_id AS providerPaymentId, invoice_no AS invoiceNo, auto_renew AS autoRenew, renewal,
-  created_at AS createdAt, updated_at AS updatedAt, paid_at AS paidAt`;
-
-export function createBillingStore(db, { defaultPlan }) {
-  const toOrder = (row) => row && { ...row, autoRenew: row.autoRenew === 1, renewal: row.renewal === 1 };
-
-  function planState(userId, now = Date.now()) {
-    const row = db.prepare('SELECT plan, plan_expires_at AS expiresAt, autorenew_method_id AS method FROM users WHERE id = ?').get(userId);
+export function createBillingStore(q, { defaultPlan }) {
+  async function planState(userId, now = Date.now()) {
+    const row = await q.one('SELECT plan, plan_expires_at AS "expiresAt", autorenew_method_id AS method FROM users WHERE id = $1', [userId]);
     if (!row) return { plan: defaultPlan, expiresAt: null, autoRenew: false };
     // A paid period that has ended falls back to the free plan; an operator grant without an end date stays.
     const expired = row.expiresAt != null && row.expiresAt <= now;
     return { plan: expired ? defaultPlan : row.plan, expiresAt: expired ? null : row.expiresAt, autoRenew: !expired && row.method != null };
   }
-  function setPlanPeriod(userId, plan, expiresAt = null) {
-    db.prepare('UPDATE users SET plan = ?, plan_expires_at = ? WHERE id = ?').run(plan, expiresAt, userId);
+  async function setPlanPeriod(userId, plan, expiresAt = null) {
+    await q.run('UPDATE users SET plan = $1, plan_expires_at = $2 WHERE id = $3', [plan, expiresAt, userId]);
   }
   // A saved method belongs to one provider and one currency; renewals charge the same pair.
-  function setAutoRenewMethod(userId, methodId, provider = null, currency = null) {
-    db.prepare('UPDATE users SET autorenew_method_id = ?, autorenew_provider = ?, autorenew_currency = ? WHERE id = ?')
-      .run(methodId, methodId ? provider : null, methodId ? currency : null, userId);
+  async function setAutoRenewMethod(userId, methodId, provider = null, currency = null) {
+    await q.run('UPDATE users SET autorenew_method_id = $1, autorenew_provider = $2, autorenew_currency = $3 WHERE id = $4',
+      [methodId, methodId ? provider : null, methodId ? currency : null, userId]);
   }
-  function autoRenewMethod(userId) {
-    return db.prepare('SELECT autorenew_method_id AS method FROM users WHERE id = ?').get(userId)?.method ?? null;
+  async function autoRenewMethod(userId) {
+    return (await q.one('SELECT autorenew_method_id AS method FROM users WHERE id = $1', [userId]))?.method ?? null;
   }
-  function dueRenewals(before, now = Date.now()) {
-    return db.prepare(`SELECT id AS userId, plan, plan_expires_at AS expiresAt, autorenew_method_id AS method,
+  async function dueRenewals(before, now = Date.now()) {
+    return q.query(`SELECT id AS "userId", plan, plan_expires_at AS "expiresAt", autorenew_method_id AS method,
       autorenew_provider AS provider, autorenew_currency AS currency FROM users
-      WHERE autorenew_method_id IS NOT NULL AND plan_expires_at IS NOT NULL AND plan_expires_at > ? AND plan_expires_at <= ?`).all(now, before);
+      WHERE autorenew_method_id IS NOT NULL AND plan_expires_at IS NOT NULL AND plan_expires_at > $1 AND plan_expires_at <= $2`, [now, before]);
   }
 
-  function createOrder({ userId, productId, plan, periodDays, amountKop, currency = 'RUB', provider, autoRenew = false, renewal = false }, now = Date.now()) {
+  async function createOrder({ userId, productId, plan, periodDays, amountKop, currency = 'RUB', provider, autoRenew = false, renewal = false }, now = Date.now()) {
     const id = randomUUID();
-    const { lastInsertRowid } = db.prepare(`INSERT INTO orders (id, user_id, product_id, plan, period_days, amount_kop, currency, status, provider,
-      auto_renew, renewal, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)`).run(id, userId, productId, plan,
-      periodDays, amountKop, currency, provider, autoRenew ? 1 : 0, renewal ? 1 : 0, now, now);
-    // Orders are never deleted (ON DELETE RESTRICT), so the rowid is a stable unique invoice number.
-    db.prepare('UPDATE orders SET invoice_no = ? WHERE id = ?').run(Number(lastInsertRowid), id);
+    await q.run(`INSERT INTO orders (id, user_id, product_id, plan, period_days, amount_kop, currency, status, provider,
+      auto_renew, renewal, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8, $9, $10, $11, $12)`,
+    [id, userId, productId, plan, periodDays, amountKop, currency, provider, autoRenew, renewal, now, now]);
     return getOrder(id);
   }
-  function getOrder(id) { return toOrder(db.prepare(`SELECT ${ORDER_COLUMNS} FROM orders WHERE id = ?`).get(id)) ?? null; }
-  function getOrderByProviderId(providerPaymentId) {
-    return toOrder(db.prepare(`SELECT ${ORDER_COLUMNS} FROM orders WHERE provider_payment_id = ?`).get(providerPaymentId)) ?? null;
+  async function getOrder(id) { return q.one(`SELECT ${ORDER_COLUMNS} FROM orders WHERE id = $1`, [id]); }
+  async function getOrderByProviderId(providerPaymentId) {
+    return q.one(`SELECT ${ORDER_COLUMNS} FROM orders WHERE provider_payment_id = $1`, [providerPaymentId]);
   }
-  function listOrders(userId, limit = 20) {
-    return db.prepare(`SELECT ${ORDER_COLUMNS} FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`).all(userId, limit).map(toOrder);
+  async function listOrders(userId, limit = 20) {
+    return q.query(`SELECT ${ORDER_COLUMNS} FROM orders WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2`, [userId, limit]);
   }
-  function setOrderProviderId(id, providerPaymentId, now = Date.now()) {
-    db.prepare('UPDATE orders SET provider_payment_id = ?, updated_at = ? WHERE id = ?').run(providerPaymentId, now, id);
+  async function setOrderProviderId(id, providerPaymentId, now = Date.now()) {
+    await q.run('UPDATE orders SET provider_payment_id = $1, updated_at = $2 WHERE id = $3', [providerPaymentId, now, id]);
   }
   // Moves an order only from the expected status, so a replayed or late notification cannot apply twice.
-  function transitionOrder(id, from, to, now = Date.now()) {
+  async function transitionOrder(id, from, to, now = Date.now()) {
     const paidAt = to === 'paid' ? now : null;
-    return db.prepare(`UPDATE orders SET status = ?, updated_at = ?, paid_at = COALESCE(?, paid_at) WHERE id = ? AND status = ?`)
-      .run(to, now, paidAt, id, from).changes === 1;
+    return (await q.run('UPDATE orders SET status = $1, updated_at = $2, paid_at = COALESCE($3, paid_at) WHERE id = $4 AND status = $5',
+      [to, now, paidAt, id, from])) === 1;
   }
-  function pendingOrders(after, before) {
-    return db.prepare(`SELECT ${ORDER_COLUMNS} FROM orders WHERE status = 'pending' AND provider_payment_id IS NOT NULL
-      AND created_at >= ? AND created_at <= ? ORDER BY created_at LIMIT 500`).all(after, before).map(toOrder);
+  async function pendingOrders(after, before) {
+    return q.query(`SELECT ${ORDER_COLUMNS} FROM orders WHERE status = 'pending' AND provider_payment_id IS NOT NULL
+      AND created_at >= $1 AND created_at <= $2 ORDER BY created_at LIMIT 500`, [after, before]);
   }
-  function hasPaidProduct(userId, productId) {
-    return db.prepare(`SELECT 1 FROM orders WHERE user_id = ? AND product_id = ? AND status IN ('paid','refunded') LIMIT 1`).get(userId, productId) != null;
+  async function hasPaidProduct(userId, productId) {
+    return (await q.one(`SELECT 1 AS found FROM orders WHERE user_id = $1 AND product_id = $2 AND status IN ('paid', 'refunded') LIMIT 1`,
+      [userId, productId])) != null;
   }
   // Returns false when this provider event was already handled.
-  function recordPaymentEvent(provider, eventKey, now = Date.now()) {
-    return db.prepare('INSERT OR IGNORE INTO payment_events (provider, event_key, received_at) VALUES (?, ?, ?)').run(provider, eventKey, now).changes === 1;
-  }
-  function inTransaction(work) {
-    db.exec('BEGIN IMMEDIATE');
-    try { const result = work(); db.exec('COMMIT'); return result; }
-    catch (error) { db.exec('ROLLBACK'); throw error; }
+  async function recordPaymentEvent(provider, eventKey, now = Date.now()) {
+    return (await q.run('INSERT INTO payment_events (provider, event_key, received_at) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+      [provider, eventKey, now])) === 1;
   }
 
   return { planState, setPlanPeriod, setAutoRenewMethod, autoRenewMethod, dueRenewals, createOrder, getOrder, getOrderByProviderId,
-    listOrders, setOrderProviderId, transitionOrder, pendingOrders, hasPaidProduct, recordPaymentEvent, inTransaction };
+    listOrders, setOrderProviderId, transitionOrder, pendingOrders, hasPaidProduct, recordPaymentEvent };
 }

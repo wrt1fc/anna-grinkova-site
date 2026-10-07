@@ -1,15 +1,14 @@
 // Usage: node scripts/stats.js [days=7]
 // Prints daily traffic and chat counters from the site database.
-import { resolve } from 'node:path';
 import { createStore } from '../server/store.js';
 import { moscowDate } from '../server/daily-forecast.js';
 
 const days = Math.max(1, Math.min(365, Number(process.argv[2] ?? 7) || 7));
 const from = moscowDate(new Date(Date.now() - (days - 1) * 86_400_000));
-const store = createStore(resolve(process.env.DATA_PATH || './data/site.sqlite'));
+const store = await createStore(process.env.DATABASE_URL || 'pglite:./data/pglite');
 try {
   const byDay = new Map();
-  for (const { day, metric, value } of store.listMetrics(from)) {
+  for (const { day, metric, value } of await store.listMetrics(from)) {
     if (!byDay.has(day)) byDay.set(day, {});
     byDay.get(day)[metric] = value;
   }
@@ -22,4 +21,4 @@ try {
   }));
   if (rows.length) console.table(rows);
   else console.log(`Нет данных с ${from}`);
-} finally { store.close(); }
+} finally { await store.close(); }

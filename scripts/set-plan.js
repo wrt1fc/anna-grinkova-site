@@ -1,6 +1,5 @@
 // Usage: node scripts/set-plan.js <email> <individual|partner|family>
 // Until payments are connected, plans are assigned by the operator.
-import { resolve } from 'node:path';
 import { createStore } from '../server/store.js';
 import { PLANS, isPlan } from '../server/plans.js';
 
@@ -9,9 +8,9 @@ if (!email || !isPlan(plan)) {
   console.error(`Usage: node scripts/set-plan.js <email> <${Object.keys(PLANS).join('|')}>`);
   process.exit(2);
 }
-const store = createStore(resolve(process.env.DATA_PATH || './data/site.sqlite'));
+const store = await createStore(process.env.DATABASE_URL || 'pglite:./data/pglite');
 try {
-  const userId = store.findUserIdByEmail(email.trim().toLowerCase());
+  const userId = await store.findUserIdByEmail(email.trim().toLowerCase());
   if (!userId) { console.error('Пользователь не найден'); process.exitCode = 1; }
-  else { store.setPlan(userId, plan); console.log(`${email}: тариф ${PLANS[plan].label}`); }
-} finally { store.close(); }
+  else { await store.setPlan(userId, plan); console.log(`${email}: тариф ${PLANS[plan].label}`); }
+} finally { await store.close(); }

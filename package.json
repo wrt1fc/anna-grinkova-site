@@ -10,7 +10,12 @@
     "test": "node --test"
   },
   "dependencies": {
+    "@electric-sql/pglite": "0.5.8",
     "@js-temporal/polyfill": "0.5.1",
-    "astronomy-engine": "2.1.19"
+    "astronomy-engine": "2.1.19",
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite-socket": "0.2.11"
   }
 }

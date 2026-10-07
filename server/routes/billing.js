@@ -73,17 +73,17 @@ export function createBillingRoutes({ store, billing, trustProxy, metrics }) {
       }
     }
     if (path === '/api/billing/subscription' && req.method === 'GET') {
-      const state = store.planState(user.id);
+      const state = await store.planState(user.id);
       return json(res, 200, { plan: { ...publicPlan(state.plan), expiresAt: state.expiresAt, autoRenew: state.autoRenew },
-        orders: store.listOrders(user.id).map(publicOrder) }), true;
+        orders: (await store.listOrders(user.id)).map(publicOrder) }), true;
     }
     if (path === '/api/billing/autorenew' && req.method === 'DELETE') {
-      store.setAutoRenewMethod(user.id, null);
+      await store.setAutoRenewMethod(user.id, null);
       return json(res, 200, { autoRenew: false }), true;
     }
     const match = ORDER_PATH.exec(path);
     if (match && req.method === 'GET') {
-      const order = store.getOrder(match[1]);
+      const order = await store.getOrder(match[1]);
       return (order && order.userId === user.id ? json(res, 200, { order: publicOrder(order) }) : json(res, 404, { error: 'not_found' })), true;
     }
     return false;

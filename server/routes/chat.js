@@ -33,9 +33,9 @@ function invalidChatBody(body) {
 }
 
 // The owner's own chart, or a partner/family profile the plan currently allows.
-function chartFor(store, user, profileId) {
-  if (profileId == null) return { profile: store.getBirthProfile(user.id), subject: null, profileId: null };
-  const profile = profilesWithAccess(store, user.id).find((item) => item.id === profileId);
+async function chartFor(store, user, profileId) {
+  if (profileId == null) return { profile: await store.getBirthProfile(user.id), subject: null, profileId: null };
+  const profile = (await profilesWithAccess(store, user.id)).find((item) => item.id === profileId);
   if (!profile) return { error: [404, { error: 'profile_not_found', message: 'Профиль не найден.' }] };
   if (profile.locked) return { error: [403, { error: 'profile_locked', message: 'Этот профиль недоступен на текущем тарифе.' }] };
   return { profile, subject: { relation: profile.relation, label: profile.label }, profileId: profile.id };
@@ -75,7 +75,7 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
       return json(res, 429, { error: 'chat_rate_limited', message: 'Слишком много сообщений. Попробуйте через минуту.' },
         { 'Retry-After': String(limit.retryAfter) });
     }
-    const chart = chartFor(store, user, body.profileId ?? null);
+    const chart = await chartFor(store, user, body.profileId ?? null);
     if (chart.error) return json(res, ...chart.error);
 
     const releaseGate = chatGate.tryAcquire();
@@ -88,8 +88,13 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
     const release = () => { answering.delete(user.id); releaseGate(); };
     const day = moscowDate();
     const quotaKind = `chat:${user.id}`;
-    const plan = planFor(store.getPlan(user.id));
-    if (!store.consumeDailyQuota(quotaKind, day, plan.dailyChatMessages)) {
+    // A database failure here must still free the slot and the per-user lock, or chat would stay blocked.
+    let plan, allowed;
+    try {
+      plan = planFor(await store.getPlan(user.id));
+      allowed = await store.consumeDailyQuota(quotaKind, day, plan.dailyChatMessages);
+    } catch (error) { release(); throw error; }
+    if (!allowed) {
       release();
       metrics.count('chat_daily_limit');
       return json(res, 429, { error: 'chat_daily_limit', message: `Сообщения на сегодня по тарифу «${plan.label}» закончились. Возвращайтесь завтра.` });
@@ -121,11 +126,14 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
       const safeUpTo = full.length - STREAM_HOLDBACK_CHARS;
       if (send && safeUpTo > sent) { send('delta', { text: full.slice(sent, safeUpTo) }); sent = safeUpTo; }
     };
-    const finish = (answer, filtered, extra = {}) => {
+    const finish = async (answer, filtered, extra = {}) => {
       metrics.count('chat_messages');
       if (filtered) metrics.count('chat_filtered');
       metrics.timing('chat_answer', performance.now() - started);
-      store.appendChatMessages(user.id, chart.profileId, [{ role: 'user', content: message }, { role: 'assistant', content: answer }]);
+      // A failed history write must not take the answer away from the visitor.
+      try {
+        await store.appendChatMessages(user.id, chart.profileId, [{ role: 'user', content: message }, { role: 'assistant', content: answer }]);
+      } catch (error) { console.error('Chat history not saved:', error.message); }
       const payload = { ...extra, answer, filtered, signature: historySigner.sign(answer),
         context: { date: day, scope: context.scope, card: context.card.name, subject: chart.subject } };
       return streaming ? (send('done', payload), res.end()) : json(res, 200, payload);
@@ -136,18 +144,18 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
         length: body.length ?? DEFAULT_ANSWER_LENGTH, materials, signal: abort.signal, onDelta });
       const filtered = unsafeChatAnswer(reply.answer, day);
       if (filtered) console.warn('Chat answer rejected by safety check');
-      return finish(filtered ? SAFE_FALLBACK_ANSWER : reply.answer, filtered, reply);
+      return await finish(filtered ? SAFE_FALLBACK_ANSWER : reply.answer, filtered, reply);
     } catch (error) {
       if (unsafe) {
         console.warn('Chat answer stopped mid-stream by safety check');
-        try { return finish(SAFE_FALLBACK_ANSWER, true); }
+        try { return await finish(SAFE_FALLBACK_ANSWER, true); }
         catch (finishError) {
           console.error('Chat fallback failed:', finishError.message);
           return streaming ? res.end() : json(res, 500, { error: 'internal_error' });
         }
       }
       // No answer was delivered, so the message does not count against the plan.
-      store.refundDailyQuota(quotaKind, day);
+      await store.refundDailyQuota(quotaKind, day);
       if (abort.signal.aborted) return undefined;
       metrics.count('chat_errors');
       console.warn('Local chat failed:', error.message);
@@ -165,17 +173,17 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
     if (!path.startsWith('/api/chat/')) return false;
     if (!user) return json(res, 401, { error: 'login_required' }), true;
     if (path === '/api/chat/history' && req.method === 'GET') {
-      const consent = store.chatConsent(user.id) != null;
-      return json(res, 200, { consent, messages: consent ? store.listChatMessages(user.id) : [] }), true;
+      const consent = await store.chatConsent(user.id) != null;
+      return json(res, 200, { consent, messages: consent ? await store.listChatMessages(user.id) : [] }), true;
     }
     if (path === '/api/chat/history' && req.method === 'DELETE') {
-      store.deleteChatMessages(user.id);
+      await store.deleteChatMessages(user.id);
       return json(res, 200, { ok: true }), true;
     }
     if (path === '/api/chat/consent' && req.method === 'PUT') {
       const body = await readJson(req);
       if (typeof body.consent !== 'boolean') return json(res, 400, { error: 'invalid_consent' }), true;
-      store.setChatConsent(user.id, body.consent);
+      await store.setChatConsent(user.id, body.consent);
       return json(res, 200, { consent: body.consent }), true;
     }
     return false;

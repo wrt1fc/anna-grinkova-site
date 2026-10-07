@@ -14,7 +14,7 @@ const PASSWORD = 'Very-long-password1!';
 const sha = (text) => createHash('sha256').update(text).digest('hex').toUpperCase();
 
 async function fixture(run, providers) {
-  const store = createStore(':memory:');
+  const store = await createStore('pglite:memory');
   const server = createServer({ store, paymentProviders: providers, publicUrl: 'https://anna.example',
     codeSecret: 'test-secret-with-at-least-thirty-two-characters', trafficLimiter: createTrafficLimiter({ perIpLimit: 500, globalLimit: 1000 }) });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -27,12 +27,12 @@ async function fixture(run, providers) {
     try { data = JSON.parse(text); } catch { data = text; }
     return { response, data };
   };
-  store.createUser('abroad@example.com', await hashPassword(PASSWORD), Date.now(), Date.now());
+  await store.createUser('abroad@example.com', await hashPassword(PASSWORD), Date.now(), Date.now());
   const login = await fetch(`${base}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email: 'abroad@example.com', password: PASSWORD }) });
   const cookie = login.headers.get('set-cookie').split(';')[0];
   try { await run({ store, request, cookie }); }
-  finally { await new Promise((resolve) => server.close(resolve)); store.close(); }
+  finally { await new Promise((resolve) => server.close(resolve)); await store.close(); }
 }
 
 test('products list both payment regions with prices in each currency', async () => fixture(async ({ request }) => {
@@ -50,7 +50,7 @@ test('a foreign-card order is priced in its currency, goes to its provider and a
     assert.equal((await request('/api/billing/checkout', { method: 'POST', body: { productId: 'family-30d', region: 'intl', currency: 'RUB' }, cookie })).response.status, 400);
     assert.equal((await request('/api/billing/checkout', { method: 'POST', body: { productId: 'family-30d', region: 'mars' }, cookie })).response.status, 400);
     const { data } = await request('/api/billing/checkout', { method: 'POST', body: { productId: 'family-30d', region: 'intl', currency: 'EUR' }, cookie });
-    const order = store.getOrder(data.orderId);
+    const order = await store.getOrder(data.orderId);
     assert.equal(order.currency, 'EUR');
     assert.equal(order.amountKop, 1500);
     assert.equal(order.provider, 'intltest');
@@ -58,9 +58,9 @@ test('a foreign-card order is priced in its currency, goes to its provider and a
     intl.settle(order.providerPaymentId, { status: 'succeeded', paid: true });
     // The Russian provider's endpoint does not know this payment.
     await request('/api/billing/webhook/test', { method: 'POST', body: { event: 'payment.succeeded', object: { id: order.providerPaymentId } } });
-    assert.equal(store.getOrder(order.id).status, 'pending');
+    assert.equal((await store.getOrder(order.id)).status, 'pending');
     await request('/api/billing/webhook/intltest', { method: 'POST', body: { event: 'payment.succeeded', object: { id: order.providerPaymentId } } });
-    assert.equal(store.getOrder(order.id).status, 'paid');
+    assert.equal((await store.getOrder(order.id)).status, 'paid');
     assert.equal((await request('/api/billing/subscription', { cookie })).data.orders[0].currency, 'EUR');
   }, { ru, intl });
 });
@@ -73,22 +73,22 @@ test('a region without a configured provider says so', async () => fixture(async
 test('renewal charges the same provider and currency as the first payment', async () => {
   const ru = createTestProvider();
   const intl = createTestProvider({ name: 'intltest' });
-  const store = createStore(':memory:');
+  const store = await createStore('pglite:memory');
   let clock = Date.now();
   try {
     const billing = createBilling({ store, providers: { ru, intl }, publicUrl: 'https://anna.example', now: () => clock });
-    const user = store.createUser('renew-abroad@example.com', 'scrypt:x:y');
+    const user = await store.createUser('renew-abroad@example.com', 'scrypt:x:y');
     const { orderId } = await billing.checkout(user, 'individual-30d', { autoRenew: true, region: 'intl', currency: 'USD' });
-    const first = store.getOrder(orderId);
+    const first = await store.getOrder(orderId);
     intl.settle(first.providerPaymentId, { status: 'succeeded', paid: true });
     assert.equal(await billing.handleNotification('payment.succeeded', first.providerPaymentId, 'intltest'), 'paid');
     clock += 29.5 * 86_400_000;
     const [renewal] = await billing.renewDue();
-    const renewed = store.getOrder(renewal.orderId);
+    const renewed = await store.getOrder(renewal.orderId);
     assert.equal(renewed.provider, 'intltest');
     assert.equal(renewed.currency, 'USD');
     assert.equal(renewed.amountKop, 900);
-  } finally { store.close(); }
+  } finally { await store.close(); }
 });
 
 test('Robokassa: signed link, signed callback, OK answer and state re-read', async () => {
@@ -129,14 +129,14 @@ test('Robokassa callback on the webhook route gets the plain OK answer', async (
     async text() { return '<OperationStateResponse><Result><Code>0</Code></Result><State><Code>5</Code></State></OperationStateResponse>'; } }) });
   await fixture(async ({ store, request, cookie }) => {
     const { data } = await request('/api/billing/checkout', { method: 'POST', body: { productId: 'individual-30d', region: 'intl', currency: 'USD' }, cookie });
-    const order = store.getOrder(data.orderId);
+    const order = await store.getOrder(data.orderId);
     const body = new URLSearchParams({ OutSum: '850.00', InvId: String(order.invoiceNo), Shp_order: order.id,
       SignatureValue: sha(`850.00:${order.invoiceNo}:p2:Shp_order=${order.id}`) }).toString();
     const reply = await request('/api/billing/webhook/robokassa', { method: 'POST', raw: body, type: 'application/x-www-form-urlencoded' });
     assert.equal(reply.response.status, 200);
     assert.equal(reply.data, `OK${order.invoiceNo}`);
     // State 5 (created) does not grant access.
-    assert.equal(store.getOrder(order.id).status, 'pending');
+    assert.equal((await store.getOrder(order.id)).status, 'pending');
     const forged = await request('/api/billing/webhook/robokassa', { method: 'POST', raw: body.replace('850.00', '1.00'), type: 'application/x-www-form-urlencoded' });
     assert.equal(forged.response.status, 403);
   }, { ru: createTestProvider(), intl: robokassa });
@@ -163,12 +163,12 @@ test('mail router keeps Russian mailboxes in Russia and falls back for foreign o
 
 test('a provider outage on the first notification does not swallow the retry, and the daily job catches lost ones', async () => {
   const provider = createTestProvider();
-  const store = createStore(':memory:');
+  const store = await createStore('pglite:memory');
   let clock = Date.now();
   try {
     const billing = createBilling({ store, provider, publicUrl: 'https://anna.example', now: () => clock });
-    const user = store.createUser('outage@example.com', 'scrypt:x:y');
-    const first = store.getOrder((await billing.checkout(user, 'individual-30d')).orderId);
+    const user = await store.createUser('outage@example.com', 'scrypt:x:y');
+    const first = await store.getOrder((await billing.checkout(user, 'individual-30d')).orderId);
     provider.settle(first.providerPaymentId, { status: 'succeeded', paid: true });
     const getPayment = provider.getPayment;
     provider.getPayment = async () => { throw new Error('provider timeout'); };
@@ -178,25 +178,44 @@ test('a provider outage on the first notification does not swallow the retry, an
     assert.equal(await billing.handleNotification('payment.succeeded', first.providerPaymentId), 'noop');
 
     // A still-pending answer is not final either; the reconciliation job applies the payment later.
-    const second = store.getOrder((await billing.checkout(user, 'family-30d')).orderId);
+    const second = await store.getOrder((await billing.checkout(user, 'family-30d')).orderId);
     assert.equal(await billing.handleNotification('payment.succeeded', second.providerPaymentId), 'pending');
     provider.settle(second.providerPaymentId, { status: 'succeeded', paid: true });
     assert.deepEqual(await billing.reconcilePending(), []);
     clock += 20 * 60_000;
     assert.deepEqual(await billing.reconcilePending(), [{ orderId: second.id, outcome: 'paid' }]);
-    assert.equal(store.planState(user.id, clock).plan, 'family');
-  } finally { store.close(); }
+    assert.equal((await store.planState(user.id, clock)).plan, 'family');
+  } finally { await store.close(); }
 });
 
 test('a Robokassa state without the signed order id is not trusted', async () => {
   const robokassa = createRobokassa({ merchantLogin: 'anna', password1: 'p1', password2: 'p2', fetchImpl: async () => ({ ok: true,
     async text() { return '<OperationStateResponse><Result><Code>0</Code></Result><State><Code>100</Code></State></OperationStateResponse>'; } }) });
-  const store = createStore(':memory:');
+  const store = await createStore('pglite:memory');
   try {
     const billing = createBilling({ store, providers: { ru: createTestProvider(), intl: robokassa }, publicUrl: 'https://anna.example' });
-    const user = store.createUser('noshp@example.com', 'scrypt:x:y');
-    const order = store.getOrder((await billing.checkout(user, 'individual-30d', { region: 'intl', currency: 'USD' })).orderId);
+    const user = await store.createUser('noshp@example.com', 'scrypt:x:y');
+    const order = await store.getOrder((await billing.checkout(user, 'individual-30d', { region: 'intl', currency: 'USD' })).orderId);
     assert.equal(await billing.handleNotification('payment.succeeded', order.providerPaymentId, 'robokassa'), 'mismatch');
-    assert.equal(store.getOrder(order.id).status, 'pending');
-  } finally { store.close(); }
+    assert.equal((await store.getOrder(order.id)).status, 'pending');
+  } finally { await store.close(); }
+});
+
+test('parallel requests cannot exceed the profile limit or apply one payment twice', async () => {
+  const provider = createTestProvider();
+  const store = await createStore('pglite:memory');
+  try {
+    const user = await store.createUser('race@example.com', 'scrypt:x:y');
+    const person = { relation: 'partner', label: 'Сергей', birthDate: '1990-01-01', birthTime: '10:00', birthPlace: 'Москва' };
+    const created = await Promise.all([1, 2, 3].map(() => store.createChartProfile(user.id, person, 1)));
+    assert.equal(created.filter(Boolean).length, 1);
+
+    const billing = createBilling({ store, provider, publicUrl: 'https://anna.example' });
+    const order = await store.getOrder((await billing.checkout(user, 'individual-30d')).orderId);
+    provider.settle(order.providerPaymentId, { status: 'succeeded', paid: true });
+    const outcomes = await Promise.all([1, 2, 3].map(() => billing.handleNotification('payment.succeeded', order.providerPaymentId)));
+    assert.deepEqual(outcomes.sort(), ['noop', 'noop', 'paid']);
+    const { expiresAt } = await store.planState(user.id);
+    assert.ok(expiresAt - Date.now() < 31 * 86_400_000);
+  } finally { await store.close(); }
 });

@@ -39,11 +39,12 @@ export function createBilling({ store, provider = null, providers = null, public
   }
 
   // Same plan extends the current period; a different plan starts a new period now.
-  function activate(order, savedMethodId) {
-    const state = store.planState(order.userId, now());
+  // Runs inside the order's transaction with the account row locked, so two payments cannot both start from the same period.
+  async function activate(tx, order, savedMethodId) {
+    const state = await tx.planState(order.userId, now());
     const start = state.plan === order.plan && state.expiresAt ? state.expiresAt : now();
-    store.setPlanPeriod(order.userId, order.plan, start + order.periodDays * DAY_MS);
-    if (order.autoRenew && savedMethodId) store.setAutoRenewMethod(order.userId, savedMethodId, order.provider, order.currency);
+    await tx.setPlanPeriod(order.userId, order.plan, start + order.periodDays * DAY_MS);
+    if (order.autoRenew && savedMethodId) await tx.setAutoRenewMethod(order.userId, savedMethodId, order.provider, order.currency);
   }
 
   function pickRegion(regionId, currency) {
@@ -63,30 +64,31 @@ export function createBilling({ store, provider = null, providers = null, public
     const picked = pickRegion(region, currency);
     const amountKop = priceMinor(product, picked.currency);
     if (!amountKop) throw new BillingError(400, 'invalid_currency', 'Для этого тарифа нет цены в выбранной валюте.');
-    if (product.oncePerUser && store.hasPaidProduct(user.id, product.id)) {
+    if (product.oncePerUser && await store.hasPaidProduct(user.id, product.id)) {
       throw new BillingError(409, 'already_used', 'Тест-драйв можно оформить один раз.');
     }
-    const order = store.createOrder({ userId: user.id, productId: product.id, plan: product.plan, periodDays: product.periodDays,
+    const order = await store.createOrder({ userId: user.id, productId: product.id, plan: product.plan, periodDays: product.periodDays,
       amountKop, currency: picked.currency, provider: picked.provider.name, autoRenew: autoRenew && product.autoRenewable }, now());
     try {
       const payment = await picked.provider.createPayment({ order, description: product.label, email: user.email,
         returnUrl: `${publicUrl}/#account?payment=${order.id}`, savePaymentMethod: order.autoRenew });
-      store.setOrderProviderId(order.id, payment.id, now());
+      await store.setOrderProviderId(order.id, payment.id, now());
       return { orderId: order.id, confirmationUrl: payment.confirmationUrl };
     } catch (error) {
-      store.transitionOrder(order.id, 'pending', 'failed', now());
+      await store.transitionOrder(order.id, 'pending', 'failed', now());
       console.error('Payment creation failed:', error.message);
       throw new BillingError(502, 'payment_failed', 'Не удалось создать платёж. Попробуйте позже.');
     }
   }
 
   function refund(order) {
-    return store.inTransaction(() => {
-      if (!store.transitionOrder(order.id, 'paid', 'refunded', now())) return 'noop';
+    return store.inTransaction(async (tx) => {
+      await tx.lockUser(order.userId);
+      if (!(await tx.transitionOrder(order.id, 'paid', 'refunded', now()))) return 'noop';
       // A full refund ends the paid period at once.
-      const state = store.planState(order.userId, now());
-      if (state.plan === order.plan) store.setPlanPeriod(order.userId, order.plan, now());
-      store.setAutoRenewMethod(order.userId, null);
+      const state = await tx.planState(order.userId, now());
+      if (state.plan === order.plan) await tx.setPlanPeriod(order.userId, order.plan, now());
+      await tx.setAutoRenewMethod(order.userId, null);
       return 'refunded';
     });
   }
@@ -98,12 +100,12 @@ export function createBilling({ store, provider = null, providers = null, public
     const source = byName.get(providerName);
     if (!source || !/^(payment|refund)\.[a-z_]+$/.test(event) || typeof paymentId !== 'string' || !paymentId) return 'ignored';
     const outcome = await applyPayment(source, paymentId);
-    if (FINAL_OUTCOMES.has(outcome)) store.recordPaymentEvent(source.name, `${event}:${paymentId}`, now());
+    if (FINAL_OUTCOMES.has(outcome)) await store.recordPaymentEvent(source.name, `${event}:${paymentId}`, now());
     return outcome;
   }
 
   async function applyPayment(source, paymentId) {
-    const order = store.getOrderByProviderId(paymentId);
+    const order = await store.getOrderByProviderId(paymentId);
     if (!order || order.provider !== source.name) return 'unknown_order';
     const payment = await source.getPayment(paymentId);
     if (source.requiresOrderId && payment.orderId == null) return 'mismatch';
@@ -115,15 +117,16 @@ export function createBilling({ store, provider = null, providers = null, public
     }
     if (payment.status === 'succeeded' && payment.paid) {
       if (payment.refunded || payment.refundedKop >= order.amountKop) return refund(order);
-      return store.inTransaction(() => {
-        if (!store.transitionOrder(order.id, 'pending', 'paid', now())) return 'noop';
-        activate(order, payment.savedMethodId);
+      return store.inTransaction(async (tx) => {
+        await tx.lockUser(order.userId);
+        if (!(await tx.transitionOrder(order.id, 'pending', 'paid', now()))) return 'noop';
+        await activate(tx, order, payment.savedMethodId);
         return 'paid';
       });
     }
     if (payment.status === 'canceled') {
-      if (order.renewal) store.setAutoRenewMethod(order.userId, null);
-      return store.transitionOrder(order.id, 'pending', 'canceled', now()) ? 'canceled' : 'noop';
+      if (order.renewal) await store.setAutoRenewMethod(order.userId, null);
+      return (await store.transitionOrder(order.id, 'pending', 'canceled', now())) ? 'canceled' : 'noop';
     }
     return 'pending';
   }
@@ -131,21 +134,21 @@ export function createBilling({ store, provider = null, providers = null, public
   // Charges saved cards for periods ending before `horizon`, through the provider and currency of the first payment.
   async function renewDue(horizon = now() + DAY_MS) {
     const results = [];
-    for (const due of store.dueRenewals(horizon, now())) {
+    for (const due of await store.dueRenewals(horizon, now())) {
       const source = byName.get(due.provider ?? defaultProvider);
       const currency = due.currency ?? 'RUB';
       const product = PRODUCTS.find((item) => item.plan === due.plan && item.autoRenewable);
       const amountKop = product ? priceMinor(product, currency) : null;
-      if (!source || !amountKop) { store.setAutoRenewMethod(due.userId, null); continue; }
-      const order = store.createOrder({ userId: due.userId, productId: product.id, plan: product.plan, periodDays: product.periodDays,
+      if (!source || !amountKop) { await store.setAutoRenewMethod(due.userId, null); continue; }
+      const order = await store.createOrder({ userId: due.userId, productId: product.id, plan: product.plan, periodDays: product.periodDays,
         amountKop, currency, provider: source.name, autoRenew: true, renewal: true }, now());
       try {
-        const payment = await source.createPayment({ order, description: `${product.label} (продление)`, email: store.findUserById(due.userId)?.email,
+        const payment = await source.createPayment({ order, description: `${product.label} (продление)`, email: (await store.findUserById(due.userId))?.email,
           paymentMethodId: due.method });
-        store.setOrderProviderId(order.id, payment.id, now());
+        await store.setOrderProviderId(order.id, payment.id, now());
         results.push({ userId: due.userId, orderId: order.id, status: payment.status });
       } catch (error) {
-        store.transitionOrder(order.id, 'pending', 'failed', now());
+        await store.transitionOrder(order.id, 'pending', 'failed', now());
         results.push({ userId: due.userId, orderId: order.id, status: 'failed', error: error.message });
       }
     }
@@ -155,7 +158,7 @@ export function createBilling({ store, provider = null, providers = null, public
   // Re-reads payments that stayed pending (a lost notification, a provider API outage) and applies their final state.
   async function reconcilePending() {
     const results = [];
-    for (const order of store.pendingOrders(now() - RECONCILE_WINDOW_MS, now() - RECONCILE_AFTER_MS)) {
+    for (const order of await store.pendingOrders(now() - RECONCILE_WINDOW_MS, now() - RECONCILE_AFTER_MS)) {
       const source = byName.get(order.provider);
       if (!source || !order.providerPaymentId) continue;
       try {

@@ -7,7 +7,7 @@ import { createLoginGuard } from '../server/login-guard.js';
 import { SAFE_FALLBACK_ANSWER, createConcurrencyGate } from '../server/chat-safety.js';
 
 async function fixture(run, { mailEnabled = true, mailDailyLimit = 100, trafficLimiter, chatLimiter, chatGate, loginGuard, trustProxy, secureCookies, forecastWriter, chatWriter, sotisVerifier } = {}) {
-  const store = createStore(':memory:');
+  const store = await createStore('pglite:memory');
   const sent = [];
   const mailer = mailEnabled ? { async sendCode(message) { sent.push(message); } } : null;
   const server = createServer({ store, mailer, mailDailyLimit, trafficLimiter, chatLimiter, chatGate, loginGuard, trustProxy, secureCookies, forecastWriter, chatWriter, sotisVerifier,
@@ -23,14 +23,14 @@ async function fixture(run, { mailEnabled = true, mailDailyLimit = 100, trafficL
   }
   request.base = base;
   try { await run({ store, sent, request }); }
-  finally { await new Promise((resolve) => server.close(resolve)); store.close(); }
+  finally { await new Promise((resolve) => server.close(resolve)); await store.close(); }
 }
 
 const signup = { email: 'anna@example.com', password: 'Very-long-password1!', confirmPassword: 'Very-long-password1!' };
 
 async function signIn(store, request, email = 'chat@example.com') {
   const { hashPassword } = await import('../server/auth.js');
-  store.createUser(email, await hashPassword(signup.password), Date.now(), Date.now());
+  await store.createUser(email, await hashPassword(signup.password), Date.now(), Date.now());
   const login = await request('/api/auth/login', 'POST', { email, password: signup.password });
   return login.response.headers.get('set-cookie').split(';')[0];
 }
@@ -96,7 +96,7 @@ test('registration requires matching passwords and an emailed one-time code', as
   assert.equal(sent.length, 0);
   const pending = await request('/api/auth/register', 'POST', signup);
   assert.equal(pending.response.status, 202);
-  assert.equal(store.findUserByEmail(signup.email), null);
+  assert.equal(await store.findUserByEmail(signup.email), null);
   assert.equal((await request('/api/auth/register/verify', 'POST', { challenge: pending.data.challenge, code: '000000' })).response.status, 400);
   const confirmed = await request('/api/auth/register/verify', 'POST', { challenge: pending.data.challenge, code: sent[0].code });
   assert.equal(confirmed.response.status, 201);
@@ -240,7 +240,7 @@ test('local writer refines each selected general card once, including concurrent
 test('registration does not create an unverified account without a mail service', async () => fixture(async ({ store, request }) => {
   const result = await request('/api/auth/register', 'POST', signup);
   assert.equal(result.response.status, 503);
-  assert.equal(store.findUserByEmail(signup.email), null);
+  assert.equal(await store.findUserByEmail(signup.email), null);
 }, { mailEnabled: false }));
 
 test('reset request does not reveal whether an email is registered', async () => fixture(async ({ sent, request }) => {
@@ -255,7 +255,7 @@ test('reset request does not reveal whether an email is registered', async () =>
 }));
 
 test('a previously created account can confirm its email without changing its password', async () => fixture(async ({ store, sent, request }) => {
-  store.createUser('old@example.com', await (await import('../server/auth.js')).hashPassword('old-long-password'));
+  await store.createUser('old@example.com', await (await import('../server/auth.js')).hashPassword('old-long-password'));
   const login = await request('/api/auth/login', 'POST', { email: 'old@example.com', password: 'old-long-password' });
   const cookie = login.response.headers.get('set-cookie').split(';')[0];
   assert.equal(login.data.user.emailVerified, false);
@@ -331,7 +331,7 @@ test('an unparseable Origin is rejected instead of crashing the handler', async 
 
 test('repeated failed logins lock the email even with the right password', async () => fixture(async ({ store, request }) => {
   const { hashPassword } = await import('../server/auth.js');
-  store.createUser(signup.email, await hashPassword(signup.password), Date.now(), Date.now());
+  await store.createUser(signup.email, await hashPassword(signup.password), Date.now(), Date.now());
   for (let i = 0; i < 3; i++) {
     assert.equal((await request('/api/auth/login', 'POST', { email: signup.email, password: 'Wrong-password1!' })).response.status, 401);
   }
@@ -342,7 +342,7 @@ test('repeated failed logins lock the email even with the right password', async
 
 test('a successful login clears earlier failures', async () => fixture(async ({ store, request }) => {
   const { hashPassword } = await import('../server/auth.js');
-  store.createUser(signup.email, await hashPassword(signup.password), Date.now(), Date.now());
+  await store.createUser(signup.email, await hashPassword(signup.password), Date.now(), Date.now());
   await request('/api/auth/login', 'POST', { email: signup.email, password: 'Wrong-password1!' });
   assert.equal((await request('/api/auth/login', 'POST', { email: signup.email, password: signup.password })).response.status, 200);
   await request('/api/auth/login', 'POST', { email: signup.email, password: 'Wrong-password1!' });
@@ -450,4 +450,15 @@ test('chat passes the chosen answer length and rejects unknown ones', async () =
     await request('/api/chat', 'POST', { message: 'Вопрос', length: 'detailed' }, cookie);
     assert.deepEqual(seen, ['medium', 'detailed']);
   }, { chatWriter: { async answer(input) { seen.push(input.length); return { answer: 'Ответ по проверенному контексту.' }; } } });
+});
+
+test('a database failure before the answer frees the chat slot for the next request', async () => {
+  await fixture(async ({ store, request }) => {
+    const cookie = await signIn(store, request, 'dbfail@example.com');
+    const getPlan = store.getPlan;
+    store.getPlan = async () => { throw new Error('connection lost'); };
+    assert.equal((await request('/api/chat', 'POST', { message: 'Что означает карта?' }, cookie)).response.status, 500);
+    store.getPlan = getPlan;
+    assert.equal((await request('/api/chat', 'POST', { message: 'Что означает карта?' }, cookie)).response.status, 200);
+  }, { chatWriter: { async answer() { return { answer: 'Посмотрите на один доступный выбор.' }; } } });
 });

@@ -1,6 +1,5 @@
-import { mkdir } from 'node:fs/promises';
 import { randomBytes } from 'node:crypto';
-import { dirname, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { createServer } from './http.js';
 import { createStore } from './store.js';
 import { createBrevoMailer, createMailRouter, createUnisenderGoMailer } from './mail.js';
@@ -15,11 +14,13 @@ import { createTestProvider } from './billing/test-provider.js';
 import { createRobokassa } from './billing/robokassa.js';
 import { createSotisVerifier } from './sotis.js';
 
-// Newly created SQLite, WAL and directory files must not be readable by other local users on POSIX hosts.
+// Local data files (PGlite for development) must not be readable by other users on POSIX hosts.
 if (process.platform !== 'win32') process.umask(0o077);
-const dataPath = resolve(process.env.DATA_PATH || './data/site.sqlite');
-await mkdir(dirname(dataPath), { recursive: true });
-const store = createStore(dataPath);
+// PostgreSQL in production; a local PGlite folder (the same PostgreSQL in WebAssembly) for development.
+if (process.env.NODE_ENV === 'production' && !/^postgres(ql)?:\/\//.test(process.env.DATABASE_URL ?? '')) {
+  throw new Error('DATABASE_URL=postgres://… is required in production');
+}
+const store = await createStore(process.env.DATABASE_URL || 'pglite:./data/pglite');
 const port = Number(process.env.PORT || 3000);
 const host = process.env.HOST || '127.0.0.1';
 if (process.env.NODE_ENV === 'production' && !process.env.AUTH_CODE_SECRET) throw new Error('AUTH_CODE_SECRET is required in production');
@@ -63,4 +64,4 @@ const server = createServer({ store, mailer, codeSecret, trafficLimiter,
   secureCookies: process.env.NODE_ENV === 'production', trustProxy: process.env.TRUST_PROXY === '1' });
 if (mailer && !Number(process.env.MAIL_DAILY_LIMIT)) console.warn('MAIL_DAILY_LIMIT is 0: registration and password reset emails are disabled.');
 server.listen(port, host, () => console.log(`Anna site: http://${host}:${port}`));
-for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => server.close(() => { store.close(); process.exit(0); }));
+for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => server.close(async () => { await store.close(); process.exit(0); }));
