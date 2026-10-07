@@ -1,0 +1,396 @@
+:root {
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --motion-medium: 280ms;
+  --motion-reveal: 680ms;
+  --ease-out: cubic-bezier(.22, 1, .36, 1);
+  --ease-turn: cubic-bezier(.65, 0, .35, 1);
+}
+
+/* The navigation and portrait now use the full desktop canvas. */
+.site-header {
+  width: 100%;
+  max-width: none;
+  padding-inline: clamp(24px, 3.5vw, 88px);
+}
+
+.hero {
+  width: 100%;
+  max-width: none;
+  min-height: clamp(700px, 50vw, 880px);
+  grid-template-columns: minmax(0, 51%) minmax(0, 49%);
+}
+
+.hero-copy {
+  max-width: 950px;
+  padding-left: clamp(48px, 7.5vw, 190px);
+  padding-right: clamp(28px, 4vw, 90px);
+}
+
+.hero h1 {
+  max-width: 800px;
+  font-size: clamp(56px, 5.1vw, 104px);
+}
+
+.hero-portrait-wrap {
+  min-height: 0;
+  height: 100%;
+}
+
+.hero-portrait {
+  object-position: center 35%;
+}
+
+.forecasts-section.section-wrap {
+  max-width: none;
+  padding-inline: clamp(24px, 4vw, 88px);
+}
+
+/* One deliberate motion moment: a chosen card turns over and reveals its result. */
+.draw-card {
+  width: clamp(154px, 10vw, 206px);
+  height: clamp(252px, 16vw, 328px);
+  perspective: 900px;
+  transition:
+    transform var(--motion-medium) var(--ease-out),
+    opacity var(--motion-medium) var(--ease-out),
+    box-shadow var(--motion-medium) var(--ease-out);
+}
+
+.draw-card-back,
+.draw-card-front {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transition: transform var(--motion-reveal) var(--ease-turn);
+}
+
+.draw-card-back { transform: rotateY(0deg); }
+.draw-card-front { display: flex; transform: rotateY(180deg); }
+.draw-card.is-selected .draw-card-back { display: block; transform: rotateY(-180deg); }
+.draw-card.is-selected .draw-card-front { transform: rotateY(0deg); }
+.draw-card-name { max-width: 100%; font-size: clamp(11px, .9vw, 16px); overflow-wrap: anywhere; }
+
+.draw-card-front::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 45%, rgba(245, 217, 133, .45), transparent 66%);
+  opacity: 0;
+}
+
+.draw-card.is-revealing .draw-card-front::after {
+  animation: card-glint var(--motion-reveal) var(--ease-out) both;
+}
+
+@keyframes card-glint {
+  0%, 35%, 100% { opacity: 0; }
+  66% { opacity: .7; }
+}
+
+#draw-result:not([hidden]) {
+  animation: reading-arrive 400ms 220ms var(--ease-out) both;
+}
+
+@keyframes reading-arrive {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+#route-day:not([hidden]) .daily-visual .mini-card {
+  animation: card-arrive 700ms var(--ease-out) both;
+}
+
+@keyframes card-arrive {
+  from { opacity: 0; transform: translateY(28px) rotate(13deg) scale(.94); }
+  to { opacity: 1; transform: translateY(0) rotate(6deg) scale(1); }
+}
+
+/* A distinct seven-day panel, using the same star chart as the tarot stage. */
+.week-feature {
+  grid-template-columns: minmax(300px, 38%) minmax(0, 1fr) 44px;
+  gap: clamp(28px, 4vw, 84px);
+  min-height: 325px;
+  padding: 0 clamp(28px, 3vw, 64px) 0 0;
+  overflow: hidden;
+  background: #1d130f;
+  border-top: 1px solid rgba(222, 184, 88, .25);
+  transition: background var(--motion-base) var(--ease-out);
+}
+
+.week-feature:hover { background: #291b14; }
+
+.week-feature-art {
+  position: relative;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(6px, 1vw, 16px);
+  isolation: isolate;
+  color: var(--gold-light);
+  background: url('./assets/constellations.webp') center/cover;
+}
+
+.week-feature-art::before {
+  content: "";
+  position: absolute;
+  inset: 16px;
+  border: 1px solid rgba(245, 217, 133, .46);
+  pointer-events: none;
+}
+
+.week-feature-art::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(15, 9, 7, .05), rgba(15, 9, 7, .32));
+}
+
+.week-feature-number {
+  font: 800 clamp(140px, 12vw, 240px)/.9 var(--display);
+  letter-spacing: -.09em;
+  text-shadow: 0 14px 24px rgba(0, 0, 0, .4);
+}
+
+.week-feature-word {
+  align-self: center;
+  margin-top: 70px;
+  font: italic clamp(30px, 3vw, 56px)/1 var(--accent);
+}
+
+.week-feature-rule {
+  position: absolute;
+  bottom: 35px;
+  left: 15%;
+  right: 15%;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 9px;
+}
+
+.week-feature-rule i { height: 2px; background: var(--gold); opacity: .85; }
+
+.week-feature-copy { min-width: 0; padding-block: 40px; }
+.week-feature h3 { font-size: clamp(33px, 3vw, 50px); margin: 12px 0 16px; }
+.week-feature p { max-width: 500px; font-size: clamp(16px, 1.2vw, 19px); line-height: 1.5; }
+.week-feature-cta {
+  display: inline-flex;
+  gap: 14px;
+  margin-top: 26px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--gold);
+  color: var(--gold-light);
+  font-size: 14px;
+  font-weight: 600;
+}
+.week-feature .week-arrow { transition: transform var(--motion-base) var(--ease-out); }
+.week-feature:hover .week-arrow,
+.week-feature:focus-visible .week-arrow { transform: translate(4px, -4px); }
+
+.forecast-hero.section-wrap {
+  max-width: none;
+  padding-inline: clamp(24px, 5vw, 110px);
+}
+
+.forecast-hero-grid {
+  width: 100%;
+  max-width: 1900px;
+  margin-inline: auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, .86fr);
+  gap: clamp(42px, 7vw, 150px);
+}
+
+.forecast-visual {
+  height: clamp(420px, 34vw, 600px);
+}
+
+.daily-visual .mini-card {
+  width: clamp(215px, 17vw, 300px);
+  height: clamp(320px, 25vw, 430px);
+}
+
+.weekly-visual {
+  background: url('./assets/constellations.webp') center/cover;
+}
+
+.weekly-visual::before {
+  background: linear-gradient(135deg, rgba(13, 8, 7, .28), rgba(13, 8, 7, .08));
+}
+
+.week-visual-inner {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--gold-light);
+}
+
+.week-visual-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px, 1vw, 20px);
+  transform: translateY(-10px);
+}
+
+.week-visual-number {
+  font: 800 clamp(185px, 17vw, 310px)/.9 var(--display);
+  letter-spacing: -.09em;
+  text-shadow: 0 15px 30px rgba(0, 0, 0, .42);
+}
+
+.week-visual-word {
+  align-self: flex-end;
+  margin-bottom: 25px;
+  font: italic clamp(36px, 3.5vw, 68px)/1 var(--accent);
+}
+
+.week-visual-days {
+  position: absolute;
+  bottom: clamp(39px, 5vw, 75px);
+  left: 11%;
+  right: 11%;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  color: var(--gold-light);
+  font-size: 12px;
+  letter-spacing: .08em;
+  text-align: center;
+}
+
+.week-visual-days span {
+  border-top: 2px solid var(--gold);
+  padding-top: 9px;
+}
+
+@media (max-width: 1100px) {
+  .site-header { gap: 20px; }
+  .hero-copy { padding-left: clamp(32px, 5vw, 65px); }
+  .hero h1 { font-size: clamp(50px, 5.5vw, 66px); }
+  .forecast-hero-grid { gap: 48px; }
+  .week-feature { grid-template-columns: minmax(260px, 39%) minmax(0, 1fr) 28px; gap: 28px; }
+}
+
+@media (min-width: 761px) and (max-width: 920px) {
+  .site-header { gap: 14px; padding-inline: 22px; }
+  .brand { min-width: 148px; }
+  .desktop-nav { gap: 10px; }
+  .desktop-nav a { font-size: 11px; }
+  .header-entry { padding-inline: 10px; font-size: 11px; }
+  .header-entry span { margin-left: 6px; }
+  .hero { min-height: 640px; }
+  .hero-copy { padding-left: 32px; padding-right: 16px; }
+  .hero h1 { font-size: clamp(47px, 5.6vw, 54px); }
+  .hero-lead { font-size: 16px; }
+  .hero-portrait-wrap { height: 640px; }
+  .daily-draw { grid-template-columns: 54% 46%; }
+  .draw-card { width: 126px; height: 210px; }
+  .daily-draw-copy { padding: 28px; }
+  .week-feature { grid-template-columns: 34% 1fr 24px; gap: 22px; min-height: 260px; }
+  .week-feature-number { font-size: 145px; }
+  .week-feature-word { font-size: 30px; }
+  .week-feature-copy { padding-block: 26px; }
+  .week-feature h3 { font-size: 30px; }
+  .week-feature p { font-size: 15px; }
+}
+
+@media (max-width: 760px) {
+  .site-header { height: 72px; padding-inline: 20px; }
+  .hero { display: flex; min-height: 775px; }
+  .hero-copy { max-width: none; padding: 65px 20px 0; }
+  .hero h1 { font-size: clamp(47px, 11vw, 66px); }
+  .hero-portrait-wrap { height: 385px; min-height: 0; }
+  .hero-portrait { object-position: center 39%; }
+  .forecasts-section.section-wrap { padding-inline: 20px; }
+  .draw-card { width: 112px; height: 184px; }
+  .week-feature {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 0;
+    min-height: 0;
+  }
+  .week-feature-art { width: 100%; min-height: 255px; }
+  .week-feature-number { font-size: 170px; }
+  .week-feature-word { font-size: 38px; }
+  .week-feature-rule { bottom: 25px; }
+  .week-feature-copy { padding: 26px 24px 28px; }
+  .week-feature h3 { font-size: 31px; }
+  .week-feature p { font-size: 15px; }
+  .week-feature-cta { margin-top: 19px; }
+  .week-feature .week-arrow { display: none; }
+  .forecast-hero.section-wrap { padding-inline: 20px; }
+  .forecast-hero-grid { display: block; }
+  .forecast-visual { height: 340px; }
+  .daily-visual .mini-card { width: 172px; height: 258px; }
+  .week-visual-number { font-size: 185px; }
+  .week-visual-word { font-size: 40px; margin-bottom: 15px; }
+  .week-visual-days { bottom: 36px; left: 9%; right: 9%; font-size: 10px; }
+}
+
+@media (max-width: 380px) {
+  .hero { min-height: 750px; }
+  .hero h1 { font-size: 45px; }
+  .week-feature-art { min-height: 225px; }
+  .week-feature-number { font-size: 150px; }
+  .week-feature-word { font-size: 33px; }
+  .week-visual-number { font-size: 155px; }
+  .week-visual-word { font-size: 33px; }
+  .week-visual-days { font-size: 9px; }
+}
+
+@media (min-width: 761px) and (max-width: 980px) {
+  .site-header { height: 80px; }
+  .desktop-nav,
+  .header-entry { display: none; }
+  .mobile-nav {
+    position: fixed;
+    z-index: 30;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    min-height: 72px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    align-items: center;
+    padding: 8px 10px max(8px, env(safe-area-inset-bottom));
+    background: rgba(28, 18, 13, .96);
+    border-top: 1px solid rgba(222, 184, 88, .28);
+  }
+  .mobile-nav a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 4px 0;
+    color: #c5b6a6;
+    font-size: 11px;
+  }
+  .mobile-nav a[aria-current=page] { color: var(--gold-light); }
+  .mobile-nav svg {
+    width: 23px;
+    height: 23px;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .site-footer { padding-bottom: 120px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .draw-card,
+  .draw-card-back,
+  .draw-card-front,
+  .week-feature .week-arrow { transition-duration: 0ms; }
+  .draw-card.is-revealing .draw-card-front::after,
+  #draw-result:not([hidden]),
+  #route-day:not([hidden]) .daily-visual .mini-card { animation: none; }
+}

@@ -27,6 +27,7 @@ const drawStageNote = document.getElementById('draw-stage-note');
 const drawReset = document.getElementById('draw-reset');
 let selectedDraw = null;
 let drawRequest = 0;
+let revealTimer;
 
 function renderDailyForecast(data) {
   const numeral = tarotNumerals[data.tarot.number];
@@ -59,11 +60,13 @@ async function loadDailyForecast() {
 
 function resetDraw(focus = false) {
   drawRequest += 1;
+  clearTimeout(revealTimer);
   selectedDraw = null;
   drawStage.classList.remove('has-selection');
   drawStageNote.textContent = 'Нажмите на карту, чтобы открыть её';
   drawCards.forEach((button) => {
     button.classList.remove('is-selected');
+    button.classList.remove('is-revealing');
     button.setAttribute('aria-pressed', 'false');
   });
   drawResult.hidden = true;
@@ -73,6 +76,7 @@ function resetDraw(focus = false) {
 
 async function selectDailyCard(index) {
   if (!Number.isInteger(index) || index < 0 || index >= drawCards.length) return;
+  if (index === selectedDraw) return;
   const requestId = ++drawRequest;
   drawStageNote.textContent = 'Открываем карту…';
   try {
@@ -80,6 +84,7 @@ async function selectDailyCard(index) {
     if (!response.ok) throw new Error(data.message || 'Не удалось открыть карту.');
     if (requestId !== drawRequest) return;
     selectedDraw = index;
+    clearTimeout(revealTimer);
     const numeral = tarotNumerals[data.tarot.number];
     const button = drawCards[index];
     button.querySelector('.draw-card-roman').textContent = numeral;
@@ -89,8 +94,13 @@ async function selectDailyCard(index) {
     drawCards.forEach((cardButton, buttonIndex) => {
       const selected = buttonIndex === index;
       cardButton.classList.toggle('is-selected', selected);
+      cardButton.classList.remove('is-revealing');
       cardButton.setAttribute('aria-pressed', String(selected));
     });
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      button.classList.add('is-revealing');
+      revealTimer = window.setTimeout(() => button.classList.remove('is-revealing'), 720);
+    }
     drawIntro.hidden = true;
     drawResult.hidden = false;
     document.getElementById('draw-result-number').textContent = `${numeral} · карта дня`;
@@ -305,7 +315,8 @@ function renderAccount(data) {
   if (currentUser && data.birthProfile) {
     const form = document.getElementById('birth-form');
     window.birthControls.setDate(data.birthProfile.birthDate);
-    for (const key of ['birthTime', 'birthPlace']) form.elements[key].value = data.birthProfile[key];
+    window.birthTimeControls.setTime(data.birthProfile.birthTime);
+    form.elements.birthPlace.value = data.birthProfile.birthPlace;
     for (const key of ['birthCityId', 'birthLatitude', 'birthLongitude', 'birthTimeZone']) {
       form.elements[key].value = data.birthProfile[key] ?? '';
     }
@@ -342,6 +353,7 @@ document.getElementById('account-verify-email').addEventListener('click', async 
 document.getElementById('birth-form').addEventListener('submit', async (event) => {
   event.preventDefault();
   if (!window.birthControls.validateDate()) return;
+  if (!window.birthTimeControls.validateTime()) return;
   const form = event.currentTarget;
   const message = document.getElementById('birth-message');
   const button = form.querySelector('button[type="submit"]');
