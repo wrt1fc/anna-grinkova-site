@@ -22,3 +22,14 @@ export function createTrafficLimiter({ perIpLimit = 60, globalLimit = 600, windo
     },
   };
 }
+
+const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
+const IP_PATTERN = /^[0-9a-f.:]{2,45}$/i;
+
+// Behind Nginx every socket comes from loopback; only then is the proxy's X-Real-IP trusted.
+export function clientAddress(req, trustProxy = false) {
+  const socketAddress = req.socket.remoteAddress || 'unknown';
+  if (!trustProxy || !LOOPBACK.has(socketAddress)) return socketAddress;
+  const forwarded = req.headers['x-real-ip'];
+  return typeof forwarded === 'string' && IP_PATTERN.test(forwarded.trim()) ? forwarded.trim() : socketAddress;
+}

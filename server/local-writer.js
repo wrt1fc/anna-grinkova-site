@@ -34,7 +34,8 @@ export function createLocalForecastWriter({ model, fetchImpl = fetch }) {
           system: forecastStyle.systemInstructions.join(' '),
           prompt: JSON.stringify({ theme: forecast.tarot.focus, action: forecast.reading.action }),
         }),
-        signal: AbortSignal.timeout(75_000),
+        // Stays below Nginx proxy_read_timeout (60 s) so a slow model falls back instead of a 504.
+        signal: AbortSignal.timeout(45_000),
       });
       if (!response.ok) throw new Error(`Local model HTTP ${response.status}`);
       const result = await response.json();

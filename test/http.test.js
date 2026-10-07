@@ -3,18 +3,19 @@ import { test } from 'node:test';
 import { createServer } from '../server/http.js';
 import { createStore } from '../server/store.js';
 import { createTrafficLimiter } from '../server/traffic.js';
+import { createLoginGuard } from '../server/login-guard.js';
 
-async function fixture(run, { mailEnabled = true, mailDailyLimit = 100, trafficLimiter, forecastWriter, sotisVerifier } = {}) {
+async function fixture(run, { mailEnabled = true, mailDailyLimit = 100, trafficLimiter, loginGuard, trustProxy, secureCookies, forecastWriter, sotisVerifier } = {}) {
   const store = createStore(':memory:');
   const sent = [];
   const mailer = mailEnabled ? { async sendCode(message) { sent.push(message); } } : null;
-  const server = createServer({ store, mailer, mailDailyLimit, trafficLimiter, forecastWriter, sotisVerifier,
+  const server = createServer({ store, mailer, mailDailyLimit, trafficLimiter, loginGuard, trustProxy, secureCookies, forecastWriter, sotisVerifier,
     codeSecret: 'test-secret-with-at-least-thirty-two-characters' });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
-  async function request(path, method = 'GET', body, cookie) {
+  async function request(path, method = 'GET', body, cookie, headers = {}) {
     const response = await fetch(base + path, {
-      method, headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(cookie ? { Cookie: cookie } : {}) },
+      method, headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(cookie ? { Cookie: cookie } : {}), ...headers },
       body: body ? JSON.stringify(body) : undefined,
     });
     return { response, data: await response.json() };
@@ -181,7 +182,7 @@ test('reset request does not reveal whether an email is registered', async () =>
 }));
 
 test('a previously created account can confirm its email without changing its password', async () => fixture(async ({ store, sent, request }) => {
-  store.createUser('old@example.com', (await import('../server/auth.js')).hashPassword('old-long-password'));
+  store.createUser('old@example.com', await (await import('../server/auth.js')).hashPassword('old-long-password'));
   const login = await request('/api/auth/login', 'POST', { email: 'old@example.com', password: 'old-long-password' });
   const cookie = login.response.headers.get('set-cookie').split(';')[0];
   assert.equal(login.data.user.emailVerified, false);
@@ -206,7 +207,9 @@ test('mail delivery stops at a durable daily quota', async () => fixture(async (
 }, { mailDailyLimit: 1 }));
 
 test('mail delivery is disabled when its explicit daily quota is zero', async () => fixture(async ({ request, sent }) => {
-  assert.equal((await request('/api/auth/register', 'POST', signup)).response.status, 429);
+  const disabled = await request('/api/auth/register', 'POST', signup);
+  assert.equal(disabled.response.status, 503);
+  assert.equal(disabled.data.error, 'mail_unavailable');
   assert.equal(sent.length, 0);
 }, { mailDailyLimit: 0 }));
 
@@ -233,3 +236,50 @@ test('Sotis is contacted once for the daily result and its values are recorded',
     assert.equal(calls, 1);
   }, { sotisVerifier: { async verify(_day, positions) { calls++; return positions; } } });
 });
+
+test('behind a trusted proxy each visitor address gets its own API limit', async () => fixture(async ({ request }) => {
+  const first = { 'X-Real-IP': '203.0.113.1' }, second = { 'X-Real-IP': '203.0.113.2' };
+  assert.equal((await request('/api/health', 'GET', null, null, first)).response.status, 200);
+  assert.equal((await request('/api/health', 'GET', null, null, first)).response.status, 200);
+  assert.equal((await request('/api/health', 'GET', null, null, first)).response.status, 429);
+  assert.equal((await request('/api/health', 'GET', null, null, second)).response.status, 200);
+}, { trustProxy: true, trafficLimiter: createTrafficLimiter({ perIpLimit: 2, globalLimit: 10 }) }));
+
+test('X-Real-IP is ignored unless the proxy is trusted', async () => fixture(async ({ request }) => {
+  assert.equal((await request('/api/health', 'GET', null, null, { 'X-Real-IP': '203.0.113.1' })).response.status, 200);
+  assert.equal((await request('/api/health', 'GET', null, null, { 'X-Real-IP': '203.0.113.2' })).response.status, 429);
+}, { trafficLimiter: createTrafficLimiter({ perIpLimit: 1, globalLimit: 10 }) }));
+
+test('an unparseable Origin is rejected instead of crashing the handler', async () => fixture(async ({ request }) => {
+  const response = await request('/api/auth/logout', 'POST', {}, null, { Origin: 'null' });
+  assert.equal(response.response.status, 403);
+  assert.equal(response.data.error, 'forbidden_origin');
+}));
+
+test('repeated failed logins lock the email even with the right password', async () => fixture(async ({ store, request }) => {
+  const { hashPassword } = await import('../server/auth.js');
+  store.createUser(signup.email, await hashPassword(signup.password), Date.now(), Date.now());
+  for (let i = 0; i < 3; i++) {
+    assert.equal((await request('/api/auth/login', 'POST', { email: signup.email, password: 'Wrong-password1!' })).response.status, 401);
+  }
+  const locked = await request('/api/auth/login', 'POST', { email: signup.email, password: signup.password });
+  assert.equal(locked.response.status, 429);
+  assert.ok(Number(locked.response.headers.get('retry-after')) > 0);
+}, { loginGuard: createLoginGuard({ maxFailures: 3 }) }));
+
+test('a successful login clears earlier failures', async () => fixture(async ({ store, request }) => {
+  const { hashPassword } = await import('../server/auth.js');
+  store.createUser(signup.email, await hashPassword(signup.password), Date.now(), Date.now());
+  await request('/api/auth/login', 'POST', { email: signup.email, password: 'Wrong-password1!' });
+  assert.equal((await request('/api/auth/login', 'POST', { email: signup.email, password: signup.password })).response.status, 200);
+  await request('/api/auth/login', 'POST', { email: signup.email, password: 'Wrong-password1!' });
+  assert.equal((await request('/api/auth/login', 'POST', { email: signup.email, password: signup.password })).response.status, 200);
+}, { loginGuard: createLoginGuard({ maxFailures: 2 }) }));
+
+test('responses forbid framing and restrict page resources', async () => fixture(async ({ request }) => {
+  const { response } = await request('/api/health');
+  assert.match(response.headers.get('content-security-policy'), /frame-ancestors 'none'/);
+  assert.match(response.headers.get('content-security-policy'), /script-src 'self'/);
+  assert.equal(response.headers.get('x-frame-options'), 'DENY');
+  assert.match(response.headers.get('strict-transport-security'), /max-age=\d+/);
+}, { secureCookies: true }));

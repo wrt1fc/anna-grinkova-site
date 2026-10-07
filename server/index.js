@@ -27,6 +27,7 @@ const forecastWriter = process.env.FORECAST_LOCAL_MODEL
 const sotisVerifier = process.env.SOTIS_VERIFY === '0' ? null : createSotisVerifier();
 const server = createServer({ store, mailer, codeSecret, trafficLimiter,
   mailDailyLimit: Number(process.env.MAIL_DAILY_LIMIT ?? 0), forecastWriter, sotisVerifier,
-  secureCookies: process.env.NODE_ENV === 'production' });
+  secureCookies: process.env.NODE_ENV === 'production', trustProxy: process.env.TRUST_PROXY === '1' });
+if (mailer && !Number(process.env.MAIL_DAILY_LIMIT)) console.warn('MAIL_DAILY_LIMIT is 0: registration and password reset emails are disabled.');
 server.listen(port, host, () => console.log(`Anna site: http://${host}:${port}`));
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => server.close(() => { store.close(); process.exit(0); }));

@@ -2,14 +2,20 @@ import { createServer as nodeServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { emailCodeHash, hashPassword, newChallenge, newEmailCode, newSessionToken, normalizeEmail, tokenHash, validPassword, verifyPassword } from './auth.js';
+import { emailCodeHash, hashPassword, newChallenge, newEmailCode, newSessionToken, normalizeEmail, tokenHash, validPassword, verifyLogin } from './auth.js';
 import { forecastForDate, moscowDate } from './daily-forecast.js';
-import { createTrafficLimiter } from './traffic.js';
+import { clientAddress, createTrafficLimiter } from './traffic.js';
+import { createLoginGuard } from './login-guard.js';
 import { getCityById, searchCities } from './cities.js';
 import { birthInstant } from './birth-time.js';
 import { personalForecastForDate } from './personal-forecast.js';
 
 const SESSION_AGE = 30 * 24 * 60 * 60;
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'", "script-src 'self'", "style-src 'self' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com", "img-src 'self' data:", "connect-src 'self'",
+  "form-action 'self'", "base-uri 'self'", "object-src 'none'", "frame-ancestors 'none'",
+].join('; ');
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.webp': 'image/webp' };
 
 function json(res, status, data, headers = {}) {
@@ -35,7 +41,8 @@ function cookieToken(req) {
 }
 
 export function createServer({ store, mailer = null, codeSecret, root = new URL('../prototype/', import.meta.url), secureCookies = false,
-  mailDailyLimit = 0, trafficLimiter = createTrafficLimiter(), forecastWriter = null, sotisVerifier = null }) {
+  mailDailyLimit = 0, trafficLimiter = createTrafficLimiter(), loginGuard = createLoginGuard(), trustProxy = false,
+  forecastWriter = null, sotisVerifier = null }) {
   if (!codeSecret || String(codeSecret).length < 32) throw new Error('AUTH_CODE_SECRET must have at least 32 characters');
   if (!Number.isSafeInteger(mailDailyLimit) || mailDailyLimit < 0) throw new Error('MAIL_DAILY_LIMIT must be a non-negative integer');
   const rootPath = fileURLToPath(root);
@@ -46,7 +53,7 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
   let personalCacheDay = null;
   const personalCache = new Map();
   async function sendCode({ purpose, email, userId = null, passwordHash = null }) {
-    if (!mailer) return { status: 503, data: { error: 'mail_unavailable', message: 'Отправка кодов временно недоступна.' } };
+    if (!mailer || mailDailyLimit === 0) return { status: 503, data: { error: 'mail_unavailable', message: 'Отправка кодов временно недоступна.' } };
     const challenge = newChallenge();
     const code = newEmailCode();
     const challengeHash = tokenHash(challenge);
@@ -74,15 +81,19 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
   return nodeServer(async (req, res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Content-Security-Policy', CONTENT_SECURITY_POLICY);
+    res.setHeader('X-Frame-Options', 'DENY');
+    if (secureCookies) res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     try {
       const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
       const path = url.pathname;
       if (path.startsWith('/api/')) {
-        const traffic = trafficLimiter.check(req.socket.remoteAddress || 'unknown');
+        const traffic = trafficLimiter.check(clientAddress(req, trustProxy));
         if (!traffic.allowed) return json(res, 429, { error: 'rate_limited', message: 'Слишком много запросов. Попробуйте позже.' }, { 'Retry-After': String(traffic.retryAfter) });
         if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) && req.headers.origin) {
-          const origin = new URL(req.headers.origin);
-          if (origin.host !== req.headers.host) return json(res, 403, { error: 'forbidden_origin' });
+          let originHost = null;
+          try { originHost = new URL(req.headers.origin).host; } catch {}
+          if (!originHost || originHost !== req.headers.host) return json(res, 403, { error: 'forbidden_origin' });
         }
         if (path === '/api/health' && req.method === 'GET') {
           const healthy = store.health();
@@ -158,7 +169,7 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
           const email = normalizeEmail(body.email);
           if (!email || !validPassword(body.password) || body.password !== body.confirmPassword) return json(res, 400, { error: 'invalid_credentials', message: 'Проверьте email и совпадение паролей. Пароль: от 8 символов, с заглавной буквой, цифрой и спецсимволом.' });
           if (store.findUserByEmail(email)) return json(res, 409, { error: 'email_exists', message: 'Этот email уже зарегистрирован.' });
-          const sent = await sendCode({ purpose: 'registration', email, passwordHash: hashPassword(body.password) });
+          const sent = await sendCode({ purpose: 'registration', email, passwordHash: await hashPassword(body.password) });
           return json(res, sent.status, sent.data);
         }
         if (path === '/api/auth/register/verify' && req.method === 'POST') {
@@ -171,8 +182,15 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
         }
         if (path === '/api/auth/login' && req.method === 'POST') {
           const body = await readJson(req);
-          const found = store.findUserByEmail(normalizeEmail(body.email) || '');
-          if (!found || !verifyPassword(body.password, found.password_hash)) return json(res, 401, { error: 'invalid_credentials', message: 'Неверный email или пароль.' });
+          const email = normalizeEmail(body.email) || '';
+          const guard = loginGuard.check(email);
+          if (!guard.allowed) return json(res, 429, { error: 'too_many_attempts', message: 'Слишком много неудачных попыток входа. Попробуйте позже или восстановите пароль.' }, { 'Retry-After': String(guard.retryAfter) });
+          const found = store.findUserByEmail(email);
+          if (!(await verifyLogin(body.password, found?.password_hash))) {
+            loginGuard.fail(email);
+            return json(res, 401, { error: 'invalid_credentials', message: 'Неверный email или пароль.' });
+          }
+          loginGuard.succeed(email);
           const session = sessionFor(res, found);
           return json(res, 200, { user: session.user }, { 'Set-Cookie': session.cookie });
         }
@@ -202,7 +220,7 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
             || !validPassword(body.password) || body.password !== body.confirmPassword) {
             return json(res, 400, { error: 'invalid_request', message: 'Проверьте код и совпадение новых паролей. Пароль: от 8 символов, с заглавной буквой, цифрой и спецсимволом.' });
           }
-          const changed = store.consumeChallenge(tokenHash(body.challenge), emailCodeHash(codeSecret, body.challenge, body.code), 'reset', Date.now(), hashPassword(body.password));
+          const changed = store.consumeChallenge(tokenHash(body.challenge), emailCodeHash(codeSecret, body.challenge, body.code), 'reset', Date.now(), await hashPassword(body.password));
           if (!changed) return json(res, 400, { error: 'invalid_code', message: 'Код неверный или срок его действия истёк.' });
           return json(res, 200, { ok: true, message: 'Пароль изменён. Войдите с новым паролем.' }, { 'Set-Cookie': sessionCookie('', 0) });
         }

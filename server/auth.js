@@ -1,4 +1,8 @@
-import { createHash, createHmac, randomBytes, randomInt, scryptSync, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, randomBytes, randomInt, scrypt, timingSafeEqual } from 'node:crypto';
+import { promisify } from 'node:util';
+
+// Async scrypt runs on the libuv thread pool, so hashing never blocks other requests.
+const scryptAsync = promisify(scrypt);
 
 export function normalizeEmail(value) {
   if (typeof value !== 'string') return null;
@@ -15,13 +19,13 @@ export function validPassword(value) {
     && /[^\p{L}\p{N}\s]/u.test(value);
 }
 
-export function hashPassword(password) {
+export async function hashPassword(password) {
   const salt = randomBytes(16);
-  const hash = scryptSync(password, salt, 64);
+  const hash = await scryptAsync(password, salt, 64);
   return `scrypt:${salt.toString('hex')}:${hash.toString('hex')}`;
 }
 
-export function verifyPassword(password, stored) {
+export async function verifyPassword(password, stored) {
   if (typeof password !== 'string' || typeof stored !== 'string') return false;
   const parts = stored.split(':');
   if (parts.length !== 3 || parts[0] !== 'scrypt') return false;
@@ -29,8 +33,15 @@ export function verifyPassword(password, stored) {
     const salt = Buffer.from(parts[1], 'hex');
     const expected = Buffer.from(parts[2], 'hex');
     if (salt.length !== 16 || expected.length !== 64) return false;
-    return timingSafeEqual(scryptSync(password, salt, expected.length), expected);
+    return timingSafeEqual(await scryptAsync(password, salt, expected.length), expected);
   } catch { return false; }
+}
+
+// Checked when an email has no account, so a failed login takes as long either way.
+const dummyPasswordHash = `scrypt:${randomBytes(16).toString('hex')}:${randomBytes(64).toString('hex')}`;
+export async function verifyLogin(password, stored) {
+  const matches = await verifyPassword(typeof password === 'string' ? password : '', stored ?? dummyPasswordHash);
+  return matches && typeof stored === 'string';
 }
 
 export function newSessionToken() { return randomBytes(32).toString('base64url'); }
