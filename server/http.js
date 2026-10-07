@@ -114,10 +114,6 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
                   forecast = { ...forecast, astronomy: { ...forecast.astronomy, sotis: { status: 'unavailable' } } };
                 }
               }
-              if (forecastWriter) {
-                try { return await forecastWriter.refine(forecast); }
-                catch (error) { console.warn('Local forecast writer failed:', error.message); }
-              }
               return forecast;
             })();
             dailyCache = { date: day, promise };
@@ -125,10 +121,18 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
           const common = await dailyCache.promise;
           if (dailyDrawCacheDay !== day) { dailyDrawCache.clear(); dailyDrawCacheDay = day; }
           if (!dailyDrawCache.has(draw)) {
-            const selected = draw === 0 ? common : forecastForDate(day, draw);
-            dailyDrawCache.set(draw, { ...selected, astronomy: { ...selected.astronomy, sotis: common.astronomy.sotis } });
+            const promise = (async () => {
+              const selected = draw === 0 ? common : forecastForDate(day, draw);
+              const forecast = { ...selected, astronomy: { ...selected.astronomy, sotis: common.astronomy.sotis } };
+              if (forecastWriter) {
+                try { return await forecastWriter.refine(forecast); }
+                catch (error) { console.warn('Local forecast writer failed:', error.message); }
+              }
+              return forecast;
+            })();
+            dailyDrawCache.set(draw, promise);
           }
-          const general = dailyDrawCache.get(draw);
+          const general = await dailyDrawCache.get(draw);
           const dailyToken = cookieToken(req);
           const dailyUser = dailyToken ? store.userForSession(tokenHash(dailyToken)) : null;
           const profile = dailyUser ? store.getBirthProfile(dailyUser.id) : null;

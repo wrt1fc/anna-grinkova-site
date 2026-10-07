@@ -142,6 +142,26 @@ test('five-card draw returns the chosen card consistently to guest and account',
   assert.equal((await request('/api/forecast/day?draw=2', 'GET', null, cookie)).data.tarot.number, personal[2].tarot.number);
 }));
 
+test('local writer refines each selected general card once, including concurrent requests', async () => {
+  const calls = [];
+  await fixture(async ({ request }) => {
+    const [first, concurrent] = await Promise.all([
+      request('/api/forecast/day?draw=2'), request('/api/forecast/day?draw=2'),
+    ]);
+    assert.equal(first.response.status, 200);
+    assert.deepEqual(first.data, concurrent.data);
+    assert.equal(first.data.tarot.position, 2);
+    assert.equal(first.data.generation.kind, 'local-llm');
+    assert.deepEqual(calls, [2]);
+    const defaultDraw = await request('/api/forecast/day?draw=0');
+    assert.equal(defaultDraw.data.generation.kind, 'local-llm');
+    assert.deepEqual(calls, [2, 0]);
+  }, { forecastWriter: { async refine(forecast) {
+    calls.push(forecast.tarot.position);
+    return { ...forecast, generation: { kind: 'local-llm', model: 'test-model' } };
+  } } });
+});
+
 test('registration does not create an unverified account without a mail service', async () => fixture(async ({ store, request }) => {
   const result = await request('/api/auth/register', 'POST', signup);
   assert.equal(result.response.status, 503);
