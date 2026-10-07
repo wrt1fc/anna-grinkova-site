@@ -127,11 +127,11 @@ function showRoute() {
     if (navPage === page || (hash === 'about' && navPage === 'about')) element.setAttribute('aria-current', 'page');
     else element.removeAttribute('aria-current');
   }
-  document.title = { home: 'Анна Гринькова — пространство прогнозов', day: 'Карта дня — Анна Гринькова', week: 'Прогноз на неделю — Анна Гринькова', chat: 'Чат с Анной — ИИ-помощник', account: 'Личный кабинет — Анна Гринькова' }[page];
+  document.title = { home: 'Анна Гринькова — пространство прогнозов', day: 'Карта дня — Анна Гринькова', week: 'Прогноз на неделю — Анна Гринькова', chat: 'Помощник Анны — ИИ-чат', account: 'Личный кабинет — Анна Гринькова' }[page];
   window.scrollTo({ top: 0, behavior: 'auto' });
   if (hash === 'about') requestAnimationFrame(() => document.getElementById('about').scrollIntoView({ behavior: 'smooth' }));
   if (page === 'day') loadDailyForecast();
-  if (page === 'account') refreshAccount();
+  if (page === 'account' || page === 'chat') refreshAccount();
 }
 
 const modes = {
@@ -306,6 +306,9 @@ function renderAccount(data) {
     document.dispatchEvent(new Event('anna-account-changed'));
   }
   currentUser = data?.user || null;
+  // chat.js may load after this runs, so the state is also kept on <body> for it to read on start.
+  document.body.dataset.signedIn = String(!!currentUser);
+  document.dispatchEvent(new CustomEvent('anna-account-state', { detail: { signedIn: !!currentUser } }));
   document.getElementById('account-heading').textContent = currentUser ? 'Вы в кабинете' : 'Войдите в кабинет';
   document.getElementById('account-email').textContent = currentUser ? currentUser.email : 'Создайте аккаунт, чтобы подготовить профиль для персонального прогноза.';
   document.getElementById('account-login').hidden = !!currentUser;

@@ -10,6 +10,16 @@ let chatHistory = [];
 let chatAbort = null;
 let chatRequest = 0;
 let chatSlowTimer;
+let chatSignedIn = false;
+const chatLocked = document.getElementById('chat-locked');
+const chatPrompts = document.querySelectorAll('[data-chat-prompt]');
+
+function setChatAccess(signedIn) {
+  chatSignedIn = signedIn;
+  chatLocked.hidden = signedIn;
+  chatForm.hidden = !signedIn;
+  for (const button of chatPrompts) button.disabled = !signedIn;
+}
 
 function scrollChatToEnd() { chatTranscript.scrollTop = chatTranscript.scrollHeight; }
 function chatIcon(name) {
@@ -94,7 +104,7 @@ function thinkingMessage() {
 function updateChatSend() { chatSend.disabled = !!chatAbort || !chatInput.value.trim(); }
 
 async function sendChat(message, existingUserMessage = false) {
-  if (chatAbort) return;
+  if (chatAbort || !chatSignedIn) return;
   const text = message.trim();
   if (!text || text.length > 600) return;
   const request = ++chatRequest;
@@ -118,6 +128,7 @@ async function sendChat(message, existingUserMessage = false) {
       signal: controller.signal,
     });
     const data = await response.json();
+    if (response.status === 401) setChatAccess(false);
     if (!response.ok) throw new Error(data.message || 'Ответ сейчас недоступен.');
     const remaining = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 1100 - (performance.now() - started);
     if (remaining > 0) await new Promise((resolve) => window.setTimeout(resolve, remaining));
@@ -125,7 +136,7 @@ async function sendChat(message, existingUserMessage = false) {
     if (controller.signal.aborted) throw new DOMException('Ответ остановлен', 'AbortError');
     thinking.remove();
     chatMessage('assistant', data.answer, data.context);
-    chatHistory.push({ role: 'user', content: text }, { role: 'assistant', content: data.answer });
+    chatHistory.push({ role: 'user', content: text }, { role: 'assistant', content: data.answer, signature: data.signature });
     chatHistory = chatHistory.slice(-6);
     chatStatus.textContent = '';
   } catch (error) {
@@ -178,7 +189,9 @@ function clearChat(focus = true) {
 }
 chatClear.addEventListener('click', () => clearChat());
 document.addEventListener('anna-account-changed', () => clearChat(false));
-for (const button of document.querySelectorAll('[data-chat-prompt]')) {
+document.addEventListener('anna-account-state', (event) => setChatAccess(event.detail.signedIn));
+setChatAccess(document.body.dataset.signedIn === 'true');
+for (const button of chatPrompts) {
   button.addEventListener('click', () => sendChat(button.dataset.chatPrompt));
 }
 updateChatSend();

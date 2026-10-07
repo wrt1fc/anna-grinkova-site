@@ -26,7 +26,7 @@ export function chatForecastContext(forecast) {
 export function createLocalChat({ model, fetchImpl = fetch }) {
   if (typeof model !== 'string' || !/^[\w./:-]{2,80}$/.test(model)) throw new Error('Invalid local model name');
   return {
-    async answer({ message, history, forecast }) {
+    async answer({ message, history, forecast, signal }) {
       const response = await fetchImpl(ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -39,7 +39,8 @@ export function createLocalChat({ model, fetchImpl = fetch }) {
           system: chatContext.systemInstructions.join(' '),
           prompt: JSON.stringify({ facts: chatContext.facts, forecast, history, question: message }),
         }),
-        signal: AbortSignal.timeout(45_000),
+        // Also stops generation when the visitor presses Stop or leaves the page.
+        signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(45_000)]) : AbortSignal.timeout(45_000),
       });
       if (!response.ok) throw new Error(`Local chat HTTP ${response.status}`);
       const result = await response.json();

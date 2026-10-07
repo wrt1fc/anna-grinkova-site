@@ -78,8 +78,13 @@
 @keyframes chat-pulse { 50% { opacity: .25; transform: translateY(-3px); } }
 .chat-error { color: #efc5a1; }
 .chat-composer { padding: 0 clamp(20px, 3vw, 43px) 18px; background: #1b120e; border-top: 1px solid rgba(222, 184, 88, .18); }
+.chat-locked { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; padding: 18px 0 4px; }
+.chat-locked[hidden] { display: none; }
+.chat-locked p { max-width: 420px; margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+[data-chat-prompt]:disabled { opacity: .5; cursor: not-allowed; }
 .chat-status { min-height: 18px; margin: 7px 0 5px; color: var(--gold-light); font-size: 12px; }
 #chat-form { display: flex; align-items: end; gap: 9px; padding: 7px; border: 1px solid #856135; border-radius: 6px; background: #120c09; }
+#chat-form[hidden] { display: none; }
 #chat-form:focus-within { border-color: var(--gold-light); }
 #chat-input { flex: 1; min-width: 0; max-height: 150px; resize: vertical; padding: 9px 10px; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; font-size: 16px; line-height: 1.5; }
 #chat-input::placeholder { color: #9d8b7b; }

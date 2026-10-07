@@ -10,6 +10,7 @@ import { getCityById, searchCities } from './cities.js';
 import { birthInstant } from './birth-time.js';
 import { personalForecastForDate } from './personal-forecast.js';
 import { chatForecastContext } from './local-chat.js';
+import { SAFE_FALLBACK_ANSWER, createConcurrencyGate, createHistorySigner, unsafeChatAnswer } from './chat-safety.js';
 
 const SESSION_AGE = 30 * 24 * 60 * 60;
 const CONTENT_SECURITY_POLICY = [
@@ -43,10 +44,12 @@ function cookieToken(req) {
 
 export function createServer({ store, mailer = null, codeSecret, root = new URL('../prototype/', import.meta.url), secureCookies = false,
   mailDailyLimit = 0, trafficLimiter = createTrafficLimiter(), chatLimiter = createTrafficLimiter({ perIpLimit: 6, globalLimit: 30 }),
-  loginGuard = createLoginGuard(), trustProxy = false, forecastWriter = null, chatWriter = null, sotisVerifier = null }) {
+  chatGate = createConcurrencyGate(2), loginGuard = createLoginGuard(), trustProxy = false, forecastWriter = null, chatWriter = null,
+  sotisVerifier = null }) {
   if (!codeSecret || String(codeSecret).length < 32) throw new Error('AUTH_CODE_SECRET must have at least 32 characters');
   if (!Number.isSafeInteger(mailDailyLimit) || mailDailyLimit < 0) throw new Error('MAIL_DAILY_LIMIT must be a non-negative integer');
   const rootPath = fileURLToPath(root);
+  const historySigner = createHistorySigner(codeSecret);
   const sessionCookie = (value, maxAge) => `anna_session=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secureCookies ? '; Secure' : ''}`;
   let dailyCache = null;
   let dailyDrawCacheDay = null;
@@ -105,7 +108,10 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
         }
         if (path === '/api/chat' && req.method === 'POST') {
           if (!chatWriter) return json(res, 503, { error: 'chat_unavailable', message: 'Чат пока недоступен. Попробуйте позже.' });
-          const limit = chatLimiter.check(clientAddress(req, trustProxy));
+          const chatToken = cookieToken(req);
+          const user = chatToken ? store.userForSession(tokenHash(chatToken)) : null;
+          if (!user) return json(res, 401, { error: 'login_required', message: 'Чат доступен после входа в личный кабинет.' });
+          const limit = chatLimiter.check(`user:${user.id}`);
           if (!limit.allowed) return json(res, 429, { error: 'chat_rate_limited',
             message: 'Слишком много сообщений. Попробуйте через минуту.' }, { 'Retry-After': String(limit.retryAfter) });
           const body = await readJson(req);
@@ -113,25 +119,38 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
           const history = body.history ?? [];
           if (!message || message.length > 600 || !Array.isArray(history) || history.length > 6 ||
             history.some((item) => !item || !['user', 'assistant'].includes(item.role) ||
-              typeof item.content !== 'string' || !item.content.trim() || item.content.length > 1200) ||
+              typeof item.content !== 'string' || !item.content.trim() || item.content.length > 1200 ||
+              (item.signature !== undefined && typeof item.signature !== 'string')) ||
             !Number.isInteger(body.draw ?? 0) || (body.draw ?? 0) < 0 || (body.draw ?? 0) > 4) {
             return json(res, 400, { error: 'invalid_chat_message', message: 'Проверьте текст сообщения.' });
           }
           const day = moscowDate();
           const draw = body.draw ?? 0;
-          const token = cookieToken(req);
-          const user = token ? store.userForSession(tokenHash(token)) : null;
-          const profile = user ? store.getBirthProfile(user.id) : null;
+          const profile = store.getBirthProfile(user.id);
           const general = forecastForDate(day, draw);
           const forecast = profile?.birthUtc
             ? personalForecastForDate(day, profile, user.id, general, draw) : general;
           const context = chatForecastContext(forecast);
+          const release = chatGate.tryAcquire();
+          if (!release) return json(res, 503, { error: 'chat_busy',
+            message: 'Помощник сейчас отвечает другим посетителям. Попробуйте через минуту.' }, { 'Retry-After': '20' });
+          const abort = new AbortController();
+          const onClose = () => { if (!res.writableEnded) abort.abort(); };
+          res.on('close', onClose);
           try {
-            const reply = await chatWriter.answer({ message, history, forecast: context });
-            return json(res, 200, { ...reply, context: { date: day, scope: context.scope, card: context.card.name } });
+            const reply = await chatWriter.answer({ message, history: historySigner.trusted(history), forecast: context, signal: abort.signal });
+            const filtered = unsafeChatAnswer(reply.answer, day);
+            if (filtered) console.warn('Chat answer rejected by safety check');
+            const answer = filtered ? SAFE_FALLBACK_ANSWER : reply.answer;
+            return json(res, 200, { ...reply, answer, filtered, signature: historySigner.sign(answer),
+              context: { date: day, scope: context.scope, card: context.card.name } });
           } catch (error) {
+            if (abort.signal.aborted) return;
             console.warn('Local chat failed:', error.message);
             return json(res, 503, { error: 'chat_unavailable', message: 'Сейчас не удалось получить ответ. Попробуйте ещё раз.' });
+          } finally {
+            res.off('close', onClose);
+            release();
           }
         }
         if (path === '/api/forecast/day' && req.method === 'GET') {

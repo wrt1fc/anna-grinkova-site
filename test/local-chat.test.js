@@ -32,3 +32,16 @@ test('chat rejects incomplete and empty model answers', async () => {
     await assert.rejects(chat.answer({ message: 'Тест', history: [], forecast }));
   }
 });
+
+test('chat passes the visitor abort signal to the model request', async () => {
+  let signal;
+  const chat = createLocalChat({ model: 'qwen3.5:4b', fetchImpl: async (url, options) => {
+    signal = options.signal;
+    return { ok: true, async json() { return { response: JSON.stringify({ answer: 'Карта поднимает тему выбора и паузы.' }), done_reason: 'stop' }; } };
+  } });
+  const controller = new AbortController();
+  await chat.answer({ message: 'Тест', history: [], forecast: chatForecastContext(forecastForDate('2026-10-07')), signal: controller.signal });
+  assert.equal(signal.aborted, false);
+  controller.abort();
+  assert.equal(signal.aborted, true);
+});

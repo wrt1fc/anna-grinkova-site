@@ -7,6 +7,7 @@ import { createUnisenderGoMailer } from './mail.js';
 import { createTrafficLimiter } from './traffic.js';
 import { createLocalForecastWriter } from './local-writer.js';
 import { createLocalChat } from './local-chat.js';
+import { createConcurrencyGate } from './chat-safety.js';
 import { createSotisVerifier } from './sotis.js';
 
 // Newly created SQLite, WAL and directory files must not be readable by other local users on POSIX hosts.
@@ -30,6 +31,7 @@ const chatWriter = chatModel ? createLocalChat({ model: chatModel }) : null;
 const sotisVerifier = process.env.SOTIS_VERIFY === '0' ? null : createSotisVerifier();
 const server = createServer({ store, mailer, codeSecret, trafficLimiter,
   mailDailyLimit: Number(process.env.MAIL_DAILY_LIMIT ?? 0), forecastWriter, chatWriter, sotisVerifier,
+  chatGate: createConcurrencyGate(Number(process.env.CHAT_MAX_CONCURRENT ?? 2)),
   secureCookies: process.env.NODE_ENV === 'production', trustProxy: process.env.TRUST_PROXY === '1' });
 if (mailer && !Number(process.env.MAIL_DAILY_LIMIT)) console.warn('MAIL_DAILY_LIMIT is 0: registration and password reset emails are disabled.');
 server.listen(port, host, () => console.log(`Anna site: http://${host}:${port}`));
