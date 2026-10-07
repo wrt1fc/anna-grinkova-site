@@ -1,48 +1,864 @@
 {
-  "version": "2026-10-07-v1",
-  "method": "Частотность оценена по совокупности открытых источников (форумы, блоги астрологов, подборки раскладов таро, библиотека вопросов myselena.ru) без доступа к Яндекс Вордстату. Перед запуском рекламы и SEO проверить в Вордстате.",
-  "tiers": { "frequent": "частый", "medium": "среднечастотный" },
-  "coverage": { "draft": "есть черновики в трёх длинах (cards.jsonl)", "anna": "нужен материал Анны: её позиции по теме нет в эфире" },
+  "version": "2026-10-07-v2",
+  "method": "Вопросы — то, что спрашивает аудитория по всем темам (открытые источники: форумы, блоги астрологов, подборки раскладов, библиотека вопросов myselena.ru), без доступа к Яндекс Вордстату; частотность проверить там. Из речи Анны берётся только манера ответа.",
+  "tiers": {
+    "frequent": "частый",
+    "medium": "среднечастотный"
+  },
+  "coverage": {
+    "draft": "черновики в трёх длинах, Анна одобряет или правит",
+    "voice": "Анна отвечает голосом сама; эталон для проверки (split: eval), черновиков нет"
+  },
   "questions": [
-    { "q": "Вернётся ли ко мне бывший?", "topic": "Бывший", "tier": "frequent", "coverage": "draft", "cards": "freq01-ex-return" },
-    { "q": "Думает ли он обо мне?", "topic": "Бывший", "tier": "frequent", "coverage": "draft", "cards": "freq02-ex-thinks" },
-    { "q": "Есть ли будущее у наших отношений?", "topic": "Отношения", "tier": "frequent", "coverage": "draft", "cards": "freq03-future" },
-    { "q": "Подходим ли мы друг другу по гороскопу?", "topic": "Совместимость", "tier": "frequent", "coverage": "draft", "cards": "freq04-compatibility" },
-    { "q": "Когда я встречу свою любовь?", "topic": "Знакомство", "tier": "frequent", "coverage": "draft", "cards": "freq05-when-love" },
-    { "q": "Любит ли он меня на самом деле?", "topic": "Отношения", "tier": "frequent", "coverage": "draft", "cards": "freq06-does-he-love" },
-    { "q": "Как понять, изменяет ли мне партнёр?", "topic": "Доверие", "tier": "frequent", "coverage": "draft", "cards": "freq07-cheating" },
-    { "q": "Когда я выйду замуж?", "topic": "Брак", "tier": "frequent", "coverage": "draft", "cards": "rec36-assistant-boundary" },
-    { "q": "Почему я притягиваю один и тот же тип партнёров?", "topic": "Сценарии", "tier": "frequent", "coverage": "draft", "cards": "rec27-repeat-pattern" },
-    { "q": "Стоит ли мне разводиться?", "topic": "Брак", "tier": "frequent", "coverage": "draft", "cards": "rec15-leave-for-better" },
-    { "q": "Почему мы с партнёром часто ссоримся?", "topic": "Конфликты", "tier": "frequent", "coverage": "draft", "cards": "rec11-conflict-normal" },
-    { "q": "Что означает моя карта дня?", "topic": "Карта дня", "tier": "frequent", "coverage": "draft", "cards": "расчёт дня" },
-    { "q": "Что значит Луна в моём знаке?", "topic": "Луна", "tier": "frequent", "coverage": "draft", "cards": "rec02..rec05" },
-    { "q": "Почему я до сих пор одна?", "topic": "Знакомство", "tier": "frequent", "coverage": "draft", "cards": "rec18-long-alone, rec19-unknown-type" },
-    { "q": "Как пережить расставание?", "topic": "Расставание", "tier": "medium", "coverage": "draft", "cards": "freq08-breakup" },
-    { "q": "Почему я не могу отпустить бывшего?", "topic": "Расставание", "tier": "medium", "coverage": "draft", "cards": "freq09-let-go" },
-    { "q": "Как говорить партнёру о своих желаниях?", "topic": "Общение", "tier": "medium", "coverage": "draft", "cards": "freq10-say-desires" },
-    { "q": "Как понять, что отношения созависимые?", "topic": "Созависимость", "tier": "medium", "coverage": "draft", "cards": "rec13-codependency" },
-    { "q": "Партнёр уходит от прямого ответа. Что делать?", "topic": "Доверие", "tier": "medium", "coverage": "draft", "cards": "rec34-truth-vs-pleasing" },
-    { "q": "Страсть ушла — это конец?", "topic": "Брак", "tier": "medium", "coverage": "draft", "cards": "rec24-passion-fades" },
-    { "q": "Почему меня тянет к несвободным мужчинам?", "topic": "Сценарии", "tier": "medium", "coverage": "draft", "cards": "rec23-married-men" },
-    { "q": "Как поддержать взрослую дочь и не давить на неё?", "topic": "Семья", "tier": "medium", "coverage": "draft", "cards": "rec29-mother-daughter" },
-    { "q": "Что показывает седьмой дом?", "topic": "Астрология", "tier": "medium", "coverage": "draft", "cards": "rec30-seventh-house" },
-    { "q": "Чем любовь по Венере отличается от любви по Луне?", "topic": "Астрология", "tier": "medium", "coverage": "draft", "cards": "rec08-venus-moon" },
-    { "q": "У нас кризис в отношениях. Всё плохо?", "topic": "Кризис", "tier": "medium", "coverage": "draft", "cards": "rec35-crisis-ok" },
-    { "q": "Мне говорят, что я слишком много требую.", "topic": "Самоценность", "tier": "medium", "coverage": "draft", "cards": "rec32-too-demanding" },
-    { "q": "Как вести себя на свидании, чтобы понравиться?", "topic": "Знакомство", "tier": "medium", "coverage": "draft", "cards": "rec33-be-yourself" },
-    { "q": "Почему я повторяю сценарий мамы в отношениях?", "topic": "Род", "tier": "medium", "coverage": "anna" },
-    { "q": "Почему мне трудно принимать заботу и подарки?", "topic": "Самоценность", "tier": "medium", "coverage": "anna" },
-    { "q": "Как перестать быть удобной?", "topic": "Границы", "tier": "medium", "coverage": "anna" },
-    { "q": "Что такое синастрия и как её смотреть?", "topic": "Астрология", "tier": "medium", "coverage": "anna" },
-    { "q": "Как ретроградный Меркурий влияет на отношения?", "topic": "Астрология", "tier": "medium", "coverage": "anna" },
-    { "q": "Можно ли доверять картам таро?", "topic": "Таро", "tier": "medium", "coverage": "anna" },
-    { "q": "Что меня ждёт в деньгах в этом месяце?", "topic": "Деньги", "tier": "frequent", "coverage": "anna" },
-    { "q": "Какая работа подходит мне по натальной карте?", "topic": "Карьера", "tier": "frequent", "coverage": "anna" },
-    { "q": "В чём моё предназначение?", "topic": "Предназначение", "tier": "frequent", "coverage": "anna" },
-    { "q": "Какой стиль воспитания мне подходит?", "topic": "Дети", "tier": "medium", "coverage": "anna" },
-    { "q": "Почему я срываюсь на ребёнка?", "topic": "Дети", "tier": "medium", "coverage": "anna" },
-    { "q": "Стоит ли мне переезжать?", "topic": "Решения", "tier": "medium", "coverage": "anna" },
-    { "q": "Как справиться с тревогой перед важным решением?", "topic": "Эмоции", "tier": "medium", "coverage": "anna" }
+    {
+      "q": "Как Луна в натальной карте связана с тем, как человек чувствует любовь?",
+      "topic": "Луна и любовь",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec01-moon-love"
+    },
+    {
+      "q": "У меня Луна в Деве. Что это значит для отношений?",
+      "topic": "Земная Луна",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec02-earth-moon"
+    },
+    {
+      "q": "Как любит человек с Луной во Льве?",
+      "topic": "Огненная Луна",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec03-fire-moon"
+    },
+    {
+      "q": "А если Луна в воздушном знаке?",
+      "topic": "Воздушная Луна",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec04-air-moon"
+    },
+    {
+      "q": "Что важно в отношениях человеку с водной Луной?",
+      "topic": "Водная Луна",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec05-water-moon"
+    },
+    {
+      "q": "Почему я стараюсь для партнёра, а он всё равно не чувствует, что я его люблю?",
+      "topic": "Разные языки любви",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec06-love-languages"
+    },
+    {
+      "q": "Можно ли научиться чувствовать любовь по-другому, не так, как показывает моя Луна?",
+      "topic": "Новый язык любви",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec07-new-language"
+    },
+    {
+      "q": "Чем любовь по Венере отличается от любви по Луне?",
+      "topic": "Венера и Луна",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec08-venus-moon"
+    },
+    {
+      "q": "У меня Луна в Рыбах, но мне всё равно нужны поступки, а не слова. Так бывает?",
+      "topic": "Противоречие в карте",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec09-one-planet"
+    },
+    {
+      "q": "Как узнать, в каком знаке моя Луна?",
+      "topic": "Как узнать знак Луны",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec10-find-moon"
+    },
+    {
+      "q": "Это плохо, что мы с мужем часто спорим?",
+      "topic": "Конфликты в паре",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec11-conflict-normal"
+    },
+    {
+      "q": "Муж всегда со всем соглашается и ничего не просит. Почему мне от этого не спокойно?",
+      "topic": "Партнёр подстраивается",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec12-pleaser"
+    },
+    {
+      "q": "Как понять, что отношения созависимые?",
+      "topic": "Созависимость",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec13-codependency"
+    },
+    {
+      "q": "Почему рядом с неидеальным человеком бывает спокойнее, чем с «идеальным»?",
+      "topic": "Безопасность в паре",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec14-alive-safe"
+    },
+    {
+      "q": "Думаю уйти от мужа и найти кого-то получше. Это правильное решение?",
+      "topic": "Уйти и найти лучше",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec15-leave-for-better"
+    },
+    {
+      "q": "Подруга ушла от мужа, а у нас вроде всё нормально, но что-то не то. Мне тоже уходить?",
+      "topic": "Масштаб проблем",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec16-problem-scale"
+    },
+    {
+      "q": "Почему с красивым, успешным мужчиной иногда тяжело жить?",
+      "topic": "Партнёр-картинка",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec17-picture-partner"
+    },
+    {
+      "q": "После развода прошло много лет, а отношения так и не складываются. Почему так?",
+      "topic": "Долго нет отношений после развода",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec18-long-alone"
+    },
+    {
+      "q": "Хочу отношений, но не понимаю, какой мужчина мне нужен. С чего начать?",
+      "topic": "Не понимаю, какой мужчина нужен",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec19-unknown-type"
+    },
+    {
+      "q": "У нас всё хорошо, но партнёр постоянно намекает на то, что для меня неприемлемо. Как быть?",
+      "topic": "Партнёр предлагает неприемлемое",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec20-unacceptable"
+    },
+    {
+      "q": "Когда я грущу, мне говорят, что я «сломалась». Почему люди так реагируют?",
+      "topic": "Эмоции как слабость",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec21-emotions-weak"
+    },
+    {
+      "q": "Чувствую, что не хочу быть с мужем, но не ухожу. Почему?",
+      "topic": "Вторичная выгода",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec22-hidden-benefit"
+    },
+    {
+      "q": "Почему меня тянет к несвободным мужчинам?",
+      "topic": "Отношения с женатыми",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec23-married-men"
+    },
+    {
+      "q": "Мы много лет в браке, как хорошие друзья, но страсти почти нет. Это проблема?",
+      "topic": "Страсть уходит",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec24-passion-fades"
+    },
+    {
+      "q": "У подруги с мужем всё ярко, а у нас спокойно. С нами что-то не так?",
+      "topic": "Сравнение с другими парами",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec25-compare-others"
+    },
+    {
+      "q": "Может ли брак держаться на дружбе?",
+      "topic": "Дружба в браке",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec26-friendship-house"
+    },
+    {
+      "q": "Все мои отношения развиваются по одному сценарию, меняются только имена. Что с этим делать?",
+      "topic": "Повторяющийся сценарий",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec27-repeat-pattern"
+    },
+    {
+      "q": "После тяжёлых отношений меня всё равно тянет к властным мужчинам, и я боюсь повторения. Что делать?",
+      "topic": "Страх повторить тяжёлые отношения",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec28-fear-repeat-abuser"
+    },
+    {
+      "q": "Дочери за тридцать, она не замужем, я очень переживаю. Как ей помочь?",
+      "topic": "Мама торопит дочь с замужеством",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec29-mother-daughter"
+    },
+    {
+      "q": "Что показывает седьмой дом в натальной карте?",
+      "topic": "Седьмой дом",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec30-seventh-house"
+    },
+    {
+      "q": "Почему мне советуют самой проявлять качества, которые я не люблю в партнёрах?",
+      "topic": "Проявлять качества седьмого дома",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec31-mirror-qualities"
+    },
+    {
+      "q": "Мужчины говорят, что я слишком многого требую. Мне стоит снизить планку?",
+      "topic": "«Слишком много требую»",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec32-too-demanding"
+    },
+    {
+      "q": "Как мне вести себя, чтобы понравиться мужчине?",
+      "topic": "Быть собой",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec33-be-yourself"
+    },
+    {
+      "q": "Партнёр не говорит мне неприятную правду, а уходит от ответа. Как с этим быть?",
+      "topic": "Честность в паре",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec34-truth-vs-pleasing"
+    },
+    {
+      "q": "У нас кризис в отношениях. Значит, всё плохо?",
+      "topic": "Кризисы в отношениях",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec35-crisis-ok"
+    },
+    {
+      "q": "Посмотрите мою натальную карту и скажите, выйду ли я замуж?",
+      "topic": "Граница помощника",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "rec36-assistant-boundary"
+    },
+    {
+      "q": "Вернётся ли ко мне бывший?",
+      "topic": "Вернётся ли бывший",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "freq01-ex-return"
+    },
+    {
+      "q": "Думает ли он обо мне?",
+      "topic": "Думает ли он обо мне",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "freq02-ex-thinks"
+    },
+    {
+      "q": "Есть ли будущее у наших отношений?",
+      "topic": "Есть ли будущее у отношений",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "freq03-future"
+    },
+    {
+      "q": "Подходим ли мы друг другу по гороскопу?",
+      "topic": "Совместимость",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "freq04-compatibility"
+    },
+    {
+      "q": "Когда я встречу свою любовь?",
+      "topic": "Когда я встречу любовь",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "freq05-when-love"
+    },
+    {
+      "q": "Любит ли он меня на самом деле?",
+      "topic": "Любит ли он меня",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "freq06-does-he-love"
+    },
+    {
+      "q": "Как понять, изменяет ли мне партнёр?",
+      "topic": "Изменяет ли партнёр",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "freq07-cheating"
+    },
+    {
+      "q": "Как пережить расставание?",
+      "topic": "Как пережить расставание",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "freq08-breakup"
+    },
+    {
+      "q": "Почему я не могу отпустить бывшего?",
+      "topic": "Не могу отпустить бывшего",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "freq09-let-go"
+    },
+    {
+      "q": "Как говорить партнёру о своих желаниях?",
+      "topic": "Как говорить о своих желаниях",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "freq10-say-desires"
+    },
+    {
+      "q": "Почему деньги приходят и сразу уходят?",
+      "topic": "Деньги",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "aud-money-leaks"
+    },
+    {
+      "q": "Почему мой доход упёрся в потолок?",
+      "topic": "Деньги",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "aud-money-ceiling"
+    },
+    {
+      "q": "Как перестать бояться просить больше денег?",
+      "topic": "Деньги",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "aud-money-ask-more"
+    },
+    {
+      "q": "Свой бизнес или работа по найму — как понять, что мне подходит?",
+      "topic": "Карьера",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "aud-business-or-job"
+    },
+    {
+      "q": "Почему мне стыдно говорить о деньгах?",
+      "topic": "Деньги",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "aud-money-shame"
+    },
+    {
+      "q": "Почему я трачу деньги, когда мне плохо?",
+      "topic": "Деньги",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "aud-money-emotional"
+    },
+    {
+      "q": "Как справиться с тревогой из-за долгов?",
+      "topic": "Деньги",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "aud-money-debt-anxiety"
+    },
+    {
+      "q": "Почему я много работаю, а денег всё равно мало?",
+      "topic": "Деньги",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "aud-money-work-hard"
+    },
+    {
+      "q": "Как понять, чем я хочу заниматься?",
+      "topic": "Карьера",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "aud-career-what-want"
+    },
+    {
+      "q": "Какой дом в карте отвечает за профессию?",
+      "topic": "Карьера",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "aud-career-tenth-house"
+    },
+    {
+      "q": "Стоит ли менять работу, если я выгорела?",
+      "topic": "Карьера",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "aud-career-burnout"
+    },
+    {
+      "q": "Как понять, что работа не моя?",
+      "topic": "Карьера",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "aud-career-not-mine"
+    },
+    {
+      "q": "Почему я боюсь начать своё дело?",
+      "topic": "Карьера",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "aud-career-fear-start"
+    },
+    {
+      "q": "Как найти дело по душе во взрослом возрасте?",
+      "topic": "Карьера",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "aud-career-later-life"
+    },
+    {
+      "q": "Почему я откладываю важные дела?",
+      "topic": "Карьера",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "aud-procrastination"
+    },
+    {
+      "q": "Как перестать сравнивать себя с другими?",
+      "topic": "Карьера",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "aud-comparison"
+    },
+    {
+      "q": "Как помочь ребёнку, если он замкнулся?",
+      "topic": "Дети",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "aud-child-withdrawn"
+    },
+    {
+      "q": "Почему ребёнок не слушается?",
+      "topic": "Дети",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "aud-child-not-listen"
+    },
+    {
+      "q": "Как не переносить на ребёнка свои страхи?",
+      "topic": "Дети",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "aud-child-own-fears"
+    },
+    {
+      "q": "Когда благоприятное время для беременности?",
+      "topic": "Дети",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "aud-child-pregnancy-time"
+    },
+    {
+      "q": "Как перестать чувствовать вину перед ребёнком?",
+      "topic": "Дети",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "aud-child-guilt"
+    },
+    {
+      "q": "Как выстроить границы с мамой?",
+      "topic": "Род и родители",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "aud-parents-boundaries"
+    },
+    {
+      "q": "Почему я до сих пор жду одобрения родителей?",
+      "topic": "Род и родители",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "aud-parents-approval"
+    },
+    {
+      "q": "Как простить родителей?",
+      "topic": "Род и родители",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "aud-parents-forgive"
+    },
+    {
+      "q": "Почему отношения с отцом влияют на выбор партнёра?",
+      "topic": "Род и родители",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "aud-parents-father"
+    },
+    {
+      "q": "Как не повторять ошибки родителей в своей семье?",
+      "topic": "Род и родители",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "aud-parents-repeat"
+    },
+    {
+      "q": "Как справиться с тревогой?",
+      "topic": "Страхи и тревога",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "aud-fear-anxiety"
+    },
+    {
+      "q": "Почему я всё время сомневаюсь в себе?",
+      "topic": "Страхи и тревога",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "aud-fear-self-doubt"
+    },
+    {
+      "q": "Как перестать бояться одиночества?",
+      "topic": "Страхи и тревога",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "aud-fear-loneliness"
+    },
+    {
+      "q": "Почему мне трудно говорить «нет»?",
+      "topic": "Страхи и тревога",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "aud-fear-say-no"
+    },
+    {
+      "q": "Как пережить чувство вины?",
+      "topic": "Страхи и тревога",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "aud-fear-guilt"
+    },
+    {
+      "q": "Почему я боюсь перемен?",
+      "topic": "Страхи и тревога",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "aud-fear-change"
+    },
+    {
+      "q": "Что делать, если ничего не радует?",
+      "topic": "Страхи и тревога",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "aud-fear-no-joy"
+    },
+    {
+      "q": "Почему я постоянно устаю?",
+      "topic": "Энергия и тело",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "aud-body-tired"
+    },
+    {
+      "q": "Как восстановиться после выгорания?",
+      "topic": "Энергия и тело",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "aud-body-burnout-recover"
+    },
+    {
+      "q": "Влияет ли Луна на сон и самочувствие?",
+      "topic": "Энергия и тело",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "aud-body-moon-sleep"
+    },
+    {
+      "q": "Почему я заедаю стресс?",
+      "topic": "Энергия и тело",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "aud-body-stress-eating"
+    },
+    {
+      "q": "Как принять сложное решение?",
+      "topic": "Решения",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "aud-decision-hard"
+    },
+    {
+      "q": "Стоит ли мне переезжать в другой город?",
+      "topic": "Решения",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "aud-decision-move"
+    },
+    {
+      "q": "Есть ли благоприятные дни для важных дел?",
+      "topic": "Решения",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "aud-decision-good-days"
+    },
+    {
+      "q": "Что делать, если я боюсь ошибиться с выбором?",
+      "topic": "Решения",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "aud-decision-fear-mistake"
+    },
+    {
+      "q": "Как понять, что пришло время перемен?",
+      "topic": "Решения",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "aud-decision-time-change"
+    },
+    {
+      "q": "Что такое натальная карта?",
+      "topic": "Основы астрологии",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "aud-astro-natal"
+    },
+    {
+      "q": "Что значит мой знак зодиака?",
+      "topic": "Основы астрологии",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "aud-astro-sun-sign"
+    },
+    {
+      "q": "Почему гороскоп по знаку мне не подходит?",
+      "topic": "Основы астрологии",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "aud-astro-horoscope-wrong"
+    },
+    {
+      "q": "Что такое транзиты?",
+      "topic": "Основы астрологии",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "aud-astro-transits"
+    },
+    {
+      "q": "Что такое ретроградная планета?",
+      "topic": "Основы астрологии",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "aud-astro-retrograde"
+    },
+    {
+      "q": "Как пользоваться картой дня?",
+      "topic": "Основы астрологии",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "aud-astro-read-day-card"
+    },
+    {
+      "q": "Что значит перевёрнутая карта таро?",
+      "topic": "Таро",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "aud-tarot-reversed"
+    },
+    {
+      "q": "Как понять, что меня используют в отношениях?",
+      "topic": "Отношения",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "aud-rel-used"
+    },
+    {
+      "q": "Что делать, если мы живём как соседи?",
+      "topic": "Отношения",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "aud-rel-neighbours"
+    },
+    {
+      "q": "Как помириться после ссоры?",
+      "topic": "Отношения",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "aud-rel-make-up"
+    },
+    {
+      "q": "Стоит ли давать второй шанс?",
+      "topic": "Отношения",
+      "tier": "frequent",
+      "coverage": "draft",
+      "cards": "aud-rel-second-chance"
+    },
+    {
+      "q": "Как построить новые отношения, если у меня ребёнок?",
+      "topic": "Отношения",
+      "tier": "medium",
+      "coverage": "draft",
+      "cards": "aud-rel-after-divorce-child"
+    },
+    {
+      "q": "Что такое астропсихология и чем она отличается от обычной астрологии?",
+      "topic": "Метод Анны",
+      "tier": "frequent",
+      "coverage": "voice"
+    },
+    {
+      "q": "Как проходит работа с натальной картой на консультации?",
+      "topic": "Метод Анны",
+      "tier": "medium",
+      "coverage": "voice"
+    },
+    {
+      "q": "Что такое компенсаторика планет и как она работает?",
+      "topic": "Практики",
+      "tier": "frequent",
+      "coverage": "voice"
+    },
+    {
+      "q": "Можно ли изменить то, что «написано» в натальной карте?",
+      "topic": "Метод Анны",
+      "tier": "frequent",
+      "coverage": "voice"
+    },
+    {
+      "q": "Почему я повторяю сценарий мамы в отношениях?",
+      "topic": "Род",
+      "tier": "frequent",
+      "coverage": "voice"
+    },
+    {
+      "q": "Что такое родовой сценарий и как его увидеть в карте?",
+      "topic": "Род",
+      "tier": "medium",
+      "coverage": "voice"
+    },
+    {
+      "q": "Как перестать быть удобной?",
+      "topic": "Границы",
+      "tier": "frequent",
+      "coverage": "voice"
+    },
+    {
+      "q": "Почему мне трудно принимать заботу и подарки?",
+      "topic": "Самоценность",
+      "tier": "medium",
+      "coverage": "voice"
+    },
+    {
+      "q": "Что такое синастрия и как её смотреть?",
+      "topic": "Совместимость",
+      "tier": "medium",
+      "coverage": "voice"
+    },
+    {
+      "q": "Как ретроградный Меркурий влияет на отношения?",
+      "topic": "Астрология",
+      "tier": "medium",
+      "coverage": "voice"
+    },
+    {
+      "q": "Можно ли доверять картам таро?",
+      "topic": "Таро",
+      "tier": "medium",
+      "coverage": "voice"
+    },
+    {
+      "q": "Как понять своё предназначение по натальной карте?",
+      "topic": "Предназначение",
+      "tier": "frequent",
+      "coverage": "voice"
+    },
+    {
+      "q": "На что смотреть в натальной карте, когда речь о деньгах?",
+      "topic": "Деньги",
+      "tier": "frequent",
+      "coverage": "voice"
+    },
+    {
+      "q": "Как Луна влияет на настроение и как с этим жить?",
+      "topic": "Луна",
+      "tier": "medium",
+      "coverage": "voice"
+    },
+    {
+      "q": "Что делать, если в карте напряжённый Плутон?",
+      "topic": "Астрология",
+      "tier": "medium",
+      "coverage": "voice"
+    },
+    {
+      "q": "Почему Сатурна боятся и как с ним жить?",
+      "topic": "Астрология",
+      "tier": "medium",
+      "coverage": "voice"
+    },
+    {
+      "q": "Зачем знать свой асцендент?",
+      "topic": "Астрология",
+      "tier": "medium",
+      "coverage": "voice"
+    },
+    {
+      "q": "Какая я мама по натальной карте: на что смотреть?",
+      "topic": "Дети",
+      "tier": "medium",
+      "coverage": "voice"
+    },
+    {
+      "q": "Почему я срываюсь на близких, а потом жалею?",
+      "topic": "Эмоции",
+      "tier": "frequent",
+      "coverage": "voice"
+    },
+    {
+      "q": "Как справиться с ревностью?",
+      "topic": "Отношения",
+      "tier": "frequent",
+      "coverage": "voice"
+    },
+    {
+      "q": "Что делать, если партнёр не хочет детей, а я хочу?",
+      "topic": "Отношения",
+      "tier": "medium",
+      "coverage": "voice"
+    },
+    {
+      "q": "Как понять, что пора уходить из отношений?",
+      "topic": "Отношения",
+      "tier": "frequent",
+      "coverage": "voice"
+    },
+    {
+      "q": "Как вернуть интерес к жизни после долгих отношений?",
+      "topic": "Расставание",
+      "tier": "medium",
+      "coverage": "voice"
+    },
+    {
+      "q": "Как поддерживать себя в кризис?",
+      "topic": "Эмоции",
+      "tier": "medium",
+      "coverage": "voice"
+    },
+    {
+      "q": "Зачем консультация астролога, если есть прогнозы в интернете?",
+      "topic": "Метод Анны",
+      "tier": "medium",
+      "coverage": "voice"
+    }
   ]
 }

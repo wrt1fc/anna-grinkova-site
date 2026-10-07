@@ -62,3 +62,10 @@ test('crisis detection catches suicidal wording and leaves ordinary sadness to t
 test('an honest answer about unknown prices is not blocked', () => {
   assert.equal(unsafeChatAnswer('Оплата через сайт пока не реализована, поэтому стоимость услуги назвать невозможно.', '2026-10-07'), false);
 });
+
+test('an honest negation of a guarantee is not blocked, a promise still is', () => {
+  assert.equal(unsafeChatAnswer('Выбор даты не гарантирует результат, это лишь подсказка.', '2026-10-07'), false);
+  assert.equal(unsafeChatAnswer('Это не обязательно случится, всё зависит от вас.', '2026-10-07'), false);
+  assert.equal(unsafeChatAnswer('Я гарантирую, что он вернётся.', '2026-10-07'), true);
+  assert.equal(unsafeChatAnswer('Это обязательно случится в этом месяце.', '2026-10-07'), true);
+});

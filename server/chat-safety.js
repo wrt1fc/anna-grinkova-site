@@ -43,7 +43,8 @@ const UNSAFE_PATTERNS = [
   // A named price, in digits or words; an honest "the price is not known" passes.
   /(?<!\p{L})(?:стоимость|цена|стоит|обойд[её]тся)[^.!?]{0,40}(?:\d|тысяч|сотен|сотни)/iu,
   /https?:\/\/|www\.|t\.me\/|(?<![\p{L}\d.])@[a-z0-9_]{3,}/iu,
-  /гарантир|непременно\s+(?:случится|произойд)|обязательно\s+(?:случится|произойд|сбудет)/iu,
+  // A promise of an outcome; an honest negation ("не гарантирует") is fine.
+  /(?<!не\s{1,3})гарантир|(?<!не\s{1,3})непременно\s+(?:случится|произойд)|(?<!не\s{1,3})обязательно\s+(?:случится|произойд|сбудет)/iu,
 ];
 
 // Model-agnostic check before an answer is shown: no impersonation, prices, links, invented dates or promises.
