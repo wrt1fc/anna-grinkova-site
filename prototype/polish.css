@@ -61,8 +61,8 @@
 @media (prefers-reduced-motion: reduce) { .header-entry { transition: none; } }
 .button-gold {
   min-height: 60px;
-  padding: 7px 7px 7px 21px;
-  gap: 16px;
+  padding: 0 21px 0 23px;
+  gap: 25px;
   border: 1px solid #f1d78d;
   border-radius: 9px;
   background: #dfbd6e;
@@ -78,27 +78,27 @@
 .button-gold > span[aria-hidden="true"] {
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
+  width: 24px;
+  height: 24px;
   flex: none;
   margin-left: auto;
-  border-radius: 6px;
-  background: #2d1d12;
-  color: #f3d98d;
+  color: #35220f;
   font-size: 0;
 }
 .button-gold > span[aria-hidden="true"]::before {
   content: "";
-  width: 21px;
-  height: 21px;
+  width: 23px;
+  height: 23px;
   background: currentColor;
   -webkit-mask: url('./assets/icon-arrow-up-right.svg') center / contain no-repeat;
   mask: url('./assets/icon-arrow-up-right.svg') center / contain no-repeat;
+  transition: transform var(--motion-fast) var(--ease-out);
 }
 .button-gold:hover { background: #edce80; border-color: #fbe8ad; box-shadow: 0 12px 25px rgba(0, 0, 0, .24), inset 0 1px 0 rgba(255, 251, 222, .7); }
+.button-gold:hover > span[aria-hidden="true"]::before { transform: translate(1px, -1px); }
 .button-gold:active { transform: translateY(0); background: #d3a95a; box-shadow: inset 0 2px 5px rgba(56, 35, 12, .17); }
 .button-gold:focus-visible { outline: 2px solid #fff0b3; outline-offset: 4px; }
-@media (prefers-reduced-motion: reduce) { .button-gold { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .button-gold, .button-gold > span[aria-hidden="true"]::before { transition: none; } }
 .text-link,.inline-action { display: inline-flex; align-items: center; gap: 10px; }
 .text-link::after,.inline-action::after { width: 16px; height: 16px; }
 .week-feature-cta { align-items: center; }
