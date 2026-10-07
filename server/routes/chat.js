@@ -130,6 +130,7 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
     };
     try {
       const reply = await chatWriter.answer({ message, history: historySigner.trusted(body.history ?? []), forecast: forecastForQuestion(context, message),
+        visitorName: user.displayName || null,
         length: body.length ?? DEFAULT_ANSWER_LENGTH, materials, signal: abort.signal, onDelta });
       const filtered = unsafeChatAnswer(reply.answer, day);
       if (filtered) console.warn('Chat answer rejected by safety check');

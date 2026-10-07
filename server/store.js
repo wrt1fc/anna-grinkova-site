@@ -20,7 +20,7 @@ export function createStore(path) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY, email TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL,
-      created_at INTEGER NOT NULL, email_verified_at INTEGER
+      created_at INTEGER NOT NULL, email_verified_at INTEGER, display_name TEXT
     );
     CREATE TABLE IF NOT EXISTS sessions (
       token_hash TEXT PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -48,6 +48,7 @@ export function createStore(path) {
   // Existing local databases from the first account iteration lacked this column.
   const columns = db.prepare('PRAGMA table_info(users)').all().map((row) => row.name);
   if (!columns.includes('email_verified_at')) db.exec('ALTER TABLE users ADD COLUMN email_verified_at INTEGER');
+  if (!columns.includes('display_name')) db.exec('ALTER TABLE users ADD COLUMN display_name TEXT');
   const profileColumns = new Set(db.prepare('PRAGMA table_info(birth_profiles)').all().map((row) => row.name));
   for (const [name, type] of Object.entries({ city_id: 'INTEGER', birth_latitude: 'REAL', birth_longitude: 'REAL',
     birth_time_zone: 'TEXT', birth_utc: 'TEXT', birth_utc_offset_minutes: 'INTEGER' })) {
@@ -69,7 +70,7 @@ export function createStore(path) {
   }
 
   function findUserById(id) {
-    return db.prepare('SELECT id, email, email_verified_at FROM users WHERE id = ?').get(id) ?? null;
+    return db.prepare('SELECT id, email, email_verified_at, display_name FROM users WHERE id = ?').get(id) ?? null;
   }
 
   function saveSession(hash, userId, expiresAt) {
@@ -77,9 +78,14 @@ export function createStore(path) {
   }
 
   function userForSession(hash, now = Date.now()) {
-    const row = db.prepare(`SELECT users.id, users.email, users.email_verified_at FROM sessions
+    const row = db.prepare(`SELECT users.id, users.email, users.email_verified_at, users.display_name FROM sessions
       JOIN users ON users.id = sessions.user_id WHERE sessions.token_hash = ? AND sessions.expires_at > ?`).get(hash, now);
-    return row ? { id: row.id, email: row.email, emailVerified: row.email_verified_at !== null } : null;
+    return row ? { id: row.id, email: row.email, emailVerified: row.email_verified_at !== null, displayName: row.display_name } : null;
+  }
+
+  function saveDisplayName(userId, name) {
+    db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(name, userId);
+    return name;
   }
 
   function deleteSession(hash) { db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(hash); }
@@ -170,7 +176,7 @@ export function createStore(path) {
     ...createExtras(db),
     ...billing,
     getPlan: (userId, now) => billing.planState(userId, now).plan,
-    createUser, findUserByEmail, findUserById, saveSession, userForSession, deleteSession,
+    createUser, findUserByEmail, findUserById, saveSession, userForSession, deleteSession, saveDisplayName,
     getBirthProfile, saveBirthProfile, issueChallenge, deleteChallenge, consumeChallenge, consumeDailyQuota, refundDailyQuota,
     health: () => db.prepare('SELECT 1 AS ok').get().ok === 1,
     close: () => db.close(),

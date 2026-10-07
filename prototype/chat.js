@@ -11,6 +11,7 @@ let chatAbort = null;
 let chatRequest = 0;
 let chatSlowTimer;
 let chatSignedIn = false;
+let chatVisitorName = '';
 const chatLocked = document.getElementById('chat-locked');
 const lengthKey = 'anna-chat-length';
 const formatButtons = document.querySelectorAll('[data-chat-length]');
@@ -78,7 +79,8 @@ function chatMessage(role, content, context = null) {
   article.dataset.role = role;
   const label = document.createElement('span');
   label.className = 'chat-message-label';
-  label.textContent = role === 'user' ? 'Вы' : 'Помощник Анны';
+  label.textContent = role === 'user' ? chatVisitorName : 'Помощник Анны';
+  if (role === 'user') label.hidden = !chatVisitorName;
   const paragraph = document.createElement('p');
   paragraph.textContent = content;
   article.append(label, paragraph);
@@ -258,8 +260,16 @@ function clearChat(focus = true) {
 }
 chatClear.addEventListener('click', () => clearChat());
 document.addEventListener('anna-account-changed', () => clearChat(false));
-document.addEventListener('anna-account-state', (event) => setChatAccess(event.detail.signedIn));
+document.addEventListener('anna-account-state', (event) => {
+  setChatAccess(event.detail.signedIn);
+  chatVisitorName = event.detail.name || '';
+  for (const label of document.querySelectorAll('.chat-message[data-role="user"] .chat-message-label')) {
+    label.textContent = chatVisitorName;
+    label.hidden = !chatVisitorName;
+  }
+});
 setChatAccess(document.body.dataset.signedIn === 'true');
+chatVisitorName = document.body.dataset.visitorName || '';
 for (const button of chatPrompts) {
   // A guest who picks a question is taken straight to sign-in instead of a dead button.
   button.addEventListener('click', () => (chatSignedIn ? sendChat(button.dataset.chatPrompt) : chatSignInButton.click()));

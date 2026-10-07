@@ -262,6 +262,16 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
         if (path === '/api/me' && req.method === 'GET') {
           return json(res, 200, { user, birthProfile: store.getBirthProfile(user.id) });
         }
+        if (path === '/api/me/name' && req.method === 'PUT') {
+          const body = await readJson(req);
+          const rawName = typeof body.name === 'string' ? body.name : '';
+          const name = rawName.trim().replace(/ +/g, ' ');
+          if (name.length < 2 || name.length > 40 || !/^[\p{L}]+(?:[ '\u2019\-][\p{L}]+)*$/u.test(name)) {
+            return json(res, 400, { error: 'invalid_name', message: 'Укажите имя буквами, от 2 до 40 символов.' });
+          }
+          store.saveDisplayName(user.id, name);
+          return json(res, 200, { name });
+        }
         if (path === '/api/profile' && req.method === 'PUT') {
           const parsed = parseBirthInput(await readJson(req));
           if (!parsed.ok) return json(res, parsed.status, parsed.data);

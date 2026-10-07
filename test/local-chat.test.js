@@ -25,7 +25,7 @@ test('chat streams plain text built from calculated facts and the approved proje
   const capture = {};
   const deltas = [];
   const reply = await chatReturning(['Карта поднимает ', 'тему выбора. ', 'Сначала проверьте факты.'], {}, capture)
-    .answer({ message: 'Что значит карта?', history: [], forecast, onDelta: (delta) => deltas.push(delta) });
+    .answer({ message: 'Что значит карта?', history: [], forecast, visitorName: 'Мария', onDelta: (delta) => deltas.push(delta) });
   assert.equal(reply.answer, 'Карта поднимает тему выбора. Сначала проверьте факты.');
   assert.deepEqual(deltas, ['Карта поднимает ', 'тему выбора. ', 'Сначала проверьте факты.']);
   assert.equal(reply.truncated, false);
@@ -34,6 +34,7 @@ test('chat streams plain text built from calculated facts and the approved proje
   assert.equal(capture.payload.format, undefined);
   const prompt = JSON.parse(capture.payload.prompt);
   assert.equal(prompt.forecast.card.name, forecast.card.name);
+  assert.equal(prompt.visitorName, 'Мария');
   assert.deepEqual(prompt.materials, []);
   assert.ok(prompt.facts.some((fact) => fact.includes('Института астрологии')));
   assert.equal(JSON.stringify(prompt).includes('birthTime'), false);

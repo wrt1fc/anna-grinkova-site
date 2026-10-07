@@ -1,0 +1,102 @@
+/* The original tarot illustrations sit inside the site's existing dark and gold frame. */
+.draw-card-front {
+  display: flex;
+  padding: 7px;
+  background: #17100c;
+  isolation: isolate;
+}
+.draw-card-front::before { display: none; }
+.draw-card-front .draw-card-roman,
+.draw-card-front .draw-card-name {
+  position: absolute;
+  z-index: 2;
+  left: 7px;
+  right: 7px;
+  color: #fff1c4;
+  text-shadow: 0 1px 5px #130a07;
+}
+.draw-card-front .draw-card-roman {
+  top: 7px;
+  padding: 7px 0 16px;
+  background: linear-gradient(#1a100de8, transparent);
+  font: 11px/1.2 var(--display);
+  letter-spacing: .16em;
+}
+.draw-card-front .draw-card-name {
+  bottom: 7px;
+  margin: 0;
+  padding: 26px 4px 9px;
+  background: linear-gradient(transparent, #160d0be9 38%);
+  font-family: var(--accent);
+  font-size: clamp(12px, 1.1vw, 17px);
+  line-height: 1.05;
+}
+.draw-card-mark {
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background-image: var(--tarot-art);
+  background-position: center;
+  background-size: cover;
+  border: 1px solid #c6a65f;
+  filter: sepia(.23) saturate(.82) contrast(1.05);
+}
+.draw-card-mark::before { display: none; }
+
+.daily-visual .mini-card {
+  overflow: hidden;
+  padding: 9px;
+  background: #1a110d;
+  isolation: isolate;
+}
+.daily-visual .mini-card::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 9px;
+  background: var(--tarot-art) center / cover no-repeat;
+  filter: sepia(.23) saturate(.82) contrast(1.04);
+}
+.daily-visual .mini-card-art { display: none; }
+.daily-visual .mini-card-title,
+.daily-visual .mini-card-footer {
+  width: 100%;
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  color: #fff1c4;
+  text-shadow: 0 1px 5px #130a07;
+}
+.daily-visual .mini-card-title {
+  padding: 14px 5px 23px;
+  background: linear-gradient(#1a100def, transparent);
+  font-size: clamp(18px, 2vw, 26px);
+}
+.daily-visual .mini-card-footer {
+  padding: 28px 5px 13px;
+  background: linear-gradient(transparent, #160d0bf0 42%);
+}
+
+.account-name-form { margin: 22px 0 0; }
+.account-name-form[hidden] { display: none; }
+.account-name-form label { display: block; margin-bottom: 8px; color: var(--gold-light); font-size: 13px; }
+.account-name-row { display: flex; gap: 10px; }
+.account-name-row input {
+  width: 100%; min-width: 0; height: 48px; padding: 0 14px;
+  border: 1px solid #856135; border-radius: 5px; outline: none;
+  background: #140d0a; color: var(--ink); font: inherit;
+}
+.account-name-row input:focus { border-color: var(--gold-light); }
+.account-name-row button {
+  flex: none; min-height: 48px; padding: 0 18px;
+  border: 1px solid var(--gold); border-radius: 5px;
+  background: transparent; color: var(--gold-light); font: inherit; cursor: pointer;
+}
+.account-name-row button:hover { background: #382514; }
+.account-name-row button:disabled { opacity: .6; cursor: default; }
+.account-name-form .form-status { min-height: 19px; margin: 8px 0 0; }
+@media (max-width: 430px) {
+  .account-name-row { flex-wrap: wrap; }
+  .account-name-row button { width: 100%; }
+}

@@ -19,6 +19,7 @@ async function api(path, options = {}) {
 }
 
 const tarotNumerals = ['0', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX', 'XXI'];
+function tarotArt(number) { return `url("./assets/tarot/${String(number).padStart(2, '0')}.webp")`; }
 const drawCards = [...document.querySelectorAll('[data-draw-card]')];
 const drawIntro = document.getElementById('draw-intro');
 const drawResult = document.getElementById('draw-result');
@@ -33,6 +34,7 @@ let revealTimer;
 function renderDailyForecast(data) {
   const numeral = tarotNumerals[data.tarot.number];
   document.getElementById('day-card-title').textContent = data.tarot.name;
+  document.querySelector('.daily-visual .mini-card').style.setProperty('--tarot-art', tarotArt(data.tarot.number));
   document.getElementById('day-card-footer').textContent = `${numeral} · карта дня`;
   document.getElementById('day-card-label').textContent = `Карта «${data.tarot.name}»`;
   document.getElementById('day-date-label').textContent = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' })
@@ -43,10 +45,7 @@ function renderDailyForecast(data) {
   document.getElementById('day-reading-focus').textContent = data.reading.focus;
   document.getElementById('day-reading-action').textContent = data.reading.action;
   document.getElementById('day-scope-label').lastChild.textContent = data.scope === 'personal' ? ' Персональный прогноз' : ' Общий прогноз';
-  const sotisStatus = data.astronomy.sotis?.status === 'matched'
-    ? ' Положения Солнца и Луны сверены с Sotis.'
-    : data.astronomy.sotis?.status === 'unavailable' ? ' Сверка с Sotis сейчас недоступна.' : '';
-  document.getElementById('day-status').textContent = `Астрономические положения рассчитаны на 12:00 МСК. Карта выбрана для позиции ${data.tarot.position + 1}.${sotisStatus}`;
+  document.getElementById('day-status').textContent = 'Расчёт на 12:00 МСК.';
 }
 
 async function loadDailyForecast() {
@@ -65,10 +64,11 @@ function resetDraw(focus = false) {
   selectedDraw = null;
   drawStage.classList.remove('has-selection');
   drawStageNote.textContent = 'Нажмите на карту, чтобы открыть её';
-  drawCards.forEach((button) => {
+  drawCards.forEach((button, index) => {
     button.classList.remove('is-selected');
     button.classList.remove('is-revealing');
     button.setAttribute('aria-pressed', 'false');
+    button.setAttribute('aria-label', `Выбрать ${['первую', 'вторую', 'третью', 'четвёртую', 'пятую'][index]} карту`);
   });
   drawResult.hidden = true;
   drawIntro.hidden = false;
@@ -90,6 +90,8 @@ async function selectDailyCard(index) {
     const button = drawCards[index];
     button.querySelector('.draw-card-roman').textContent = numeral;
     button.querySelector('.draw-card-name').textContent = data.tarot.name;
+    button.style.setProperty('--tarot-art', tarotArt(data.tarot.number));
+    button.setAttribute('aria-label', `Карта «${data.tarot.name}» открыта`);
     drawStage.classList.add('has-selection');
     drawStageNote.textContent = 'Можно открыть другую карту';
     drawCards.forEach((cardButton, buttonIndex) => {
@@ -127,7 +129,7 @@ function showRoute() {
     if (navPage === page || (hash === 'about' && navPage === 'about')) element.setAttribute('aria-current', 'page');
     else element.removeAttribute('aria-current');
   }
-  document.title = { home: 'Анна Гринькова — пространство прогнозов', day: 'Карта дня — Анна Гринькова', week: 'Прогноз на неделю — Анна Гринькова', chat: 'Чат с Анной — Анна Гринькова', account: 'Личный кабинет — Анна Гринькова' }[page];
+  document.title = { home: 'Анна Гринькова — карта дня и прогноз недели', day: 'Карта дня — Анна Гринькова', week: 'Прогноз на неделю — Анна Гринькова', chat: 'Чат с Анной — Анна Гринькова', account: 'Личный кабинет — Анна Гринькова' }[page];
   window.scrollTo({ top: 0, behavior: 'auto' });
   if (hash === 'about') requestAnimationFrame(() => document.getElementById('about').scrollIntoView({ behavior: 'smooth' }));
   if (page === 'day') loadDailyForecast();
@@ -308,10 +310,13 @@ function renderAccount(data) {
   currentUser = data?.user || null;
   // chat.js may load after this runs, so the state is also kept on <body> for it to read on start.
   document.body.dataset.signedIn = String(!!currentUser);
-  document.dispatchEvent(new CustomEvent('anna-account-state', { detail: { signedIn: !!currentUser } }));
+  document.body.dataset.visitorName = currentUser?.displayName || '';
+  document.dispatchEvent(new CustomEvent('anna-account-state', { detail: { signedIn: !!currentUser, name: currentUser?.displayName || '' } }));
   document.getElementById('account-heading').textContent = currentUser ? 'Вы в кабинете' : 'Войдите в кабинет';
   document.getElementById('account-email').textContent = currentUser ? currentUser.email : 'Создайте аккаунт, чтобы подготовить профиль для персонального прогноза.';
   document.getElementById('account-login').hidden = !!currentUser;
+  document.getElementById('account-name-form').hidden = !currentUser;
+  document.getElementById('account-name').value = currentUser?.displayName || '';
   document.getElementById('account-logout').hidden = !currentUser;
   document.getElementById('birth-card').hidden = !currentUser;
   document.getElementById('account-change-password').hidden = !currentUser;
@@ -335,6 +340,23 @@ async function refreshAccount() {
   try { const { response, data } = await api('/api/me'); renderAccount(response.ok ? data : null); }
   catch { renderAccount(null); }
 }
+
+document.getElementById('account-name-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const status = document.getElementById('account-name-status');
+  const button = form.querySelector('button[type="submit"]');
+  const name = form.elements.name.value.trim();
+  button.disabled = true;
+  status.textContent = 'Сохраняем…';
+  try {
+    const { response, data } = await api('/api/me/name', { method: 'PUT', body: JSON.stringify({ name }) });
+    if (!response.ok) { status.textContent = data.message || 'Не удалось сохранить имя.'; return; }
+    await refreshAccount();
+    status.textContent = 'Имя сохранено.';
+  } catch { status.textContent = 'Не удалось сохранить имя. Попробуйте позже.'; }
+  finally { button.disabled = false; }
+});
 
 document.getElementById('account-logout').addEventListener('click', async () => {
   try { await api('/api/auth/logout', { method: 'POST', body: '{}' }); } catch { /* refresh handles unavailable service */ }
