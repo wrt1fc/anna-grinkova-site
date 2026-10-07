@@ -7,13 +7,11 @@
 #chat-send .ui-icon { width: 23px; height: 23px; stroke-width: 1.6; }
 
 .button > span[aria-hidden="true"],
-.header-entry > span[aria-hidden="true"],
 .text-link > span[aria-hidden="true"],
 .inline-action > span[aria-hidden="true"],
 .week-feature-cta > span[aria-hidden="true"],
 .chat-invite-action > span[aria-hidden="true"] { display: none; }
 .button::after,
-.header-entry::after,
 .text-link::after,
 .inline-action::after,
 .week-feature-cta::after,
@@ -30,9 +28,37 @@
   -webkit-mask: url('./assets/icon-arrow-up-right.svg') center / contain no-repeat;
   mask: url('./assets/icon-arrow-up-right.svg') center / contain no-repeat;
 }
-.header-entry { display: inline-flex; align-items: center; gap: 14px; }
-.header-entry::after { width: 16px; height: 16px; }
+.header-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 50px;
+  padding: 8px 18px 8px 9px;
+  border: 1px solid rgba(222, 184, 88, .58);
+  border-radius: 9px;
+  background: linear-gradient(115deg, rgba(222, 184, 88, .14), rgba(222, 184, 88, .035) 75%);
+  color: var(--gold-light);
+  font-family: var(--display);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -.015em;
+  box-shadow: inset 0 1px 0 rgba(245, 217, 133, .12);
+  transition: background var(--motion-fast) ease, border-color var(--motion-fast) ease, color var(--motion-fast) ease, transform var(--motion-fast) var(--ease-out);
+}
+.header-entry > span { margin: 0; font-size: inherit; line-height: 1; }
+.header-entry .ui-icon {
+  width: 30px;
+  height: 30px;
+  padding: 5px;
+  border: 1px solid rgba(245, 217, 133, .35);
+  border-radius: 50%;
+  stroke-width: 1.5;
+}
+.header-entry:hover { background: rgba(222, 184, 88, .18); border-color: var(--gold-light); color: #fff0c5; transform: translateY(-1px); }
+.header-entry:active { background: rgba(222, 184, 88, .25); transform: translateY(0); }
+.header-entry:focus-visible { outline: 2px solid var(--gold-light); outline-offset: 4px; }
 @media (max-width: 980px) { .header-entry { display: none; } }
+@media (prefers-reduced-motion: reduce) { .header-entry { transition: none; } }
 .text-link,.inline-action { display: inline-flex; align-items: center; gap: 10px; }
 .text-link::after,.inline-action::after { width: 16px; height: 16px; }
 .week-feature-cta { align-items: center; }
