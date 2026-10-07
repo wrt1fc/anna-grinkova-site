@@ -304,7 +304,8 @@ function renderAccount(data) {
     : 'Войдите, чтобы управлять аккаунтом.';
   if (currentUser && data.birthProfile) {
     const form = document.getElementById('birth-form');
-    for (const key of ['birthDate', 'birthTime', 'birthPlace']) form.elements[key].value = data.birthProfile[key];
+    window.birthControls.setDate(data.birthProfile.birthDate);
+    for (const key of ['birthTime', 'birthPlace']) form.elements[key].value = data.birthProfile[key];
     for (const key of ['birthCityId', 'birthLatitude', 'birthLongitude', 'birthTimeZone']) {
       form.elements[key].value = data.birthProfile[key] ?? '';
     }
@@ -338,36 +339,9 @@ document.getElementById('account-verify-email').addEventListener('click', async 
   } catch { message.textContent = 'Сервис недоступен. Попробуйте позже.'; }
 });
 
-const birthPlaceInput = document.getElementById('birth-place');
-const birthCityIdInput = document.getElementById('birth-city-id');
-const cityChoices = new Map();
-let citySearchTimer;
-birthPlaceInput.addEventListener('input', () => {
-  const chosen = cityChoices.get(birthPlaceInput.value);
-  birthCityIdInput.value = chosen?.id ?? '';
-  clearTimeout(citySearchTimer);
-  const query = birthPlaceInput.value.trim();
-  if (chosen || query.length < 2) return;
-  citySearchTimer = setTimeout(async () => {
-    try {
-      const { response, data } = await api(`/api/cities?q=${encodeURIComponent(query)}`);
-      if (!response.ok || birthPlaceInput.value.trim() !== query) return;
-      cityChoices.clear();
-      const list = document.getElementById('city-suggestions');
-      list.replaceChildren();
-      for (const city of data.cities) {
-        const label = `${city.name} · ${city.country}${city.regionCode ? ` · ${city.regionCode}` : ''} (#${city.id})`;
-        cityChoices.set(label, city);
-        const option = document.createElement('option');
-        option.value = label;
-        list.append(option);
-      }
-    } catch { /* Manual entry remains available. */ }
-  }, 220);
-});
-
 document.getElementById('birth-form').addEventListener('submit', async (event) => {
   event.preventDefault();
+  if (!window.birthControls.validateDate()) return;
   const form = event.currentTarget;
   const message = document.getElementById('birth-message');
   const button = form.querySelector('button[type="submit"]');
@@ -375,7 +349,6 @@ document.getElementById('birth-form').addEventListener('submit', async (event) =
   message.textContent = 'Сохраняем…';
   try {
     const values = Object.fromEntries(new FormData(form));
-    if (values.birthCityId) values.birthPlace = cityChoices.get(values.birthPlace)?.name || values.birthPlace;
     const { response, data } = await api('/api/profile', { method: 'PUT', body: JSON.stringify(values) });
     message.textContent = response.ok ? 'Данные рождения сохранены.' : data.message || 'Не удалось сохранить данные.';
     if (data.error === 'birth_time_ambiguous') form.querySelector('.birth-manual').open = true;

@@ -237,7 +237,10 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
           }
           const city = body.birthCityId == null || body.birthCityId === '' ? null : getCityById(body.birthCityId);
           if (body.birthCityId != null && body.birthCityId !== '' && !city) return json(res, 400, { error: 'invalid_city' });
-          const place = city?.name || (typeof body.birthPlace === 'string' ? body.birthPlace.trim() : '');
+          const requestedPlace = typeof body.birthPlace === 'string' ? body.birthPlace.trim() : '';
+          const place = city
+            ? city.aliases.includes(requestedPlace) ? requestedPlace : city.name
+            : requestedPlace;
           const latitude = city?.latitude ?? (body.birthLatitude === '' || body.birthLatitude == null ? NaN : Number(body.birthLatitude));
           const longitude = city?.longitude ?? (body.birthLongitude === '' || body.birthLongitude == null ? NaN : Number(body.birthLongitude));
           const timeZone = city?.timeZone || body.birthTimeZone;

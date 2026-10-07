@@ -72,10 +72,11 @@ test('profile belongs to its account and stays protected', async () => fixture(a
   assert.equal((await request('/api/profile', 'PUT', { birthDate: '1990-02-30', birthTime: '10:45', birthPlace: 'Москва' }, cookie)).response.status, 400);
   assert.equal((await request('/api/profile', 'PUT', { birthDate: '1990-03-10', birthTime: '10:45', birthPlace: 'Москва' }, cookie)).response.status, 400);
   assert.equal((await request('/api/profile', 'PUT', { birthDate: '1990-03-10', birthTime: '10:45', birthCityId: 524901 }, cookie)).response.status, 200);
+  assert.equal((await request('/api/profile', 'PUT', { birthDate: '1990-03-10', birthTime: '10:45', birthPlace: 'Москва', birthCityId: 524901 }, cookie)).response.status, 200);
   const profile = (await request('/api/me', 'GET', null, cookie)).data.birthProfile;
   assert.equal(profile.birthCityId, 524901);
   assert.equal(profile.birthTimeZone, 'Europe/Moscow');
-  assert.equal(profile.birthPlace, 'Moscow');
+  assert.equal(profile.birthPlace, 'Москва');
   assert.equal(profile.birthUtc, '1990-03-10T07:45:00.000Z');
   const forecast = await request('/api/forecast/day');
   assert.equal(forecast.response.status, 200);

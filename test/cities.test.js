@@ -21,3 +21,11 @@ test('city search leaves same-name places distinct and bounds results', () => {
   assert.deepEqual(searchCities('<script>'), []);
   assert.equal(getCityById(999999999), null);
 });
+
+test('city search accepts the English keyboard layout for Russian city names', () => {
+  assert.equal(searchCities('Vjc')[0]?.id, 524901);
+  assert.equal(searchCities('Vjc')[0]?.displayName, 'Москва');
+  assert.equal(searchCities('vjcrdf')[0]?.id, 524901);
+  assert.equal(searchCities('Мо')[0]?.id, 524901);
+  assert.ok(searchCities('Armavir').some((city) => city.country === 'AM'));
+});
