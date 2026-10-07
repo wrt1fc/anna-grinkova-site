@@ -61,6 +61,16 @@ test('chat grounds guest and account replies in the right daily context', async 
     assert.equal(seen[1].visitorName, 'Мария');
     assert.equal(JSON.stringify(seen[1].forecast).includes('birthDate'), false);
     assert.equal(JSON.stringify(seen[1].forecast).includes('anna@example.com'), false);
+    assert.equal(seen[0].chart, null);
+    assert.equal(seen[1].chart, null);
+    // Chart questions get the calculated natal chart; birth data itself stays on the server.
+    assert.equal((await request('/api/chat', 'POST', { message: 'Что значит мой асцендент и дирекции в этом году?' }, cookie)).response.status, 200);
+    assert.match(seen[2].chart.angles[0], /^Асцендент \d+°\d{2}′ /);
+    assert.ok(Array.isArray(seen[2].chart.directions.hits));
+    assert.equal(JSON.stringify(seen[2].chart).includes('1990'), false);
+    const noProfile = await signIn(store, request, 'nochart@example.com');
+    await request('/api/chat', 'POST', { message: 'Что значит Венера в 7 доме?' }, noProfile);
+    assert.match(seen[3].chart.missing, /личном кабинете/);
   }, { chatWriter: { async answer(input) { seen.push(input); return { answer: 'Посмотрите на один доступный выбор и проверьте его последствия.' }; } } });
 });
 

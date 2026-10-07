@@ -1,11 +1,15 @@
 {
-  "note": "Цены — черновик для разработки, утвердить с Анной до запуска. Суммы в рублях; в базе хранятся в копейках. vatCode 1 = «без НДС» (ИП на УСН); уточнить у бухгалтера.",
+  "note": "Цены — черновик для разработки, утвердить с Анной до запуска. Рубли — для карт российских банков (ЮKassa), USD/EUR — для карт иностранных банков (Robokassa, комиссия около 9,9%, поэтому цена выше рублёвой по курсу). В базе суммы хранятся в копейках/центах. vatCode 1 = «без НДС» (ИП на УСН); уточнить у бухгалтера.",
   "currency": "RUB",
   "vatCode": 1,
+  "regions": {
+    "ru": { "label": "Карта российского банка, СБП, SberPay", "currencies": ["RUB"] },
+    "intl": { "label": "Карта иностранного банка (Visa, Mastercard)", "currencies": ["USD", "EUR"] }
+  },
   "products": [
-    { "id": "trial-7d", "label": "Тест-драйв на 7 дней", "plan": "individual", "periodDays": 7, "priceRub": 190, "oncePerUser": true, "autoRenewable": false },
-    { "id": "individual-30d", "label": "Индивидуальный, 30 дней", "plan": "individual", "periodDays": 30, "priceRub": 690, "autoRenewable": true },
-    { "id": "partner-30d", "label": "Партнёрский, 30 дней", "plan": "partner", "periodDays": 30, "priceRub": 990, "autoRenewable": true },
-    { "id": "family-30d", "label": "Семейный, 30 дней", "plan": "family", "periodDays": 30, "priceRub": 1290, "autoRenewable": true }
+    { "id": "trial-7d", "label": "Тест-драйв на 7 дней", "plan": "individual", "periodDays": 7, "priceRub": 190, "prices": { "USD": 3, "EUR": 3 }, "oncePerUser": true, "autoRenewable": false },
+    { "id": "individual-30d", "label": "Индивидуальный, 30 дней", "plan": "individual", "periodDays": 30, "priceRub": 690, "prices": { "USD": 9, "EUR": 8 }, "autoRenewable": true },
+    { "id": "partner-30d", "label": "Партнёрский, 30 дней", "plan": "partner", "periodDays": 30, "priceRub": 990, "prices": { "USD": 13, "EUR": 12 }, "autoRenewable": true },
+    { "id": "family-30d", "label": "Семейный, 30 дней", "plan": "family", "periodDays": 30, "priceRub": 1290, "prices": { "USD": 17, "EUR": 15 }, "autoRenewable": true }
   ]
 }

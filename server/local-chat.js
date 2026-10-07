@@ -34,8 +34,9 @@ export const DEFAULT_ANSWER_LENGTH = chatContext.defaultAnswerLength;
 export const MAX_ANSWER_CHARS = Math.max(...Object.values(ANSWER_LENGTHS).map((item) => item.maxChars));
 
 // The same prompt shape is used for training examples, so the tuned model learns to follow length.
-export function chatPrompt({ message, history, forecast, visitorName = null, length = DEFAULT_ANSWER_LENGTH, materials = [] }) {
-  return JSON.stringify({ facts: chatContext.facts, materials, forecast, history, visitorName, length,
+export function chatPrompt({ message, history, forecast, visitorName = null, length = DEFAULT_ANSWER_LENGTH, materials = [], chart = null }) {
+  // The natal chart block is sent only for chart questions, so ordinary answers keep the trained prompt shape.
+  return JSON.stringify({ facts: chatContext.facts, materials, forecast, ...(chart ? { chart } : {}), history, visitorName, length,
     lengthInstruction: ANSWER_LENGTHS[length].instruction, question: message });
 }
 
@@ -64,7 +65,7 @@ function lastFullSentence(text) {
 export function createLocalChat({ model, fetchImpl = fetch }) {
   if (typeof model !== 'string' || !/^[\w./:-]{2,80}$/.test(model)) throw new Error('Invalid local model name');
   return {
-    async answer({ message, history, forecast, visitorName = null, signal, length = DEFAULT_ANSWER_LENGTH, materials = [], onDelta = null }) {
+    async answer({ message, history, forecast, visitorName = null, signal, length = DEFAULT_ANSWER_LENGTH, materials = [], chart = null, onDelta = null }) {
       const size = ANSWER_LENGTHS[length];
       if (!size) throw new Error('Unknown answer length');
       const timeout = AbortSignal.timeout(MODEL_TIMEOUT_MS);
@@ -78,7 +79,7 @@ export function createLocalChat({ model, fetchImpl = fetch }) {
           // Fixed context size: Ollama reloads the model whenever num_ctx changes between requests.
           options: { temperature: 0.25, num_predict: size.numPredict, num_ctx: 8192 },
           system: chatContext.systemInstructions.join(' '),
-          prompt: chatPrompt({ message, history, forecast, visitorName, length, materials }),
+          prompt: chatPrompt({ message, history, forecast, visitorName, length, materials, chart }),
         }),
         // Also stops generation when the visitor presses Stop or leaves the page.
         signal: signal ? AbortSignal.any([signal, timeout]) : timeout,

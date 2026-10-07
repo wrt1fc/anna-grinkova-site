@@ -1,4 +1,5 @@
-// Orders, provider notifications and plan periods. Money is stored in kopecks to avoid float rounding.
+// Orders, provider notifications and plan periods. Money is stored in minor units (kopecks, cents) to avoid float rounding;
+// the amount_kop column keeps its name from the rouble-only first version.
 import { randomUUID } from 'node:crypto';
 
 export const ORDER_STATUSES = ['pending', 'paid', 'canceled', 'failed', 'refunded'];
@@ -6,7 +7,9 @@ export const ORDER_STATUSES = ['pending', 'paid', 'canceled', 'failed', 'refunde
 export function migrateBilling(db) {
   const userColumns = new Set(db.prepare('PRAGMA table_info(users)').all().map((row) => row.name));
   if (!userColumns.has('plan_expires_at')) db.exec('ALTER TABLE users ADD COLUMN plan_expires_at INTEGER');
-  if (!userColumns.has('autorenew_method_id')) db.exec('ALTER TABLE users ADD COLUMN autorenew_method_id TEXT');
+  for (const column of ['autorenew_method_id', 'autorenew_provider', 'autorenew_currency']) {
+    if (!userColumns.has(column)) db.exec(`ALTER TABLE users ADD COLUMN ${column} TEXT`);
+  }
   db.exec(`
     CREATE TABLE IF NOT EXISTS orders (
       id TEXT PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
@@ -21,10 +24,17 @@ export function migrateBilling(db) {
       provider TEXT NOT NULL, event_key TEXT NOT NULL, received_at INTEGER NOT NULL, PRIMARY KEY(provider, event_key)
     );
   `);
+  // Numeric invoice numbers for providers that cannot take a UUID (Robokassa InvId).
+  const orderColumns = new Set(db.prepare('PRAGMA table_info(orders)').all().map((row) => row.name));
+  if (!orderColumns.has('invoice_no')) {
+    db.exec('ALTER TABLE orders ADD COLUMN invoice_no INTEGER');
+    db.exec('UPDATE orders SET invoice_no = rowid');
+  }
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS orders_invoice ON orders(invoice_no)');
 }
 
 const ORDER_COLUMNS = `id, user_id AS userId, product_id AS productId, plan, period_days AS periodDays, amount_kop AS amountKop,
-  currency, status, provider, provider_payment_id AS providerPaymentId, auto_renew AS autoRenew, renewal,
+  currency, status, provider, provider_payment_id AS providerPaymentId, invoice_no AS invoiceNo, auto_renew AS autoRenew, renewal,
   created_at AS createdAt, updated_at AS updatedAt, paid_at AS paidAt`;
 
 export function createBillingStore(db, { defaultPlan }) {
@@ -40,22 +50,27 @@ export function createBillingStore(db, { defaultPlan }) {
   function setPlanPeriod(userId, plan, expiresAt = null) {
     db.prepare('UPDATE users SET plan = ?, plan_expires_at = ? WHERE id = ?').run(plan, expiresAt, userId);
   }
-  function setAutoRenewMethod(userId, methodId) {
-    db.prepare('UPDATE users SET autorenew_method_id = ? WHERE id = ?').run(methodId, userId);
+  // A saved method belongs to one provider and one currency; renewals charge the same pair.
+  function setAutoRenewMethod(userId, methodId, provider = null, currency = null) {
+    db.prepare('UPDATE users SET autorenew_method_id = ?, autorenew_provider = ?, autorenew_currency = ? WHERE id = ?')
+      .run(methodId, methodId ? provider : null, methodId ? currency : null, userId);
   }
   function autoRenewMethod(userId) {
     return db.prepare('SELECT autorenew_method_id AS method FROM users WHERE id = ?').get(userId)?.method ?? null;
   }
   function dueRenewals(before, now = Date.now()) {
-    return db.prepare(`SELECT id AS userId, plan, plan_expires_at AS expiresAt, autorenew_method_id AS method FROM users
+    return db.prepare(`SELECT id AS userId, plan, plan_expires_at AS expiresAt, autorenew_method_id AS method,
+      autorenew_provider AS provider, autorenew_currency AS currency FROM users
       WHERE autorenew_method_id IS NOT NULL AND plan_expires_at IS NOT NULL AND plan_expires_at > ? AND plan_expires_at <= ?`).all(now, before);
   }
 
-  function createOrder({ userId, productId, plan, periodDays, amountKop, provider, autoRenew = false, renewal = false }, now = Date.now()) {
+  function createOrder({ userId, productId, plan, periodDays, amountKop, currency = 'RUB', provider, autoRenew = false, renewal = false }, now = Date.now()) {
     const id = randomUUID();
-    db.prepare(`INSERT INTO orders (id, user_id, product_id, plan, period_days, amount_kop, status, provider, auto_renew, renewal, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)`).run(id, userId, productId, plan, periodDays, amountKop, provider,
-      autoRenew ? 1 : 0, renewal ? 1 : 0, now, now);
+    const { lastInsertRowid } = db.prepare(`INSERT INTO orders (id, user_id, product_id, plan, period_days, amount_kop, currency, status, provider,
+      auto_renew, renewal, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)`).run(id, userId, productId, plan,
+      periodDays, amountKop, currency, provider, autoRenew ? 1 : 0, renewal ? 1 : 0, now, now);
+    // Orders are never deleted (ON DELETE RESTRICT), so the rowid is a stable unique invoice number.
+    db.prepare('UPDATE orders SET invoice_no = ? WHERE id = ?').run(Number(lastInsertRowid), id);
     return getOrder(id);
   }
   function getOrder(id) { return toOrder(db.prepare(`SELECT ${ORDER_COLUMNS} FROM orders WHERE id = ?`).get(id)) ?? null; }
@@ -74,6 +89,10 @@ export function createBillingStore(db, { defaultPlan }) {
     return db.prepare(`UPDATE orders SET status = ?, updated_at = ?, paid_at = COALESCE(?, paid_at) WHERE id = ? AND status = ?`)
       .run(to, now, paidAt, id, from).changes === 1;
   }
+  function pendingOrders(after, before) {
+    return db.prepare(`SELECT ${ORDER_COLUMNS} FROM orders WHERE status = 'pending' AND provider_payment_id IS NOT NULL
+      AND created_at >= ? AND created_at <= ? ORDER BY created_at LIMIT 500`).all(after, before).map(toOrder);
+  }
   function hasPaidProduct(userId, productId) {
     return db.prepare(`SELECT 1 FROM orders WHERE user_id = ? AND product_id = ? AND status IN ('paid','refunded') LIMIT 1`).get(userId, productId) != null;
   }
@@ -88,5 +107,5 @@ export function createBillingStore(db, { defaultPlan }) {
   }
 
   return { planState, setPlanPeriod, setAutoRenewMethod, autoRenewMethod, dueRenewals, createOrder, getOrder, getOrderByProviderId,
-    listOrders, setOrderProviderId, transitionOrder, hasPaidProduct, recordPaymentEvent, inTransaction };
+    listOrders, setOrderProviderId, transitionOrder, pendingOrders, hasPaidProduct, recordPaymentEvent, inTransaction };
 }

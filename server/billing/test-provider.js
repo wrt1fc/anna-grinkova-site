@@ -1,15 +1,18 @@
 import { randomUUID } from 'node:crypto';
+import { parseJsonNotification } from './yookassa.js';
 
 // In-memory provider for local development and tests. Never use in production:
 // it trusts only loopback senders and "pays" when told to.
-export function createTestProvider() {
+export function createTestProvider({ name = 'test' } = {}) {
   const payments = new Map();
+  const isTrustedSender = (ip) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(ip);
   return {
-    name: 'test',
-    isTrustedSender: (ip) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(ip),
+    name,
+    isTrustedSender,
+    parseNotification: ({ rawBody, ip }) => parseJsonNotification(rawBody, ip, isTrustedSender),
     async createPayment({ order, returnUrl, savePaymentMethod = false, paymentMethodId = null }) {
-      const id = `test-${randomUUID()}`;
-      const payment = { id, status: paymentMethodId ? 'succeeded' : 'pending', paid: Boolean(paymentMethodId), amountKop: order.amountKop,
+      const id = `${name}-${randomUUID()}`;
+      const payment = { id, status: paymentMethodId ? 'succeeded' : 'pending', paid: Boolean(paymentMethodId), amountKop: order.amountKop, currency: order.currency ?? 'RUB',
         refundedKop: 0, orderId: order.id, savedMethodId: savePaymentMethod || paymentMethodId ? (paymentMethodId ?? `method-${id}`) : null,
         confirmationUrl: paymentMethodId ? null : `${returnUrl}${returnUrl.includes('?') ? '&' : '?'}test_payment=${id}` };
       payments.set(id, payment);

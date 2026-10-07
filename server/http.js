@@ -20,9 +20,11 @@ const SESSION_AGE = 30 * 24 * 60 * 60;
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'", "script-src 'self'", "style-src 'self' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com", "img-src 'self' data:", "connect-src 'self'",
+  "manifest-src 'self'", "worker-src 'self'",
   "form-action 'self'", "base-uri 'self'", "object-src 'none'", "frame-ancestors 'none'",
 ].join('; ');
-const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.webp': 'image/webp' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.webp': 'image/webp',
+  '.png': 'image/png', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json; charset=utf-8' };
 
 function json(res, status, data, headers = {}) {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...headers });
@@ -49,14 +51,14 @@ function cookieToken(req) {
 export function createServer({ store, mailer = null, codeSecret, root = new URL('../prototype/', import.meta.url), secureCookies = false,
   mailDailyLimit = 0, trafficLimiter = createTrafficLimiter(), chatLimiter = createTrafficLimiter({ perIpLimit: 6, globalLimit: 300 }),
   chatGate = createConcurrencyGate(2), loginGuard = createLoginGuard(), trustProxy = false, forecastWriter = null, chatWriter = null,
-  sotisVerifier = null, metrics = NULL_METRICS, knowledge = null, paymentProvider = null, publicUrl = 'http://localhost:3000',
+  sotisVerifier = null, metrics = NULL_METRICS, knowledge = null, paymentProvider = null, paymentProviders = null, publicUrl = 'http://localhost:3000',
   pageViewLimiter = createTrafficLimiter({ perIpLimit: 30, globalLimit: 3000 }) }) {
   if (!codeSecret || String(codeSecret).length < 32) throw new Error('AUTH_CODE_SECRET must have at least 32 characters');
   if (!Number.isSafeInteger(mailDailyLimit) || mailDailyLimit < 0) throw new Error('MAIL_DAILY_LIMIT must be a non-negative integer');
   const rootPath = fileURLToPath(root);
   const historySigner = createHistorySigner(codeSecret);
-  const billing = createBilling({ store, provider: paymentProvider, publicUrl });
-  const handleBillingRoutes = createBillingRoutes({ store, billing, provider: paymentProvider, trustProxy, metrics });
+  const billing = createBilling({ store, provider: paymentProvider, providers: paymentProviders, publicUrl });
+  const handleBillingRoutes = createBillingRoutes({ store, billing, trustProxy, metrics });
   const handleChatRoutes = createChatRoutes({ store, chatWriter, chatLimiter, chatGate, historySigner, metrics, knowledge });
   const sessionCookie = (value, maxAge) => `anna_session=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secureCookies ? '; Secure' : ''}`;
   let dailyCache = null;

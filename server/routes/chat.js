@@ -5,6 +5,8 @@ import { SAFE_FALLBACK_ANSWER, unsafeChatAnswer } from '../chat-safety.js';
 import { planFor } from '../plans.js';
 import { CRISIS_ANSWER, isCrisisMessage } from '../crisis.js';
 import { profilesWithAccess } from './profiles.js';
+import { asksAboutChart, chartForPrompt, chartSectionsFor, natalChart } from '../astro-chart.js';
+import { asksAboutMoney, methodQueries, moneyForPrompt, moneyProfile } from '../anna-method.js';
 
 const MAX_MESSAGE_CHARS = 600;
 // Seeds the personal tarot card for a partner/family profile apart from any account id.
@@ -38,6 +40,33 @@ function chartFor(store, user, profileId) {
   if (!profile) return { error: [404, { error: 'profile_not_found', message: 'Профиль не найден.' }] };
   if (profile.locked) return { error: [403, { error: 'profile_locked', message: 'Этот профиль недоступен на текущем тарифе.' }] };
   return { profile, subject: { relation: profile.relation, label: profile.label }, profileId: profile.id };
+}
+
+// Natal chart, transits, directions and Anna's money method for chart and money questions only;
+// birth date, place and email never reach the model.
+const MAX_MATERIALS = 5;
+function chartContext(profile, message, now = new Date()) {
+  const money = asksAboutMoney(message);
+  if (!asksAboutChart(message) && !money) return { chart: null, queries: [] };
+  if (!profile?.birthUtc) return { chart: { missing: 'Данные рождения не заполнены в личном кабинете, натальная карта не рассчитана.' }, queries: [] };
+  const natal = natalChart({ birthUtc: profile.birthUtc, latitude: profile.birthLatitude, longitude: profile.birthLongitude });
+  const chart = chartForPrompt(natal, now, { include: chartSectionsFor(message) });
+  if (!money) return { chart, queries: [] };
+  const profileMoney = moneyProfile(natal);
+  return { chart: { ...chart, money: moneyForPrompt(profileMoney) }, queries: methodQueries(profileMoney) };
+}
+
+// Anna's slides that match this chart first (2nd house sign, its ruler, hard aspects, strategy), then the visitor's own words.
+function findMaterials(knowledge, message, queries) {
+  if (!knowledge) return [];
+  const seen = new Set();
+  const found = [];
+  for (const item of [...queries.flatMap((query) => knowledge.search(query, { limit: 1 })), ...knowledge.search(message)]) {
+    if (seen.has(item.text) || found.length >= MAX_MATERIALS) continue;
+    seen.add(item.text);
+    found.push({ text: item.text });
+  }
+  return found;
 }
 
 function sse(res) {
@@ -102,7 +131,8 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
       : general;
     const context = chatForecastContext(forecast, chart.subject);
     // Only the text goes to the model; file names and scores stay on the server.
-    const materials = (knowledge?.search(message) ?? []).map(({ text }) => ({ text }));
+    const astro = chartContext(chart.profile, message);
+    const materials = findMaterials(knowledge, message, astro.queries);
     const streaming = String(req.headers.accept ?? '').includes('text/event-stream');
     const send = streaming ? sse(res) : null;
     const abort = new AbortController();
@@ -130,7 +160,7 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
     };
     try {
       const reply = await chatWriter.answer({ message, history: historySigner.trusted(body.history ?? []), forecast: forecastForQuestion(context, message),
-        visitorName: user.displayName || null,
+        visitorName: user.displayName || null, chart: astro.chart,
         length: body.length ?? DEFAULT_ANSWER_LENGTH, materials, signal: abort.signal, onDelta });
       const filtered = unsafeChatAnswer(reply.answer, day);
       if (filtered) console.warn('Chat answer rejected by safety check');

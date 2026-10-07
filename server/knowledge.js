@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from 'node:fs';
-import { extname, join } from 'node:path';
+import { extname, join, relative, sep } from 'node:path';
 
 // Retrieval over Anna's approved materials: approved Q&A cards and Markdown texts she allowed.
 // Drafts and raw transcripts are never indexed; they may contain other people's stories.
@@ -8,7 +8,8 @@ const STOPWORDS = new Set(('и в во не что он на я с со как �
 const SUFFIXES = /(иями|ями|ами|иях|ях|ах|ого|его|ому|ему|ыми|ими|ость|ости|ение|ения|ений|ться|тся|ешь|ете|ишь|ите|ует|уют|ают|яют|ала|ила|ыла|ась|ось|ая|яя|ое|ее|ые|ие|ый|ий|ой|ом|ем|ам|ям|ую|юю|ию|ия|ья|ов|ев|ей|ы|и|а|я|о|е|у|ю|ь)$/u;
 
 export function tokenize(text) {
-  return String(text).toLowerCase().replaceAll('ё', 'е').match(/\p{L}+/gu)?.filter((word) => word.length > 2 && !STOPWORDS.has(word))
+  // Numbers stay as tokens: house numbers ("управитель 2 дома в 7 доме") decide which slide matches.
+  return String(text).toLowerCase().replaceAll('ё', 'е').match(/[\p{L}\p{N}]+/gu)?.filter((word) => (word.length > 2 || /^\d+$/.test(word)) && !STOPWORDS.has(word))
     .map((word) => (word.length > 5 ? word.replace(SUFFIXES, '') : word)) ?? [];
 }
 
@@ -59,12 +60,15 @@ export function createKnowledge(documents, { k1 = 1.4, b = 0.75 } = {}) {
   };
 }
 
+// Reads Markdown and card files from the folder and its subfolders (e.g. methodics/ for Anna's course).
 export function loadKnowledge(directory) {
   const documents = [];
-  for (const name of readdirSync(directory)) {
-    const text = readFileSync(join(directory, name), 'utf8');
-    if (extname(name) === '.md') documents.push(...chunksFromMarkdown(text, name));
-    if (extname(name) === '.jsonl') documents.push(...chunksFromCards(text, name));
+  for (const entry of readdirSync(directory, { recursive: true, withFileTypes: true })) {
+    if (!entry.isFile()) continue;
+    const path = join(entry.parentPath, entry.name);
+    const source = relative(directory, path).split(sep).join('/');
+    if (extname(entry.name) === '.md') documents.push(...chunksFromMarkdown(readFileSync(path, 'utf8'), source));
+    if (extname(entry.name) === '.jsonl') documents.push(...chunksFromCards(readFileSync(path, 'utf8'), source));
   }
   return createKnowledge(documents);
 }

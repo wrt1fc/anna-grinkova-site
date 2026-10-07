@@ -5,6 +5,16 @@ const TIMEOUT_MS = 15_000;
 
 const rub = (kop) => (kop / 100).toFixed(2);
 
+// Shared by YooKassa and the test provider: {event, object} JSON from a trusted network.
+export function parseJsonNotification(rawBody, ip, isTrustedSender) {
+  if (!isTrustedSender(ip)) return { ok: false, status: 403 };
+  let body;
+  try { body = JSON.parse(rawBody || '{}'); } catch { return { ok: false, status: 400 }; }
+  const event = typeof body?.event === 'string' ? body.event : '';
+  const paymentId = event.startsWith('refund.') ? body.object?.payment_id : body.object?.id;
+  return { ok: true, event, paymentId };
+}
+
 // ЮKassa adapter. Notifications carry no signature, so the sender IP is checked against
 // YooKassa's published subnets and the payment state is always re-read from the API.
 export function createYooKassa({ shopId, secretKey, vatCode = 1, fetchImpl = fetch }) {
@@ -26,14 +36,18 @@ export function createYooKassa({ shopId, secretKey, vatCode = 1, fetchImpl = fet
     status: payment.status,
     paid: payment.paid === true,
     amountKop: Math.round(Number(payment.amount?.value) * 100),
+    currency: payment.amount?.currency ?? 'RUB',
     refundedKop: Math.round(Number(payment.refunded_amount?.value ?? 0) * 100),
     orderId: payment.metadata?.orderId ?? null,
     savedMethodId: payment.payment_method?.saved ? payment.payment_method.id : null,
     confirmationUrl: payment.confirmation?.confirmation_url ?? null,
   });
+  const isTrustedSender = createAllowList(YOOKASSA_NETWORKS);
   return {
     name: 'yookassa',
-    isTrustedSender: createAllowList(YOOKASSA_NETWORKS),
+    isTrustedSender,
+    // Notifications carry no signature: only YooKassa's networks may send them, and the body only names the payment.
+    parseNotification: ({ rawBody, ip }) => parseJsonNotification(rawBody, ip, isTrustedSender),
     async createPayment({ order, description, returnUrl, email, savePaymentMethod = false, paymentMethodId = null }) {
       const amount = { value: rub(order.amountKop), currency: order.currency ?? 'RUB' };
       const body = {
