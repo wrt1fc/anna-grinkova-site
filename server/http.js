@@ -9,6 +9,7 @@ import { createLoginGuard } from './login-guard.js';
 import { getCityById, searchCities } from './cities.js';
 import { birthInstant } from './birth-time.js';
 import { personalForecastForDate } from './personal-forecast.js';
+import { chatForecastContext } from './local-chat.js';
 
 const SESSION_AGE = 30 * 24 * 60 * 60;
 const CONTENT_SECURITY_POLICY = [
@@ -41,8 +42,8 @@ function cookieToken(req) {
 }
 
 export function createServer({ store, mailer = null, codeSecret, root = new URL('../prototype/', import.meta.url), secureCookies = false,
-  mailDailyLimit = 0, trafficLimiter = createTrafficLimiter(), loginGuard = createLoginGuard(), trustProxy = false,
-  forecastWriter = null, sotisVerifier = null }) {
+  mailDailyLimit = 0, trafficLimiter = createTrafficLimiter(), chatLimiter = createTrafficLimiter({ perIpLimit: 6, globalLimit: 30 }),
+  loginGuard = createLoginGuard(), trustProxy = false, forecastWriter = null, chatWriter = null, sotisVerifier = null }) {
   if (!codeSecret || String(codeSecret).length < 32) throw new Error('AUTH_CODE_SECRET must have at least 32 characters');
   if (!Number.isSafeInteger(mailDailyLimit) || mailDailyLimit < 0) throw new Error('MAIL_DAILY_LIMIT must be a non-negative integer');
   const rootPath = fileURLToPath(root);
@@ -101,6 +102,37 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
         }
         if (path === '/api/cities' && req.method === 'GET') {
           return json(res, 200, { cities: searchCities(url.searchParams.get('q') || '') });
+        }
+        if (path === '/api/chat' && req.method === 'POST') {
+          if (!chatWriter) return json(res, 503, { error: 'chat_unavailable', message: 'Чат пока недоступен. Попробуйте позже.' });
+          const limit = chatLimiter.check(clientAddress(req, trustProxy));
+          if (!limit.allowed) return json(res, 429, { error: 'chat_rate_limited',
+            message: 'Слишком много сообщений. Попробуйте через минуту.' }, { 'Retry-After': String(limit.retryAfter) });
+          const body = await readJson(req);
+          const message = typeof body.message === 'string' ? body.message.trim() : '';
+          const history = body.history ?? [];
+          if (!message || message.length > 600 || !Array.isArray(history) || history.length > 6 ||
+            history.some((item) => !item || !['user', 'assistant'].includes(item.role) ||
+              typeof item.content !== 'string' || !item.content.trim() || item.content.length > 1200) ||
+            !Number.isInteger(body.draw ?? 0) || (body.draw ?? 0) < 0 || (body.draw ?? 0) > 4) {
+            return json(res, 400, { error: 'invalid_chat_message', message: 'Проверьте текст сообщения.' });
+          }
+          const day = moscowDate();
+          const draw = body.draw ?? 0;
+          const token = cookieToken(req);
+          const user = token ? store.userForSession(tokenHash(token)) : null;
+          const profile = user ? store.getBirthProfile(user.id) : null;
+          const general = forecastForDate(day, draw);
+          const forecast = profile?.birthUtc
+            ? personalForecastForDate(day, profile, user.id, general, draw) : general;
+          const context = chatForecastContext(forecast);
+          try {
+            const reply = await chatWriter.answer({ message, history, forecast: context });
+            return json(res, 200, { ...reply, context: { date: day, scope: context.scope, card: context.card.name } });
+          } catch (error) {
+            console.warn('Local chat failed:', error.message);
+            return json(res, 503, { error: 'chat_unavailable', message: 'Сейчас не удалось получить ответ. Попробуйте ещё раз.' });
+          }
         }
         if (path === '/api/forecast/day' && req.method === 'GET') {
           const drawParameters = url.searchParams.getAll('draw');

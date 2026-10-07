@@ -26,6 +26,7 @@ const drawStage = document.querySelector('.daily-draw-stage');
 const drawStageNote = document.getElementById('draw-stage-note');
 const drawReset = document.getElementById('draw-reset');
 let selectedDraw = null;
+window.chatDrawPosition = () => selectedDraw ?? 0;
 let drawRequest = 0;
 let revealTimer;
 
@@ -118,15 +119,15 @@ drawReset.addEventListener('click', () => resetDraw(true));
 
 function showRoute() {
   const hash = window.location.hash.replace('#', '');
-  const page = ['day', 'week', 'account'].includes(hash) ? hash : 'home';
-  if (hash && !['home', 'day', 'week', 'account', 'about'].includes(hash)) history.replaceState(null, '', '#home');
+  const page = ['day', 'week', 'chat', 'account'].includes(hash) ? hash : 'home';
+  if (hash && !['home', 'day', 'week', 'chat', 'account', 'about'].includes(hash)) history.replaceState(null, '', '#home');
   for (const element of pages) element.hidden = element.dataset.page !== page;
   for (const element of navigation) {
     const navPage = element.dataset.nav || element.dataset.mobileNav;
     if (navPage === page || (hash === 'about' && navPage === 'about')) element.setAttribute('aria-current', 'page');
     else element.removeAttribute('aria-current');
   }
-  document.title = { home: 'Анна Гринькова — пространство прогнозов', day: 'Карта дня — Анна Гринькова', week: 'Прогноз на неделю — Анна Гринькова', account: 'Личный кабинет — Анна Гринькова' }[page];
+  document.title = { home: 'Анна Гринькова — пространство прогнозов', day: 'Карта дня — Анна Гринькова', week: 'Прогноз на неделю — Анна Гринькова', chat: 'Чат с Анной — ИИ-помощник', account: 'Личный кабинет — Анна Гринькова' }[page];
   window.scrollTo({ top: 0, behavior: 'auto' });
   if (hash === 'about') requestAnimationFrame(() => document.getElementById('about').scrollIntoView({ behavior: 'smooth' }));
   if (page === 'day') loadDailyForecast();
@@ -300,7 +301,10 @@ document.getElementById('auth-resend').addEventListener('click', async () => {
 });
 
 function renderAccount(data) {
-  if ((currentUser?.id ?? null) !== (data?.user?.id ?? null)) resetDraw();
+  if ((currentUser?.id ?? null) !== (data?.user?.id ?? null)) {
+    resetDraw();
+    document.dispatchEvent(new Event('anna-account-changed'));
+  }
   currentUser = data?.user || null;
   document.getElementById('account-heading').textContent = currentUser ? 'Вы в кабинете' : 'Войдите в кабинет';
   document.getElementById('account-email').textContent = currentUser ? currentUser.email : 'Создайте аккаунт, чтобы подготовить профиль для персонального прогноза.';
