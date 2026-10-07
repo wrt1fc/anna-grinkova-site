@@ -21,18 +21,32 @@ try {
   const option = saved && chatLength.querySelector(`input[value="${CSS.escape(saved)}"]`);
   if (option) option.checked = true;
 } catch { /* storage unavailable: keep the default */ }
-chatLength.addEventListener('change', (event) => {
-  try { localStorage.setItem(lengthKey, event.target.value); } catch { /* not critical */ }
-});
 function selectedLength() { return chatLength.querySelector('input:checked')?.value || 'medium'; }
+const formatButtons = document.querySelectorAll('[data-chat-length]');
+
+// The greeting's format buttons and the composer switch are two views of one setting.
+function syncFormatButtons() {
+  const current = selectedLength();
+  for (const button of formatButtons) button.setAttribute('aria-pressed', String(button.dataset.chatLength === current));
+}
+function setLength(value) {
+  const option = chatLength.querySelector(`input[value="${CSS.escape(value)}"]`);
+  if (!option) return;
+  option.checked = true;
+  try { localStorage.setItem(lengthKey, value); } catch { /* not critical */ }
+  syncFormatButtons();
+}
+chatLength.addEventListener('change', (event) => setLength(event.target.value));
+for (const button of formatButtons) button.addEventListener('click', () => setLength(button.dataset.chatLength));
+syncFormatButtons();
 const chatPrompts = document.querySelectorAll('[data-chat-prompt]');
+const chatSignInButton = chatLocked.querySelector('[data-open-signup]');
 
 function setChatAccess(signedIn) {
   chatSignedIn = signedIn;
   chatLocked.hidden = signedIn;
   chatForm.hidden = !signedIn;
   chatLength.hidden = !signedIn;
-  for (const button of chatPrompts) button.disabled = !signedIn;
 }
 
 function scrollChatToEnd() { chatTranscript.scrollTop = chatTranscript.scrollHeight; }
@@ -123,7 +137,6 @@ async function sendChat(message, existingUserMessage = false) {
   if (!text || text.length > 600) return;
   const request = ++chatRequest;
   const started = performance.now();
-  chatEmpty.hidden = true;
   if (!existingUserMessage) chatMessage('user', text);
   chatInput.value = '';
   const thinking = thinkingMessage();
@@ -194,7 +207,7 @@ function clearChat(focus = true) {
   clearTimeout(chatSlowTimer);
   chatHistory = [];
   chatTranscript.replaceChildren(chatEmpty);
-  chatEmpty.hidden = false;
+  for (const group of chatEmpty.querySelectorAll('details[open]')) group.open = false;
   chatInput.value = '';
   chatStatus.textContent = '';
   chatStop.hidden = true;
@@ -206,6 +219,7 @@ document.addEventListener('anna-account-changed', () => clearChat(false));
 document.addEventListener('anna-account-state', (event) => setChatAccess(event.detail.signedIn));
 setChatAccess(document.body.dataset.signedIn === 'true');
 for (const button of chatPrompts) {
-  button.addEventListener('click', () => sendChat(button.dataset.chatPrompt));
+  // A guest who picks a question is taken straight to sign-in instead of a dead button.
+  button.addEventListener('click', () => (chatSignedIn ? sendChat(button.dataset.chatPrompt) : chatSignInButton.click()));
 }
 updateChatSend();

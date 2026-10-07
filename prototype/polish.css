@@ -4,7 +4,6 @@
 .mobile-nav a { min-width: 0; }
 .mobile-nav a[aria-current="page"] .ui-icon { filter: drop-shadow(0 0 6px rgba(245,217,133,.35)); }
 .chat-panel-mark .ui-icon { width: 26px; height: 26px; stroke-width: 1.25; }
-.chat-empty-mark .ui-icon { width: 47px; height: 47px; stroke-width: 1.1; }
 #chat-send .ui-icon { width: 23px; height: 23px; stroke-width: 1.6; }
 
 .button > span[aria-hidden="true"],
@@ -97,3 +96,16 @@
   .mobile-nav { padding-inline: 4px; }
   .mobile-nav a { font-size: 9px; }
 }
+
+/* Desktop navigation: a gold rule grows from the centre on hover and stays under the current page. */
+.desktop-nav { gap: clamp(20px, 2.3vw, 40px); }
+.desktop-nav a { position: relative; padding: 12px 2px; color: #d9cabb; font-size: 14px; letter-spacing: .015em; transition: color var(--motion-base) var(--ease-out); }
+.desktop-nav a::after { content: ""; position: absolute; left: 50%; right: 50%; bottom: 4px; height: 1px; background: linear-gradient(90deg, transparent, var(--gold-light) 18%, var(--gold-light) 82%, transparent); opacity: 0; transition: left 340ms var(--ease-out), right 340ms var(--ease-out), opacity 200ms ease; }
+.desktop-nav a::before { content: ""; position: absolute; left: 50%; bottom: 2px; width: 5px; height: 5px; background: var(--gold-light); transform: translateX(-50%) rotate(45deg) scale(0); transition: transform 340ms var(--ease-out); }
+.desktop-nav a:hover { color: #f6e7c4; }
+.desktop-nav a:hover::after { left: 18%; right: 18%; opacity: .55; }
+.desktop-nav a[aria-current="page"] { color: var(--gold-light); }
+.desktop-nav a[aria-current="page"]::after { left: 0; right: 0; opacity: 1; }
+.desktop-nav a[aria-current="page"]::before { transform: translateX(-50%) rotate(45deg) scale(1); }
+.desktop-nav a:focus-visible { outline: 1px solid var(--gold-light); outline-offset: 4px; border-radius: 2px; }
+@media (prefers-reduced-motion: reduce) { .desktop-nav a::after, .desktop-nav a::before { transition: none; } }

@@ -48,3 +48,7 @@ test('safety check rejects impersonation, prices, links, invented dates and prom
     'Я гарантирую, что всё получится.',
   ]) assert.equal(unsafeChatAnswer(answer, '2026-10-07'), true, answer);
 });
+
+test('the assistant identity reply without AI wording passes the safety check', () => {
+  assert.equal(unsafeChatAnswer('Нет, я помощник Анны Гриньковой и отвечаю по её методике, а не Анна лично.', '2026-10-07'), false);
+});

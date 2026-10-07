@@ -127,7 +127,7 @@ function showRoute() {
     if (navPage === page || (hash === 'about' && navPage === 'about')) element.setAttribute('aria-current', 'page');
     else element.removeAttribute('aria-current');
   }
-  document.title = { home: 'Анна Гринькова — пространство прогнозов', day: 'Карта дня — Анна Гринькова', week: 'Прогноз на неделю — Анна Гринькова', chat: 'Помощник Анны — ИИ-чат', account: 'Личный кабинет — Анна Гринькова' }[page];
+  document.title = { home: 'Анна Гринькова — пространство прогнозов', day: 'Карта дня — Анна Гринькова', week: 'Прогноз на неделю — Анна Гринькова', chat: 'Чат с Анной — Анна Гринькова', account: 'Личный кабинет — Анна Гринькова' }[page];
   window.scrollTo({ top: 0, behavior: 'auto' });
   if (hash === 'about') requestAnimationFrame(() => document.getElementById('about').scrollIntoView({ behavior: 'smooth' }));
   if (page === 'day') loadDailyForecast();
