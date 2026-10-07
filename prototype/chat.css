@@ -195,3 +195,14 @@
 .chat-message.is-streaming p::after { content: ""; display: inline-block; width: 2px; height: 1.05em; margin-left: 3px; vertical-align: -0.15em; background: var(--gold-light); animation: chat-caret 1s steps(2, start) infinite; }
 @keyframes chat-caret { to { visibility: hidden; } }
 @media (prefers-reduced-motion: reduce) { .chat-message.is-streaming p::after { animation: none; } }
+
+@media (min-width: 981px) {
+  .chat-layout {
+    max-width: 1760px;
+    grid-template-columns: minmax(260px, 310px) minmax(0, 1fr);
+    gap: clamp(28px, 2.5vw, 54px);
+    padding-bottom: clamp(150px, 13vh, 220px);
+  }
+  .chat-panel { height: clamp(760px, 77vh, 980px); }
+  .chat-transcript { padding: 34px clamp(32px, 3.2vw, 66px); }
+}

@@ -105,7 +105,7 @@ function renderDailyForecast(data) {
   document.getElementById('day-card-label').textContent = `Карта «${data.tarot.name}»`;
   document.getElementById('day-date-label').textContent = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' })
     .format(new Date(`${data.date}T12:00:00+03:00`));
-  document.getElementById('day-reading-title').textContent = data.reading.title;
+  document.getElementById('day-reading-title').textContent = `${data.reading.title.replace(/[.\s]+$/u, '')}.`;
   document.getElementById('day-reading-body').textContent = data.reading.body;
   document.getElementById('day-reading-question').textContent = data.reading.question;
   document.getElementById('day-reading-focus').textContent = data.reading.focus;
@@ -188,7 +188,7 @@ async function selectDailyCard(index) {
     drawIntro.hidden = true;
     drawResult.hidden = false;
     document.getElementById('draw-result-number').textContent = `${numeral} · карта дня`;
-    document.getElementById('draw-result-title').textContent = data.tarot.name;
+    document.getElementById('draw-result-title').textContent = `${data.tarot.name}.`;
     document.getElementById('draw-result-text').textContent = `Тема: ${data.tarot.focus}.`;
     document.getElementById('draw-result-question').textContent = data.reading.question;
   } catch (error) {
@@ -251,7 +251,7 @@ function updatePasswordRules() {
 function setAuthMode(mode) {
   authMode = mode;
   const config = modes[mode];
-  document.getElementById('signup-title').textContent = config.title;
+  document.getElementById('signup-title').textContent = `${config.title}.`;
   document.getElementById('auth-description').textContent = config.description;
   document.getElementById('auth-submit').firstChild.textContent = `${config.submit} `;
   document.getElementById('auth-switch').textContent = config.switch;
@@ -398,7 +398,7 @@ function renderAccount(data) {
   document.body.dataset.signedIn = String(!!currentUser);
   document.body.dataset.visitorName = currentUser?.displayName || '';
   document.dispatchEvent(new CustomEvent('anna-account-state', { detail: { signedIn: !!currentUser, name: currentUser?.displayName || '' } }));
-  document.getElementById('account-heading').textContent = currentUser ? 'Вы в кабинете' : 'Войдите в кабинет';
+  document.getElementById('account-heading').textContent = currentUser ? 'Вы в кабинете.' : 'Войдите в кабинет.';
   document.getElementById('account-email').textContent = currentUser ? currentUser.email : 'Создайте аккаунт, чтобы подготовить профиль для персонального прогноза.';
   document.getElementById('account-login').hidden = !!currentUser;
   document.getElementById('account-name-form').hidden = !currentUser;

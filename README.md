@@ -47,6 +47,7 @@ npm start
 - `prototype/` — страницы сайта и личного кабинета.
 - `design/svg/variant-1-*.svg` — экраны для импорта в Figma, включая выбор карты; `design/preview/` и `design/variant-1-svg.zip` — материалы просмотра.
 - `PRODUCT.md` и `DESIGN.md` — продуктовые и визуальные решения.
+- `docs/project-analysis.md` — источники, гипотезы о ЦА, путь пользователя и ход разработки; отдельная страница анализа есть в Figma.
 - `server/store.js` — схема SQLite и миграция существующей базы.
 - `server/http.js` — API регистрации, входа, подтверждения почты, смены пароля и профиля.
 - `server/mail.js` — адаптер Unisender Go.
