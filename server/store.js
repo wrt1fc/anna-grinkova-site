@@ -1,5 +1,6 @@
 import { DatabaseSync } from 'node:sqlite';
 import { timingSafeEqual } from 'node:crypto';
+import { createExtras, migrateExtras } from './store-extras.js';
 
 const CODE_LIFETIME = 10 * 60 * 1000;
 const SEND_COOLDOWN = 60 * 1000;
@@ -50,6 +51,8 @@ export function createStore(path) {
     birth_time_zone: 'TEXT', birth_utc: 'TEXT', birth_utc_offset_minutes: 'INTEGER' })) {
     if (!profileColumns.has(name)) db.exec(`ALTER TABLE birth_profiles ADD COLUMN ${name} ${type}`);
   }
+
+  migrateExtras(db);
 
   function createUser(email, passwordHash, now = Date.now(), verifiedAt = null) {
     const result = db.prepare('INSERT INTO users (email, password_hash, created_at, email_verified_at) VALUES (?, ?, ?, ?)')
@@ -116,6 +119,11 @@ export function createStore(path) {
     db.prepare('DELETE FROM auth_challenges WHERE challenge_hash = ?').run(challengeHash);
   }
 
+  // Gives back a unit when the counted action did not happen (model error, visitor pressed Stop).
+  function refundDailyQuota(kind, day) {
+    db.prepare('UPDATE daily_quotas SET used = used - 1 WHERE kind = ? AND day = ? AND used > 0').run(kind, day);
+  }
+
   function consumeDailyQuota(kind, day, limit) {
     if (!Number.isSafeInteger(limit) || limit < 1) return false;
     const result = db.prepare(`INSERT INTO daily_quotas (kind, day, used) VALUES (?, ?, 1)
@@ -155,8 +163,9 @@ export function createStore(path) {
   }
 
   return {
+    ...createExtras(db),
     createUser, findUserByEmail, findUserById, saveSession, userForSession, deleteSession,
-    getBirthProfile, saveBirthProfile, issueChallenge, deleteChallenge, consumeChallenge, consumeDailyQuota,
+    getBirthProfile, saveBirthProfile, issueChallenge, deleteChallenge, consumeChallenge, consumeDailyQuota, refundDailyQuota,
     health: () => db.prepare('SELECT 1 AS ok').get().ok === 1,
     close: () => db.close(),
   };

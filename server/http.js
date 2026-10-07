@@ -6,11 +6,13 @@ import { emailCodeHash, hashPassword, newChallenge, newEmailCode, newSessionToke
 import { forecastForDate, moscowDate } from './daily-forecast.js';
 import { clientAddress, createTrafficLimiter } from './traffic.js';
 import { createLoginGuard } from './login-guard.js';
-import { getCityById, searchCities } from './cities.js';
-import { birthInstant } from './birth-time.js';
+import { searchCities } from './cities.js';
+import { parseBirthInput } from './birth-input.js';
 import { personalForecastForDate } from './personal-forecast.js';
-import { ANSWER_LENGTHS, DEFAULT_ANSWER_LENGTH, MAX_ANSWER_CHARS, chatForecastContext } from './local-chat.js';
-import { SAFE_FALLBACK_ANSWER, createConcurrencyGate, createHistorySigner, unsafeChatAnswer } from './chat-safety.js';
+import { createConcurrencyGate, createHistorySigner } from './chat-safety.js';
+import { createChatRoutes } from './routes/chat.js';
+import { handleProfileRoutes } from './routes/profiles.js';
+import { NULL_METRICS } from './metrics.js';
 
 const SESSION_AGE = 30 * 24 * 60 * 60;
 const CONTENT_SECURITY_POLICY = [
@@ -43,13 +45,15 @@ function cookieToken(req) {
 }
 
 export function createServer({ store, mailer = null, codeSecret, root = new URL('../prototype/', import.meta.url), secureCookies = false,
-  mailDailyLimit = 0, trafficLimiter = createTrafficLimiter(), chatLimiter = createTrafficLimiter({ perIpLimit: 6, globalLimit: 30 }),
+  mailDailyLimit = 0, trafficLimiter = createTrafficLimiter(), chatLimiter = createTrafficLimiter({ perIpLimit: 6, globalLimit: 300 }),
   chatGate = createConcurrencyGate(2), loginGuard = createLoginGuard(), trustProxy = false, forecastWriter = null, chatWriter = null,
-  sotisVerifier = null }) {
+  sotisVerifier = null, metrics = NULL_METRICS, knowledge = null,
+  pageViewLimiter = createTrafficLimiter({ perIpLimit: 30, globalLimit: 3000 }) }) {
   if (!codeSecret || String(codeSecret).length < 32) throw new Error('AUTH_CODE_SECRET must have at least 32 characters');
   if (!Number.isSafeInteger(mailDailyLimit) || mailDailyLimit < 0) throw new Error('MAIL_DAILY_LIMIT must be a non-negative integer');
   const rootPath = fileURLToPath(root);
   const historySigner = createHistorySigner(codeSecret);
+  const handleChatRoutes = createChatRoutes({ store, chatWriter, chatLimiter, chatGate, historySigner, metrics, knowledge });
   const sessionCookie = (value, maxAge) => `anna_session=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secureCookies ? '; Secure' : ''}`;
   let dailyCache = null;
   let dailyDrawCacheDay = null;
@@ -99,62 +103,17 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
           try { originHost = new URL(req.headers.origin).host; } catch {}
           if (!originHost || originHost !== req.headers.host) return json(res, 403, { error: 'forbidden_origin' });
         }
+        metrics.count('api_requests');
+        const token = cookieToken(req);
+        const user = token ? store.userForSession(tokenHash(token)) : null;
+        const ctx = { req, res, path, user, json, readJson };
+        if (await handleChatRoutes(ctx)) return;
         if (path === '/api/health' && req.method === 'GET') {
           const healthy = store.health();
           return json(res, healthy ? 200 : 503, { status: healthy ? 'ok' : 'unavailable' });
         }
         if (path === '/api/cities' && req.method === 'GET') {
           return json(res, 200, { cities: searchCities(url.searchParams.get('q') || '') });
-        }
-        if (path === '/api/chat' && req.method === 'POST') {
-          if (!chatWriter) return json(res, 503, { error: 'chat_unavailable', message: 'Чат пока недоступен. Попробуйте позже.' });
-          const chatToken = cookieToken(req);
-          const user = chatToken ? store.userForSession(tokenHash(chatToken)) : null;
-          if (!user) return json(res, 401, { error: 'login_required', message: 'Чат доступен после входа в личный кабинет.' });
-          const limit = chatLimiter.check(`user:${user.id}`);
-          if (!limit.allowed) return json(res, 429, { error: 'chat_rate_limited',
-            message: 'Слишком много сообщений. Попробуйте через минуту.' }, { 'Retry-After': String(limit.retryAfter) });
-          // Detailed answers come back in the signed history, so chat bodies may be larger.
-          const body = await readJson(req, 48_000);
-          const message = typeof body.message === 'string' ? body.message.trim() : '';
-          const history = body.history ?? [];
-          if (!message || message.length > 600 || !Array.isArray(history) || history.length > 6 ||
-            history.some((item) => !item || !['user', 'assistant'].includes(item.role) ||
-              typeof item.content !== 'string' || !item.content.trim() || item.content.length > MAX_ANSWER_CHARS ||
-              (item.signature !== undefined && typeof item.signature !== 'string')) ||
-            !Number.isInteger(body.draw ?? 0) || (body.draw ?? 0) < 0 || (body.draw ?? 0) > 4 ||
-            (body.length !== undefined && !Object.hasOwn(ANSWER_LENGTHS, body.length))) {
-            return json(res, 400, { error: 'invalid_chat_message', message: 'Проверьте текст сообщения.' });
-          }
-          const day = moscowDate();
-          const draw = body.draw ?? 0;
-          const profile = store.getBirthProfile(user.id);
-          const general = forecastForDate(day, draw);
-          const forecast = profile?.birthUtc
-            ? personalForecastForDate(day, profile, user.id, general, draw) : general;
-          const context = chatForecastContext(forecast);
-          const release = chatGate.tryAcquire();
-          if (!release) return json(res, 503, { error: 'chat_busy',
-            message: 'Помощник сейчас отвечает другим посетителям. Попробуйте через минуту.' }, { 'Retry-After': '20' });
-          const abort = new AbortController();
-          const onClose = () => { if (!res.writableEnded) abort.abort(); };
-          res.on('close', onClose);
-          try {
-            const reply = await chatWriter.answer({ message, history: historySigner.trusted(history), forecast: context,
-              length: body.length ?? DEFAULT_ANSWER_LENGTH, signal: abort.signal });
-            const filtered = unsafeChatAnswer(reply.answer, day);
-            if (filtered) console.warn('Chat answer rejected by safety check');
-            const answer = filtered ? SAFE_FALLBACK_ANSWER : reply.answer;
-            return json(res, 200, { ...reply, answer, filtered, signature: historySigner.sign(answer),
-              context: { date: day, scope: context.scope, card: context.card.name } });
-          } catch (error) {
-            if (abort.signal.aborted) return;
-            console.warn('Local chat failed:', error.message);
-            return json(res, 503, { error: 'chat_unavailable', message: 'Сейчас не удалось получить ответ. Попробуйте ещё раз.' });
-          } finally {
-            res.off('close', onClose);
-            release();
-          }
         }
         if (path === '/api/forecast/day' && req.method === 'GET') {
           const drawParameters = url.searchParams.getAll('draw');
@@ -198,8 +157,7 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
             dailyDrawCache.set(draw, promise);
           }
           const general = await dailyDrawCache.get(draw);
-          const dailyToken = cookieToken(req);
-          const dailyUser = dailyToken ? store.userForSession(tokenHash(dailyToken)) : null;
+          const dailyUser = user;
           const profile = dailyUser ? store.getBirthProfile(dailyUser.id) : null;
           if (profile?.birthUtc) {
             if (personalCacheDay !== day) { personalCache.clear(); personalCacheDay = day; }
@@ -216,8 +174,6 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
         if (path === '/api/forecast/week' && req.method === 'GET') {
           return json(res, 501, { error: 'forecast_unavailable', message: 'Прогноз на неделю пока готовится.' });
         }
-        const token = cookieToken(req);
-        const user = token ? store.userForSession(tokenHash(token)) : null;
         if (path === '/api/auth/register' && req.method === 'POST') {
           const body = await readJson(req);
           const email = normalizeEmail(body.email);
@@ -232,6 +188,7 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
           const created = store.consumeChallenge(tokenHash(body.challenge), emailCodeHash(codeSecret, body.challenge, body.code), 'registration');
           if (!created) return json(res, 400, { error: 'invalid_code', message: 'Код неверный или срок его действия истёк.' });
           const session = sessionFor(res, created);
+          metrics.count('signups');
           return json(res, 201, { user: session.user }, { 'Set-Cookie': session.cookie });
         }
         if (path === '/api/auth/login' && req.method === 'POST') {
@@ -246,6 +203,7 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
           }
           loginGuard.succeed(email);
           const session = sessionFor(res, found);
+          metrics.count('logins');
           return json(res, 200, { user: session.user }, { 'Set-Cookie': session.cookie });
         }
         if (path === '/api/auth/reset/request' && req.method === 'POST') {
@@ -283,6 +241,7 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
           return json(res, 200, { ok: true }, { 'Set-Cookie': sessionCookie('', 0) });
         }
         if (!user) return json(res, 401, { error: 'login_required' });
+        if (await handleProfileRoutes({ ...ctx, store })) return;
         if (path === '/api/auth/email/request' && req.method === 'POST') {
           if (user.emailVerified) return json(res, 409, { error: 'already_verified' });
           const sent = await sendCode({ purpose: 'verify', email: user.email, userId: user.id });
@@ -299,42 +258,9 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
           return json(res, 200, { user, birthProfile: store.getBirthProfile(user.id) });
         }
         if (path === '/api/profile' && req.method === 'PUT') {
-          const body = await readJson(req);
-          const date = body.birthDate, time = body.birthTime;
-          const validDate = typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)
-            && !Number.isNaN(Date.parse(date)) && new Date(date).toISOString().slice(0, 10) === date
-            && date >= '1900-01-01' && date <= new Date().toISOString().slice(0, 10);
-          if (!validDate || typeof time !== 'string' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) {
-            return json(res, 400, { error: 'invalid_birth_profile', message: 'Проверьте дату, время и место рождения.' });
-          }
-          const city = body.birthCityId == null || body.birthCityId === '' ? null : getCityById(body.birthCityId);
-          if (body.birthCityId != null && body.birthCityId !== '' && !city) return json(res, 400, { error: 'invalid_city' });
-          const requestedPlace = typeof body.birthPlace === 'string' ? body.birthPlace.trim() : '';
-          const place = city
-            ? city.aliases.includes(requestedPlace) ? requestedPlace : city.name
-            : requestedPlace;
-          const latitude = city?.latitude ?? (body.birthLatitude === '' || body.birthLatitude == null ? NaN : Number(body.birthLatitude));
-          const longitude = city?.longitude ?? (body.birthLongitude === '' || body.birthLongitude == null ? NaN : Number(body.birthLongitude));
-          const timeZone = city?.timeZone || body.birthTimeZone;
-          if (place.length < 2 || place.length > 120 || !Number.isFinite(latitude) || latitude < -90 || latitude > 90
-            || !Number.isFinite(longitude) || longitude < -180 || longitude > 180 || typeof timeZone !== 'string') {
-            return json(res, 400, { error: 'invalid_birth_profile', message: 'Выберите город из списка либо укажите название, координаты и часовой пояс.' });
-          }
-          let utcOffsetMinutes;
-          if (body.birthUtcOffsetMinutes !== undefined && body.birthUtcOffsetMinutes !== '') {
-            utcOffsetMinutes = Number(body.birthUtcOffsetMinutes);
-            if (!Number.isInteger(utcOffsetMinutes)) return json(res, 400, { error: 'invalid_birth_offset' });
-          }
-          let instant;
-          try { instant = birthInstant({ birthDate: date, birthTime: time, timeZone, utcOffsetMinutes }); }
-          catch (error) {
-            if (error.message === 'birth_time_ambiguous') return json(res, 409, { error: 'birth_time_ambiguous',
-              message: 'Это местное время приходится на перевод часов. Уточните время рождения; если час повторялся, укажите смещение UTC в минутах.' });
-            return json(res, 400, { error: 'invalid_birth_time', message: 'Проверьте местное время и часовой пояс рождения.' });
-          }
-          return json(res, 200, { birthProfile: store.saveBirthProfile(user.id, { birthDate: date, birthTime: time,
-            birthPlace: place, birthCityId: city?.id ?? null, birthLatitude: latitude, birthLongitude: longitude,
-            birthTimeZone: timeZone, birthUtc: instant.utc, birthUtcOffsetMinutes: instant.offsetMinutes }) });
+          const parsed = parseBirthInput(await readJson(req));
+          if (!parsed.ok) return json(res, parsed.status, parsed.data);
+          return json(res, 200, { birthProfile: store.saveBirthProfile(user.id, parsed.profile) });
         }
         return json(res, 404, { error: 'not_found' });
       }
@@ -346,10 +272,16 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
       if (target !== resolve(rootPath) && !target.startsWith(resolve(rootPath) + sep)) { res.writeHead(403); return res.end(); }
       try {
         const file = await readFile(target);
+        // Counted only within a per-address budget, so a flood of page loads cannot grow the counters without bound.
+        if (extname(target) === '.html' && req.method === 'GET' && pageViewLimiter.check(clientAddress(req, trustProxy)).allowed) {
+          metrics.pageView(req, trustProxy);
+        }
         res.writeHead(200, { 'Content-Type': MIME[extname(target)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
         return res.end(req.method === 'HEAD' ? undefined : file);
       } catch { res.writeHead(404); return res.end(); }
     } catch (error) {
+      // A stream already started cannot switch to a JSON error; close it instead of throwing again.
+      if (res.headersSent) { console.error(error); if (!res.writableEnded) res.end(); return undefined; }
       if (error instanceof SyntaxError || ['expected_json', 'body_too_large', 'invalid_json'].includes(error.message)) return json(res, 400, { error: 'invalid_request' });
       if (error?.code === 'SQLITE_CONSTRAINT_UNIQUE') return json(res, 409, { error: 'email_exists' });
       console.error(error);

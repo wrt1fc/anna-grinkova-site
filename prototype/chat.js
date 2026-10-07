@@ -12,33 +12,25 @@ let chatRequest = 0;
 let chatSlowTimer;
 let chatSignedIn = false;
 const chatLocked = document.getElementById('chat-locked');
-const chatLength = document.getElementById('chat-length');
 const lengthKey = 'anna-chat-length';
+const formatButtons = document.querySelectorAll('[data-chat-length]');
+const lengths = new Set([...formatButtons].map((button) => button.dataset.chatLength));
+let chatLengthValue = 'medium';
 
-// The chosen answer length is a per-visitor convenience, so browser storage is enough.
+// The answer format is chosen in the greeting and kept per visitor, so browser storage is enough.
 try {
   const saved = localStorage.getItem(lengthKey);
-  const option = saved && chatLength.querySelector(`input[value="${CSS.escape(saved)}"]`);
-  if (option) option.checked = true;
+  if (lengths.has(saved)) chatLengthValue = saved;
 } catch { /* storage unavailable: keep the default */ }
-function selectedLength() { return chatLength.querySelector('input:checked')?.value || 'medium'; }
-const formatButtons = document.querySelectorAll('[data-chat-length]');
-
-// The greeting's format buttons and the composer switch are two views of one setting.
-function syncFormatButtons() {
-  const current = selectedLength();
-  for (const button of formatButtons) button.setAttribute('aria-pressed', String(button.dataset.chatLength === current));
-}
+function selectedLength() { return chatLengthValue; }
 function setLength(value) {
-  const option = chatLength.querySelector(`input[value="${CSS.escape(value)}"]`);
-  if (!option) return;
-  option.checked = true;
+  if (!lengths.has(value)) return;
+  chatLengthValue = value;
   try { localStorage.setItem(lengthKey, value); } catch { /* not critical */ }
-  syncFormatButtons();
+  for (const button of formatButtons) button.setAttribute('aria-pressed', String(button.dataset.chatLength === value));
 }
-chatLength.addEventListener('change', (event) => setLength(event.target.value));
 for (const button of formatButtons) button.addEventListener('click', () => setLength(button.dataset.chatLength));
-syncFormatButtons();
+setLength(chatLengthValue);
 const chatPrompts = document.querySelectorAll('[data-chat-prompt]');
 const chatSignInButton = chatLocked.querySelector('[data-open-signup]');
 
@@ -46,7 +38,27 @@ function setChatAccess(signedIn) {
   chatSignedIn = signedIn;
   chatLocked.hidden = signedIn;
   chatForm.hidden = !signedIn;
-  chatLength.hidden = !signedIn;
+}
+
+// Minimal SSE reader for a fetch response: yields { event, data } per message.
+const BOUNDARY = String.fromCharCode(10, 10);
+async function* readEvents(response) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let boundary;
+    while ((boundary = buffer.indexOf(BOUNDARY)) >= 0) {
+      const block = buffer.slice(0, boundary);
+      buffer = buffer.slice(boundary + 2);
+      const event = /^event: (.+)$/m.exec(block)?.[1];
+      const data = /^data: (.+)$/m.exec(block)?.[1];
+      if (event && data) yield { event, data: JSON.parse(data) };
+    }
+  }
 }
 
 function scrollChatToEnd() { chatTranscript.scrollTop = chatTranscript.scrollHeight; }
@@ -70,30 +82,37 @@ function chatMessage(role, content, context = null) {
   const paragraph = document.createElement('p');
   paragraph.textContent = content;
   article.append(label, paragraph);
-  if (role === 'assistant' && content) {
-    const actions = document.createElement('div');
-    actions.className = 'chat-message-actions';
-    const copy = document.createElement('button');
-    copy.type = 'button';
-    const copyLabel = document.createElement('span');
-    copyLabel.textContent = 'Скопировать';
-    copy.append(chatIcon('copy'), copyLabel);
-    copy.addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(content); copyLabel.textContent = 'Скопировано'; }
-      catch { copyLabel.textContent = 'Не удалось скопировать'; }
-    });
-    actions.append(copy);
-    if (context) {
-      const source = document.createElement('span');
-      source.className = 'chat-message-context';
-      source.textContent = `${context.scope === 'personal' ? 'Личный' : 'Общий'} расчёт · ${context.card}`;
-      actions.append(source);
-    }
-    article.append(actions);
-  }
+  if (role === 'assistant' && content) addAnswerActions(article, content, context);
   chatTranscript.append(article);
   scrollChatToEnd();
   return article;
+}
+
+function contextLabel(context) {
+  const scope = `${context.scope === 'personal' ? 'Личный' : 'Общий'} расчёт · ${context.card}`;
+  return context.subject ? `${context.subject.label} · ${scope}` : scope;
+}
+
+function addAnswerActions(article, content, context) {
+  const actions = document.createElement('div');
+  actions.className = 'chat-message-actions';
+  const copy = document.createElement('button');
+  copy.type = 'button';
+  const copyLabel = document.createElement('span');
+  copyLabel.textContent = 'Скопировать';
+  copy.append(chatIcon('copy'), copyLabel);
+  copy.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(content); copyLabel.textContent = 'Скопировано'; }
+    catch { copyLabel.textContent = 'Не удалось скопировать'; }
+  });
+  actions.append(copy);
+  if (context) {
+    const source = document.createElement('span');
+    source.className = 'chat-message-context';
+    source.textContent = contextLabel(context);
+    actions.append(source);
+  }
+  article.append(actions);
 }
 
 function thinkingMessage() {
@@ -136,7 +155,6 @@ async function sendChat(message, existingUserMessage = false) {
   const text = message.trim();
   if (!text || text.length > 600) return;
   const request = ++chatRequest;
-  const started = performance.now();
   if (!existingUserMessage) chatMessage('user', text);
   chatInput.value = '';
   const thinking = thinkingMessage();
@@ -146,29 +164,53 @@ async function sendChat(message, existingUserMessage = false) {
   chatStatus.textContent = '';
   chatSlowTimer = window.setTimeout(() => { if (request === chatRequest) chatStatus.textContent = 'Модель отвечает дольше обычного…'; }, 2500);
   updateChatSend();
+  let answer = null;
   try {
     const response = await fetch('/api/chat', {
       method: 'POST',
       credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: text, history: chatHistory.slice(-6), draw: window.chatDrawPosition(), length: selectedLength() }),
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+      body: JSON.stringify({ message: text, history: chatHistory.slice(-6), draw: window.chatDrawPosition(), length: selectedLength(),
+        profileId: window.chatSelectedProfileId?.() ?? null }),
       signal: controller.signal,
     });
-    const data = await response.json();
-    if (response.status === 401) setChatAccess(false);
-    if (!response.ok) throw new Error(data.message || 'Ответ сейчас недоступен.');
-    const remaining = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 1100 - (performance.now() - started);
-    if (remaining > 0) await new Promise((resolve) => window.setTimeout(resolve, remaining));
-    if (request !== chatRequest) return;
-    if (controller.signal.aborted) throw new DOMException('Ответ остановлен', 'AbortError');
+    // Errors that happen before the answer starts (limits, sign-in, busy) come back as plain JSON.
+    if (!(response.headers.get('content-type') || '').includes('text/event-stream')) {
+      const data = await response.json();
+      if (response.status === 401) setChatAccess(false);
+      throw new Error(data.message || 'Ответ сейчас недоступен.');
+    }
+    let final = null;
+    for await (const { event, data } of readEvents(response)) {
+      if (request !== chatRequest) return;
+      if (event === 'delta') {
+        if (!answer) {
+          thinking.remove();
+          clearTimeout(chatSlowTimer);
+          chatStatus.textContent = '';
+          answer = chatMessage('assistant', '');
+          answer.classList.add('is-streaming');
+        }
+        answer.querySelector('p').textContent += data.text;
+        scrollChatToEnd();
+      } else if (event === 'done') final = data;
+      else if (event === 'error') throw new Error(data.message || 'Не удалось получить ответ.');
+    }
+    if (!final) throw new Error('Ответ прервался. Попробуйте ещё раз.');
     thinking.remove();
-    chatMessage('assistant', data.answer, data.context);
-    chatHistory.push({ role: 'user', content: text }, { role: 'assistant', content: data.answer, signature: data.signature });
+    answer ??= chatMessage('assistant', '');
+    // The final text wins: if the safety check replaced the reply, the visitor sees the replacement.
+    answer.querySelector('p').textContent = final.answer;
+    answer.classList.remove('is-streaming');
+    addAnswerActions(answer, final.answer, final.context);
+    scrollChatToEnd();
+    chatHistory.push({ role: 'user', content: text }, { role: 'assistant', content: final.answer, signature: final.signature });
     chatHistory = chatHistory.slice(-6);
     chatStatus.textContent = '';
   } catch (error) {
     if (request !== chatRequest) return;
     thinking.remove();
+    answer?.classList.remove('is-streaming');
     const card = chatMessage('assistant', controller.signal.aborted ? 'Ответ остановлен.' : error.message || 'Не удалось получить ответ.');
     card.classList.add('chat-error');
     const actions = document.createElement('div');

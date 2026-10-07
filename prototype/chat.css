@@ -80,14 +80,6 @@
 .chat-status { min-height: 18px; margin: 7px 0 5px; color: var(--gold-light); font-size: 12px; }
 #chat-form { display: flex; align-items: end; gap: 9px; padding: 7px; border: 1px solid #856135; border-radius: 6px; background: #120c09; }
 #chat-form[hidden] { display: none; }
-.chat-length { display: flex; align-items: center; gap: 6px; margin: 0 0 9px; padding: 0; border: 0; }
-.chat-length[hidden] { display: none; }
-.chat-length legend { float: left; margin-right: 6px; padding: 0; color: var(--muted); font-size: 12px; }
-.chat-length label { position: relative; padding: 5px 11px; border: 1px solid rgba(222, 184, 88, .28); border-radius: 999px; color: var(--muted); font-size: 12px; cursor: pointer; transition: color .2s ease, border-color .2s ease, background .2s ease; }
-.chat-length input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
-.chat-length label:hover { color: var(--gold-light); }
-.chat-length label:has(input:checked) { border-color: var(--gold); background: rgba(222, 184, 88, .14); color: var(--gold-light); }
-.chat-length label:has(input:focus-visible) { outline: 2px solid var(--gold-light); outline-offset: 2px; }
 #chat-form:focus-within { border-color: var(--gold-light); }
 #chat-input { flex: 1; min-width: 0; max-height: 150px; resize: vertical; padding: 9px 10px; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; font-size: 16px; line-height: 1.5; }
 #chat-input::placeholder { color: #9d8b7b; }
@@ -193,3 +185,8 @@
 @media (prefers-reduced-motion: reduce) {
   .chat-message, .chat-library-group[open] .chat-library-list, .chat-thinking-cards svg { animation: none; }
 }
+
+/* While a reply streams in, a slim gold caret marks where the text is growing. */
+.chat-message.is-streaming p::after { content: ""; display: inline-block; width: 2px; height: 1.05em; margin-left: 3px; vertical-align: -0.15em; background: var(--gold-light); animation: chat-caret 1s steps(2, start) infinite; }
+@keyframes chat-caret { to { visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) { .chat-message.is-streaming p::after { animation: none; } }

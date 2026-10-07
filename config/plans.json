@@ -1,0 +1,15 @@
+{
+  "default": "individual",
+  "plans": {
+    "individual": { "label": "Индивидуальный", "maxPeople": 1, "dailyChatMessages": 30, "relations": [] },
+    "partner": { "label": "Партнёрский", "maxPeople": 2, "dailyChatMessages": 60, "relations": ["partner"] },
+    "family": { "label": "Семейный", "maxPeople": 3, "dailyChatMessages": 90, "relations": ["partner", "child", "parent", "sibling", "other"] }
+  },
+  "relationLabels": {
+    "partner": "Партнёр",
+    "child": "Ребёнок",
+    "parent": "Родитель",
+    "sibling": "Брат или сестра",
+    "other": "Близкий человек"
+  }
+}

@@ -40,7 +40,7 @@ test('safety check rejects impersonation, prices, links, invented dates and prom
     'Я Анна, и я вижу в вашей карте перемены.',
     'Меня зовут Анна, рада помочь.',
     'Консультация стоит 5 000 ₽.',
-    'Стоимость консультации уточняйте отдельно.',
+    'Консультация стоит пять тысяч.',
     'Напишите в Telegram t.me/anna_example.',
     'Подробности на https://example.org',
     '15 ноября произойдёт важная встреча.',
@@ -51,4 +51,14 @@ test('safety check rejects impersonation, prices, links, invented dates and prom
 
 test('the assistant identity reply without AI wording passes the safety check', () => {
   assert.equal(unsafeChatAnswer('Нет, я помощник Анны Гриньковой и отвечаю по её методике, а не Анна лично.', '2026-10-07'), false);
+});
+
+test('crisis detection catches suicidal wording and leaves ordinary sadness to the model', async () => {
+  const { isCrisisMessage } = await import('../server/crisis.js');
+  for (const text of ['Не хочу больше жить', 'хочу умереть', 'думаю покончить с собой', 'Нет смысла жить дальше']) assert.equal(isCrisisMessage(text), true, text);
+  for (const text of ['Мне грустно после расставания', 'Как пережить кризис в отношениях?']) assert.equal(isCrisisMessage(text), false, text);
+});
+
+test('an honest answer about unknown prices is not blocked', () => {
+  assert.equal(unsafeChatAnswer('Оплата через сайт пока не реализована, поэтому стоимость услуги назвать невозможно.', '2026-10-07'), false);
 });

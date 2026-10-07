@@ -5,7 +5,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import chatContext from '../config/chat-context.json' with { type: 'json' };
 import { forecastForDate } from '../server/daily-forecast.js';
-import { DEFAULT_ANSWER_LENGTH, chatForecastContext, chatPrompt } from '../server/local-chat.js';
+import { DEFAULT_ANSWER_LENGTH, chatForecastContext, chatPrompt, forecastForQuestion } from '../server/local-chat.js';
 import { cardProblems, readCards } from './cards.js';
 
 const [cardsPath, outDir, flag] = process.argv.slice(2);
@@ -27,7 +27,7 @@ let skipped = 0;
 readCards(cardsPath).forEach((card, index) => {
   const usable = card.status === 'approved' || (includeDrafts && card.status === 'draft');
   if (!usable || cardProblems(card).length) { skipped++; return; }
-  const prompt = chatPrompt({ message: card.question.trim(), history: [], forecast: forecastFor(card, index),
+  const prompt = chatPrompt({ message: card.question.trim(), history: [], forecast: forecastForQuestion(forecastFor(card, index), card.question),
     length: card.length ?? DEFAULT_ANSWER_LENGTH });
   split[card.split === 'eval' ? 'eval' : 'train'].push({
     id: card.id,
@@ -36,7 +36,7 @@ readCards(cardsPath).forEach((card, index) => {
       { role: 'system', content: system },
       { role: 'user', content: prompt },
     ],
-    completion: [{ role: 'assistant', content: JSON.stringify({ answer: card.answer.trim() }) }],
+    completion: [{ role: 'assistant', content: card.answer.trim() }],
   });
 });
 
