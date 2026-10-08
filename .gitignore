@@ -1,12 +1,10 @@
-# Retired comparison variant and local export tooling
-/prototype-v2/
-/DESIGN-V2.md
+# Local materials: archived variant, recordings, superseded assets
+/local/
+
+# Local SVG export tooling
 /figma-export/
 
-# Superseded portrait; current images are anna-vertical.jpg and anna-horizontal.jpg
-/prototype/assets/anna-portrait.webp
-
-# Local and generated files
+# Generated files
 node_modules/
 /data/
 .env

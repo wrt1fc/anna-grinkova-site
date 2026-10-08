@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#130d0b" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./assets/app/icon-192.png" type="image/png" />
     <link rel="apple-touch-icon" href="./assets/app/apple-touch-icon.png" />
@@ -24,6 +25,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preload" href="./assets/fonts/wix-madefor-display-normal-cyrillic.woff2" as="font" type="font/woff2" crossorigin />
     <!-- Fonts are served from the site itself: no visitor IP goes to Google (152-FZ). -->
     <link rel="stylesheet" href="./assets/fonts/fonts.css" />
     <link rel="stylesheet" href="./styles.css" />
@@ -66,8 +68,8 @@
                 <a class="text-link" href="#week">Читать прогноз недели <span aria-hidden="true">↗</span></a>
               </div>
             </div>
-            <div class="hero-portrait-wrap" aria-label="Портрет Анны Гриньковой">
-              <img class="hero-portrait" src="./assets/anna-vertical-branded.jpg" alt="Анна Гринькова в белом платье" />
+            <div class="hero-portrait-wrap">
+              <picture><source srcset="./assets/anna-vertical-branded.webp" type="image/webp" /><img class="hero-portrait" src="./assets/anna-vertical-branded.jpg" width="1060" height="1484" fetchpriority="high" alt="Анна Гринькова в белом платье" /></picture>
               <span class="hero-blend-left" aria-hidden="true"></span>
               <span class="hero-blend-bottom" aria-hidden="true"></span>
             </div>
@@ -80,8 +82,8 @@
                 <p>Выберите карту дня или прочитайте прогноз на неделю.</p>
               </div>
             </div>
-            <div class="daily-draw" aria-label="Карта дня">
-              <div class="daily-draw-stage" aria-label="Пять карт на выбор">
+            <div class="daily-draw">
+              <div class="daily-draw-stage">
                 <div class="daily-draw-fan" role="group" aria-label="Выберите одну из пяти карт">
                   <button class="draw-card" type="button" data-draw-card="0" aria-label="Выбрать первую карту" aria-pressed="false"><span class="draw-card-back" aria-hidden="true"><span class="draw-card-orbit"></span><span class="draw-card-star">✦</span></span><span class="draw-card-front" aria-hidden="true"><span class="draw-card-roman"></span><span class="draw-card-mark">✧</span><span class="draw-card-name"></span></span></button>
                   <button class="draw-card" type="button" data-draw-card="1" aria-label="Выбрать вторую карту" aria-pressed="false"><span class="draw-card-back" aria-hidden="true"><span class="draw-card-orbit"></span><span class="draw-card-star">✦</span></span><span class="draw-card-front" aria-hidden="true"><span class="draw-card-roman"></span><span class="draw-card-mark">✧</span><span class="draw-card-name"></span></span></button>
@@ -110,9 +112,9 @@
             <div class="about-copy">
               <h2 id="about-title">Анна<br /><em>Гринькова</em></h2>
               <p>Астропсихолог и основатель Института прогрессивной психологии. На этой странице Анна делится картой дня и прогнозом на неделю.</p>
-              <a class="inline-action" href="https://www.instagram.com/anna__grinkova" target="_blank" rel="noopener noreferrer">Анна в Instagram <span aria-hidden="true">↗</span></a>
+              <a class="inline-action" href="https://www.instagram.com/anna__grinkova" target="_blank" rel="noopener noreferrer">Анна в Instagram<sup aria-hidden="true">*</sup> <span aria-hidden="true">↗</span></a>
             </div>
-            <div class="about-image"><img src="./assets/anna-horizontal-branded.jpg" alt="Портрет Анны Гриньковой" /><span class="about-blend-left" aria-hidden="true"></span><span class="about-blend-right" aria-hidden="true"></span><span class="about-blend-top" aria-hidden="true"></span><span class="about-blend-bottom" aria-hidden="true"></span></div>
+            <div class="about-image"><picture><source srcset="./assets/anna-horizontal-branded.webp" type="image/webp" /><img src="./assets/anna-horizontal-branded.jpg" width="1484" height="1060" loading="lazy" decoding="async" alt="Портрет Анны Гриньковой" /></picture><span class="about-blend-left" aria-hidden="true"></span><span class="about-blend-right" aria-hidden="true"></span><span class="about-blend-top" aria-hidden="true"></span><span class="about-blend-bottom" aria-hidden="true"></span></div>
           </section>
         </div>
 
@@ -157,7 +159,7 @@
         </div>
       </main>
 
-      <footer class="site-footer section-wrap"><div><span class="footer-brand">Анна Гринькова</span><p>Карта дня и прогноз на неделю.</p></div><div class="footer-links"><a href="#home">Главная</a><a href="#day">Карта дня</a><a href="#week">Прогноз недели</a><a href="#chat">Чат</a><a href="#account">Кабинет</a><a href="https://www.instagram.com/anna__grinkova" target="_blank" rel="noopener noreferrer">Instagram</a></div></footer>
+      <footer class="site-footer section-wrap"><div><span class="footer-brand">Анна Гринькова</span><p>Карта дня и прогноз на неделю.</p></div><div class="footer-links"><a href="#home">Главная</a><a href="#day">Карта дня</a><a href="#week">Прогноз недели</a><a href="#chat">Чат</a><a href="#account">Кабинет</a><a href="https://www.instagram.com/anna__grinkova" target="_blank" rel="noopener noreferrer">Instagram<sup aria-hidden="true">*</sup></a></div><p class="footer-legal">* Instagram принадлежит компании Meta, деятельность которой признана экстремистской и запрещена в России.</p></footer>
 
       <nav class="mobile-nav" aria-label="Мобильная навигация"><a href="#home" data-mobile-nav="home"><svg class="ui-icon" aria-hidden="true"><use href="./assets/icons.svg#home" /></svg><span>Главная</span></a><a href="#day" data-mobile-nav="day"><svg class="ui-icon" aria-hidden="true"><use href="./assets/icons.svg#day" /></svg><span>День</span></a><a href="#week" data-mobile-nav="week"><svg class="ui-icon" aria-hidden="true"><use href="./assets/icons.svg#week" /></svg><span>Неделя</span></a><a href="#chat" data-mobile-nav="chat"><svg class="ui-icon" aria-hidden="true"><use href="./assets/icons.svg#chat" /></svg><span>Чат</span></a><a href="#account" data-mobile-nav="account"><svg class="ui-icon" aria-hidden="true"><use href="./assets/icons.svg#user" /></svg><span>Кабинет</span></a></nav>
     </div>
