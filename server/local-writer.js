@@ -1,6 +1,7 @@
 import forecastStyle from '../config/forecast-style.json' with { type: 'json' };
+import { ollamaGenerateUrl } from './ollama.js';
 
-const ENDPOINT = 'http://127.0.0.1:11434/api/generate';
+const ENDPOINT = ollamaGenerateUrl();
 
 const OUTPUT_SCHEMA = {
   type: 'object',

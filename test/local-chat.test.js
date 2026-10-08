@@ -99,3 +99,10 @@ test('the day card reaches the model only for questions about the day', async ()
   assert.deepEqual(Object.keys(trimmed).sort(), ['date', 'scope', 'subject']);
   assert.equal(forecastForQuestion(forecast, 'Что значит карта?').card.name, forecast.card.name);
 });
+
+test('the model address comes from OLLAMA_URL and must be http(s)', async () => {
+  const { ollamaGenerateUrl } = await import('../server/ollama.js');
+  assert.equal(ollamaGenerateUrl('http://10.0.0.2:11434'), 'http://10.0.0.2:11434/api/generate');
+  assert.equal(ollamaGenerateUrl('http://127.0.0.1:11434'), 'http://127.0.0.1:11434/api/generate');
+  assert.throws(() => ollamaGenerateUrl('file:///etc/passwd'), /http/);
+});

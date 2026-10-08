@@ -1,6 +1,7 @@
 import chatContext from '../config/chat-context.json' with { type: 'json' };
+import { ollamaGenerateUrl } from './ollama.js';
 
-const ENDPOINT = 'http://127.0.0.1:11434/api/generate';
+const ENDPOINT = ollamaGenerateUrl();
 const MODEL_TIMEOUT_MS = 45_000;
 const MIN_ANSWER_CHARS = 15;
 
