@@ -36,7 +36,7 @@ test('chat streams plain text built from calculated facts and the approved proje
   assert.equal(prompt.forecast.card.name, forecast.card.name);
   assert.equal(prompt.visitorName, 'Мария');
   assert.deepEqual(prompt.materials, []);
-  assert.ok(prompt.facts.some((fact) => fact.includes('Института астрологии')));
+  assert.ok(prompt.facts.some((fact) => fact.includes('Института прогрессивной психологии')));
   assert.equal(JSON.stringify(prompt).includes('birthTime'), false);
   assert.match(capture.payload.system, /не выдавайте себя за Анну/i);
 });
