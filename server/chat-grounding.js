@@ -7,6 +7,8 @@ import { asksAboutMoney, methodQueries, moneyForPrompt, moneyProfile } from './a
 // Natal chart, transits, directions and Anna's money method for chart and money questions only;
 // birth date, place and email never reach the model.
 const MAX_MATERIALS = 5;
+// Free-text questions need a strong match: weaker ones pulled in unrelated slides. Chart queries quote Anna's headings and score 9+.
+const QUESTION_MIN_SCORE = 6;
 export function chartContext(profile, message, now = new Date()) {
   const money = asksAboutMoney(message);
   if (!asksAboutChart(message) && !money) return { chart: null, queries: [] };
@@ -19,11 +21,20 @@ export function chartContext(profile, message, now = new Date()) {
 }
 
 // Anna's slides that match this chart first (2nd house sign, its ruler, hard aspects, strategy), then the visitor's own words.
+// A chart query quotes one of Anna's headings ("Управитель 2 дома в 4 доме"); the slide that contains it verbatim wins
+// over a general slide that merely shares the words.
+function exactSlide(knowledge, query) {
+  const candidates = knowledge.search(query, { limit: 5 });
+  const needle = query.toLowerCase();
+  const exact = candidates.find((item) => item.text.toLowerCase().includes(needle));
+  return exact ? [exact] : candidates.slice(0, 1);
+}
+
 export function findMaterials(knowledge, message, queries) {
   if (!knowledge) return [];
   const seen = new Set();
   const found = [];
-  for (const item of [...queries.flatMap((query) => knowledge.search(query, { limit: 1 })), ...knowledge.search(message)]) {
+  for (const item of [...queries.flatMap((query) => exactSlide(knowledge, query)), ...knowledge.search(message, { minScore: QUESTION_MIN_SCORE })]) {
     if (seen.has(item.text) || found.length >= MAX_MATERIALS) continue;
     seen.add(item.text);
     found.push({ text: item.text });

@@ -13,11 +13,17 @@ export function tokenize(text) {
     .map((word) => (word.length > 5 ? word.replace(SUFFIXES, '') : word)) ?? [];
 }
 
+const MIN_STANDALONE_CHARS = 200;
+
 function chunksFromMarkdown(text, source, maxChars = 700) {
   const chunks = [];
   let current = '';
   for (const paragraph of text.split(/\n\s*\n/).map((part) => part.replace(/^#+\s*/gm, '').trim()).filter(Boolean)) {
-    if (current && current.length + paragraph.length > maxChars) { chunks.push({ text: current, source }); current = ''; }
+    // Short paragraphs are joined; a full slide or card (MIN_STANDALONE+ chars) stays its own fragment, so two topics
+    // (say, two signs of the 10th house) never share a fragment.
+    if (current && (current.length >= MIN_STANDALONE_CHARS || current.length + paragraph.length > maxChars)) {
+      chunks.push({ text: current, source }); current = '';
+    }
     current = current ? `${current}\n${paragraph}` : paragraph;
   }
   if (current) chunks.push({ text: current, source });

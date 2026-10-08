@@ -9,6 +9,8 @@ export const SIGN_RULERS = {
   'Дева': ['mercury'], 'Весы': ['venus'], 'Скорпион': ['pluto', 'mars'], 'Стрелец': ['jupiter', 'neptune'],
   'Козерог': ['saturn', 'uranus'], 'Водолей': ['uranus', 'saturn'], 'Рыбы': ['neptune', 'jupiter'],
 };
+const SIGN_PREPOSITIONAL = { 'Овен': 'Овне', 'Телец': 'Тельце', 'Близнецы': 'Близнецах', 'Рак': 'Раке', 'Лев': 'Льве', 'Дева': 'Деве',
+  'Весы': 'Весах', 'Скорпион': 'Скорпионе', 'Стрелец': 'Стрельце', 'Козерог': 'Козероге', 'Водолей': 'Водолее', 'Рыбы': 'Рыбах' };
 // Natural houses of each planet, as Chronos shows them in «Домарные свойства» used in the course.
 export const SIGNIFICATION = { sun: [5, 1], moon: [4, 1], mercury: [3], venus: [2, 7], mars: [8], jupiter: [9, 12],
   saturn: [10], uranus: [11], neptune: [9, 12], pluto: [8] };
@@ -80,7 +82,7 @@ export function hardLuminaryAspects(natal) {
 
 export function methodQueries(money) {
   if (!money) return [];
-  return [`Если 2 дом в знаке ${money.secondHouse.sign}`,
+  return [`Если 2 дом в знаке ${money.secondHouse.sign}`, `Если у вас куспид 10 дома в ${SIGN_PREPOSITIONAL[money.mcSign]}`,
     ...money.hardAspects.slice(0, 2).map((a) => `${POINT_NAMES[a.luminary]} в негативном аспекте с ${INSTRUMENTAL[a.other]}`),
     ...money.secondHouse.rulers.map((ruler) => `Управитель 2 дома в ${ruler.house} доме`),
     ...money.secondHouse.planetsInside.map((planet) => `${POINT_NAMES[planet]} во 2 доме`),

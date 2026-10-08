@@ -78,3 +78,12 @@ test('chart positions are not mistaken for prices, real prices still are', () =>
     assert.equal(unsafeChatAnswer(bad, '2026-10-08'), true, bad);
   }
 });
+
+test('a negated guarantee one word away passes, a real promise does not', () => {
+  for (const ok of ['Лучше говорить о склонностях, а не о гарантированных сферах.', 'Здесь нет никаких гарантий исхода.', 'Работаем без гарантий результата.', 'Карта не гарантирует события.']) {
+    assert.equal(unsafeChatAnswer(ok, '2026-10-08'), false, ok);
+  }
+  for (const bad of ['Я гарантирую, что он вернётся.', 'Это гарантированный успех в деньгах.', 'Без сомнения гарантирую результат.', 'Без сомнения, гарантирую результат.']) {
+    assert.equal(unsafeChatAnswer(bad, '2026-10-08'), true, bad);
+  }
+});
