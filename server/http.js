@@ -15,6 +15,7 @@ import { handleProfileRoutes } from './routes/profiles.js';
 import { createBillingRoutes } from './routes/billing.js';
 import { createBilling } from './billing/service.js';
 import legal from '../config/legal.json' with { type: 'json' };
+import { notFoundPage, renderPage, robotsTxt, seoRoute, sitemapXml } from './seo.js';
 import { NULL_METRICS } from './metrics.js';
 
 const SESSION_AGE = 30 * 24 * 60 * 60;
@@ -59,7 +60,7 @@ function cookieToken(req) {
 export function createServer({ store, mailer = null, codeSecret, root = new URL('../prototype/', import.meta.url), secureCookies = false,
   mailDailyLimit = 0, trafficLimiter = createTrafficLimiter(), chatLimiter = createTrafficLimiter({ perIpLimit: 6, globalLimit: 300 }),
   chatGate = createConcurrencyGate(2), loginGuard = createLoginGuard(), trustProxy = false, forecastWriter = null, chatWriter = null,
-  requirePrivacyConsent = false, sotisVerifier = null, metrics = NULL_METRICS, knowledge = null, paymentProvider = null, paymentProviders = null, publicUrl = 'http://localhost:3000',
+  requirePrivacyConsent = false, searchVerification = {}, sotisVerifier = null, metrics = NULL_METRICS, knowledge = null, paymentProvider = null, paymentProviders = null, publicUrl = 'http://localhost:3000',
   pageViewLimiter = createTrafficLimiter({ perIpLimit: 30, globalLimit: 3000 }) }) {
   if (!codeSecret || String(codeSecret).length < 32) throw new Error('AUTH_CODE_SECRET must have at least 32 characters');
   if (!Number.isSafeInteger(mailDailyLimit) || mailDailyLimit < 0) throw new Error('MAIL_DAILY_LIMIT must be a non-negative integer');
@@ -344,6 +345,23 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
         return json(res, 404, { error: 'not_found' });
       }
       if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405); return res.end(); }
+      // Search engines see one address per section; duplicates of the home page and trailing slashes redirect.
+      if (path === '/index.html' || (path.length > 1 && path.endsWith('/') && seoRoute(path.slice(0, -1)))) {
+        res.writeHead(301, { Location: path === '/index.html' ? '/' : path.slice(0, -1) });
+        return res.end();
+      }
+      if (path === '/robots.txt' || path === '/sitemap.xml') {
+        const xml = path === '/sitemap.xml';
+        res.writeHead(200, { 'Content-Type': xml ? 'application/xml; charset=utf-8' : 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=3600' });
+        return res.end(req.method === 'HEAD' ? undefined : (xml ? sitemapXml(publicOrigin) : robotsTxt(publicOrigin)));
+      }
+      const route = seoRoute(path);
+      if (route) {
+        const shell = (await readFile(resolve(rootPath, 'index.html'))).toString('utf8').replaceAll('__PUBLIC_URL__', publicOrigin);
+        if (req.method === 'GET' && pageViewLimiter.check(clientAddress(req, trustProxy)).allowed) metrics.pageView(req, trustProxy);
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
+        return res.end(req.method === 'HEAD' ? undefined : renderPage(shell, route, publicOrigin, searchVerification));
+      }
       let decoded;
       try { decoded = decodeURIComponent(path); } catch { res.writeHead(400); return res.end(); }
       if (decoded.includes('\0')) { res.writeHead(400); return res.end(); }
@@ -359,7 +377,11 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
         const body = extname(target) === '.html' ? Buffer.from(file.toString('utf8').replaceAll('__PUBLIC_URL__', publicOrigin)) : file;
         res.writeHead(200, { 'Content-Type': MIME[extname(target)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
         return res.end(req.method === 'HEAD' ? undefined : body);
-      } catch { res.writeHead(404); return res.end(); }
+      } catch {
+        // Pages get a readable 404; missing files (scripts, images) just the status.
+        if (!extname(path)) { res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' }); return res.end(req.method === 'HEAD' ? undefined : notFoundPage()); }
+        res.writeHead(404); return res.end();
+      }
     } catch (error) {
       // A stream already started cannot switch to a JSON error; close it instead of throwing again.
       if (res.headersSent) { console.error(error); if (!res.writableEnded) res.end(); return undefined; }

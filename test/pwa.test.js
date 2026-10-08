@@ -52,3 +52,41 @@ test('the page carries an absolute link preview and robots.txt keeps crawlers of
     await store.close();
   }
 });
+
+test('each section has its own indexable address with title, canonical and only its content visible', async () => {
+  const store = await createStore('pglite:memory');
+  const server = createServer({ store, codeSecret: 'test-secret-with-at-least-thirty-two-characters', publicUrl: 'https://anna.example',
+    searchVerification: { yandex: 'abc123', google: 'xyz789' } });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const day = await (await fetch(`${base}/karta-dnya`)).text();
+    assert.match(day, /<title>Карта дня таро онлайн бесплатно — Анна Гринькова<\/title>/);
+    assert.match(day, /<link rel="canonical" href="https:\/\/anna\.example\/karta-dnya" \/>/);
+    assert.match(day, /data-page="day">/);
+    assert.match(day, /data-page="home" hidden>/);
+    assert.match(day, /<meta name="yandex-verification" content="abc123" \/>/);
+    assert.match(day, /"@type":"Person"/);
+    assert.equal(day.includes('noindex'), false);
+    assert.match(await (await fetch(`${base}/kabinet`)).text(), /<meta name="robots" content="noindex, nofollow" \/>/);
+
+    const redirect = await fetch(`${base}/karta-dnya/`, { redirect: 'manual' });
+    assert.equal(redirect.status, 301);
+    assert.equal(redirect.headers.get('location'), '/karta-dnya');
+    assert.equal((await fetch(`${base}/index.html`, { redirect: 'manual' })).status, 301);
+
+    const sitemap = await (await fetch(`${base}/sitemap.xml`)).text();
+    assert.match(sitemap, /<loc>https:\/\/anna\.example\/karta-dnya<\/loc>/);
+    assert.equal(sitemap.includes('/kabinet'), false);
+    const robots = await (await fetch(`${base}/robots.txt`)).text();
+    assert.match(robots, /Sitemap: https:\/\/anna\.example\/sitemap\.xml/);
+    assert.match(robots, /Clean-param: payment/);
+
+    const missing = await fetch(`${base}/no-such-page`);
+    assert.equal(missing.status, 404);
+    assert.match(await missing.text(), /Такой страницы нет/);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    await store.close();
+  }
+});

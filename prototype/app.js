@@ -200,17 +200,49 @@ drawCards.forEach((button) => button.addEventListener('click', () => selectDaily
 drawReset.addEventListener('click', () => resetDraw(true));
 
 
+// Each section has its own address, so search engines can index it (config/seo.json on the server).
+const ROUTE_PATHS = { home: '/', day: '/karta-dnya', week: '/prognoz-na-nedelyu', chat: '/chat', account: '/kabinet' };
+const PAGE_BY_PATH = Object.fromEntries(Object.entries(ROUTE_PATHS).map(([page, path]) => [path, page]));
+const PAGE_TITLES = { home: 'Анна Гринькова — астропсихолог: карта дня и прогноз', day: 'Карта дня таро онлайн бесплатно — Анна Гринькова',
+  week: 'Астрологический прогноз на неделю — Анна Гринькова', chat: 'Чат с Анной Гриньковой — астрология и психология',
+  account: 'Личный кабинет — Анна Гринькова' };
+
+function navigateTo(page) {
+  const path = ROUTE_PATHS[page] ?? '/';
+  if (window.location.pathname + window.location.hash !== path) history.pushState(null, '', path);
+  showRoute();
+}
+window.navigateTo = navigateTo;
+
+// Internal links switch sections without reloading; modified clicks (new tab) keep the browser's behaviour.
+document.addEventListener('click', (event) => {
+  const link = event.target.closest('a[href]');
+  if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || link.target) return;
+  const url = new URL(link.href, window.location.href);
+  if (url.origin !== window.location.origin || !(url.pathname in PAGE_BY_PATH)) return;
+  event.preventDefault();
+  if (url.pathname + url.hash !== window.location.pathname + window.location.hash) history.pushState(null, '', url.pathname + url.search + url.hash);
+  showRoute();
+});
+
 function showRoute() {
-  const hash = window.location.hash.replace('#', '');
-  const page = ['day', 'week', 'chat', 'account'].includes(hash) ? hash : 'home';
-  if (hash && !['home', 'day', 'week', 'chat', 'account', 'about'].includes(hash)) history.replaceState(null, '', '#home');
+  let hash = window.location.hash.replace('#', '');
+  // Old links (#day, #account?payment=…) move to the real addresses.
+  const legacy = hash.split('?')[0];
+  if (legacy in ROUTE_PATHS) {
+    const query = hash.includes('?') ? hash.slice(hash.indexOf('?')) : window.location.search;
+    history.replaceState(null, '', ROUTE_PATHS[legacy] + query);
+    hash = '';
+  }
+  const page = PAGE_BY_PATH[window.location.pathname] ?? 'home';
+  if (hash && hash !== 'about') history.replaceState(null, '', window.location.pathname + window.location.search);
   for (const element of pages) element.hidden = element.dataset.page !== page;
   for (const element of navigation) {
     const navPage = element.dataset.nav || element.dataset.mobileNav;
     if (navPage === page || (hash === 'about' && navPage === 'about')) element.setAttribute('aria-current', 'page');
     else element.removeAttribute('aria-current');
   }
-  document.title = { home: 'Анна Гринькова — карта дня и прогноз недели', day: 'Карта дня — Анна Гринькова', week: 'Прогноз на неделю — Анна Гринькова', chat: 'Чат с Анной — Анна Гринькова', account: 'Личный кабинет — Анна Гринькова' }[page];
+  document.title = PAGE_TITLES[page];
   window.scrollTo({ top: 0, behavior: 'auto' });
   if (hash === 'about') requestAnimationFrame(() => document.getElementById('about').scrollIntoView({ behavior: 'smooth' }));
   if (page === 'day') {
@@ -272,7 +304,7 @@ function setAuthMode(mode) {
 
 function openSignup(event, mode = 'login') {
   if (mode === 'login' && currentUser && event.currentTarget.classList.contains('header-entry')) {
-    window.location.hash = 'account';
+    navigateTo('account');
     return;
   }
   focusBeforeDialog = event.currentTarget;
@@ -368,7 +400,7 @@ authForm.addEventListener('submit', async (event) => {
       await refreshAccount();
     } else {
       closeSignup();
-      window.location.hash = 'account';
+      navigateTo('account');
       await refreshAccount();
     }
   } catch { formMessage.textContent = 'Сервис недоступен. Попробуйте позже.'; }
@@ -483,5 +515,6 @@ document.getElementById('birth-form').addEventListener('submit', async (event) =
   finally { button.disabled = false; }
 });
 
+window.addEventListener('popstate', showRoute);
 window.addEventListener('hashchange', showRoute);
 showRoute();

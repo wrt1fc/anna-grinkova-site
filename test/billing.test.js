@@ -50,7 +50,7 @@ test('products are public and checkout needs an account', async () => fixture(as
 test('a paid notification activates the plan; the return link alone does not', async () => fixture(async ({ store, request, signIn, notify, provider }) => {
   const cookie = await signIn();
   const checkout = await buy(request, cookie, 'partner-30d');
-  assert.match(checkout.confirmationUrl, /^https:\/\/anna\.example\/#account\?payment=.+&test_payment=/);
+  assert.match(checkout.confirmationUrl, /^https:\/\/anna\.example\/kabinet\?payment=.+&test_payment=/);
   assert.equal((await request('/api/plan', { cookie })).data.plan.id, 'free');
   const order = await store.getOrder(checkout.orderId);
   provider.settle(order.providerPaymentId, { status: 'succeeded', paid: true });

@@ -76,7 +76,7 @@ export function createBilling({ store, provider = null, providers = null, public
       amountKop, currency: picked.currency, provider: picked.provider.name, autoRenew: autoRenew && product.autoRenewable }, now());
     try {
       const payment = await picked.provider.createPayment({ order, description: product.label, email: user.email,
-        returnUrl: `${publicUrl}/#account?payment=${order.id}`, savePaymentMethod: order.autoRenew });
+        returnUrl: `${publicUrl}/kabinet?payment=${order.id}`, savePaymentMethod: order.autoRenew });
       await store.setOrderProviderId(order.id, payment.id, now());
       return { orderId: order.id, confirmationUrl: payment.confirmationUrl };
     } catch (error) {

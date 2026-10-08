@@ -68,6 +68,7 @@ const server = createServer({ store, mailer, codeSecret, trafficLimiter,
   mailDailyLimit: Number(process.env.MAIL_DAILY_LIMIT ?? 0), forecastWriter, chatWriter, sotisVerifier,
   chatGate: createConcurrencyGate(Number(process.env.CHAT_MAX_CONCURRENT ?? 2)), metrics: createMetrics(store), knowledge, paymentProviders: { ru: paymentProvider, intl: intlProvider },
   publicUrl: process.env.PUBLIC_URL || `http://${host}:${port}`, requirePrivacyConsent: process.env.REQUIRE_PRIVACY_CONSENT === '1',
+  searchVerification: { yandex: process.env.YANDEX_VERIFICATION, google: process.env.GOOGLE_SITE_VERIFICATION },
   secureCookies: process.env.NODE_ENV === 'production', trustProxy: process.env.TRUST_PROXY === '1' });
 if (mailer && !Number(process.env.MAIL_DAILY_LIMIT)) console.warn('MAIL_DAILY_LIMIT is 0: registration and password reset emails are disabled.');
 server.listen(port, host, () => console.log(`Anna site: http://${host}:${port}`));

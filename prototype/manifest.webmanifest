@@ -5,7 +5,7 @@
   "description": "Карта дня, прогноз на неделю, личный кабинет и чат с Анной.",
   "lang": "ru",
   "dir": "ltr",
-  "start_url": "./#home",
+  "start_url": "/",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
@@ -18,8 +18,8 @@
     { "src": "assets/app/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "Карта дня", "url": "./#day", "icons": [{ "src": "assets/app/icon-192.png", "sizes": "192x192" }] },
-    { "name": "Чат с Анной", "url": "./#chat", "icons": [{ "src": "assets/app/icon-192.png", "sizes": "192x192" }] },
-    { "name": "Личный кабинет", "url": "./#account", "icons": [{ "src": "assets/app/icon-192.png", "sizes": "192x192" }] }
+    { "name": "Карта дня", "url": "/karta-dnya", "icons": [{ "src": "assets/app/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Чат с Анной", "url": "/chat", "icons": [{ "src": "assets/app/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Личный кабинет", "url": "/kabinet", "icons": [{ "src": "assets/app/icon-192.png", "sizes": "192x192" }] }
   ]
 }
