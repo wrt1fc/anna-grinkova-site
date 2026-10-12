@@ -517,3 +517,23 @@ test('a person can download their data and delete the account; paid orders stay 
   await request('/api/me', 'DELETE', { password: signup.password }, other);
   assert.equal(await store.q.one("SELECT id FROM users WHERE email LIKE 'deleted-%' AND id <> $1", [id]), null);
 }));
+
+test('after a model failure the written forecast is tried again a minute later, not served plain all day', async () => {
+  let fail = true, calls = 0;
+  const realNow = Date.now;
+  let shift = 0;
+  Date.now = () => realNow() + shift;
+  try {
+    await fixture(async ({ request }) => {
+      assert.equal((await request('/api/forecast/day')).response.status, 200);
+      assert.equal(calls, 1);
+      fail = false;
+      await request('/api/forecast/day');
+      assert.equal(calls, 1, 'within a minute the plain text is reused');
+      shift = 61_000;
+      const { data } = await request('/api/forecast/day');
+      assert.equal(calls, 2);
+      assert.equal(data.generation.kind, 'model');
+    }, { forecastWriter: { async refine(forecast) { calls++; if (fail) throw new Error('model down'); return { ...forecast, generation: { kind: 'model' } }; } } });
+  } finally { Date.now = realNow; }
+});

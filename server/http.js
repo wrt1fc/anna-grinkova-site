@@ -19,6 +19,8 @@ import { notFoundPage, renderPage, robotsTxt, seoRoute, sitemapXml } from './seo
 import { NULL_METRICS } from './metrics.js';
 
 const SESSION_AGE = 30 * 24 * 60 * 60;
+// How long the plain calculated forecast is reused before the model is asked again after a failure.
+const FORECAST_RETRY_MS = 60_000;
 // Per-visitor and per-address caps on code mails, on top of MAIL_DAILY_LIMIT for the whole site.
 const MAIL_PER_IP_PER_DAY = 10;
 const MAIL_PER_ADDRESS_PER_DAY = 5;
@@ -196,19 +198,26 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
           }
           const common = await dailyCache.promise;
           if (dailyDrawCacheDay !== day) { dailyDrawCache.clear(); dailyDrawCacheDay = day; }
-          if (!dailyDrawCache.has(draw)) {
-            const promise = (async () => {
+          // A text written by the model is kept for the day. If the model server is down, the calculated text is served
+          // and kept only for a minute, so the written text appears as soon as the model is back.
+          const cachedDraw = dailyDrawCache.get(draw);
+          if (!cachedDraw || (cachedDraw.fallbackUntil && cachedDraw.fallbackUntil <= Date.now())) {
+            const entry = { promise: null, fallbackUntil: null };
+            entry.promise = (async () => {
               const selected = draw === 0 ? common : forecastForDate(day, draw);
               const forecast = { ...selected, astronomy: { ...selected.astronomy, sotis: common.astronomy.sotis } };
               if (forecastWriter) {
                 try { return await forecastWriter.refine(forecast); }
-                catch (error) { console.warn('Local forecast writer failed:', error.message); }
+                catch (error) {
+                  console.warn('Local forecast writer failed:', error.message);
+                  entry.fallbackUntil = Date.now() + FORECAST_RETRY_MS;
+                }
               }
               return forecast;
             })();
-            dailyDrawCache.set(draw, promise);
+            dailyDrawCache.set(draw, entry);
           }
-          const general = await dailyDrawCache.get(draw);
+          const general = await dailyDrawCache.get(draw).promise;
           const dailyUser = user;
           const profile = dailyUser ? await store.getBirthProfile(dailyUser.id) : null;
           if (profile?.birthUtc) {
