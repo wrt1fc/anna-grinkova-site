@@ -90,3 +90,19 @@ test('each section has its own indexable address with title, canonical and only 
     await store.close();
   }
 });
+
+test('every file the service worker stores for offline use is served directly, not through a redirect', async () => {
+  const store = await createStore('pglite:memory');
+  const server = createServer({ store, codeSecret: 'test-secret-with-at-least-thirty-two-characters' });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const worker = await (await fetch(`${base}/sw.js`)).text();
+    const shell = JSON.parse(worker.match(/const SHELL = (\[[^\]]*\]);/)[1].replaceAll("'", '"'));
+    // A redirected copy cannot answer a page load offline, so the browser would show its own error page.
+    for (const entry of shell) assert.equal((await fetch(new URL(entry, `${base}/`), { redirect: 'manual' })).status, 200, entry);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    await store.close();
+  }
+});

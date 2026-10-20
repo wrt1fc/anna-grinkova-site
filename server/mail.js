@@ -4,6 +4,11 @@ const TIMEOUT_MS = 10_000;
 const FROM_NAME = 'Анна Гринькова';
 
 function letter(purpose, code) {
+  // Someone tried to register with an address that already has an account: no code, only a pointer to sign in.
+  if (purpose === 'account_exists') {
+    return { subject: 'Ваш аккаунт уже есть',
+      text: 'Кто-то пытался создать аккаунт с этим адресом, но он уже зарегистрирован. Войдите со своим паролем или восстановите его на странице входа. Если это были не вы, проигнорируйте письмо.' };
+  }
   const subject = purpose === 'reset' ? 'Код для смены пароля' : 'Код подтверждения почты';
   const text = purpose === 'reset'
     ? `Код для смены пароля: ${code}. Он действует 10 минут. Если вы не запрашивали смену пароля, проигнорируйте письмо.`

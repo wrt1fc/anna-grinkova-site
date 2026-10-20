@@ -1,8 +1,9 @@
 // Service worker for the installed web app (iPhone and Android home screen).
 // Pages: network first, the last copy when offline. Static files: served from cache and refreshed in the background.
 // API calls (auth, chat stream, payments) are never cached or intercepted.
-const CACHE = 'anna-shell-v2';
-const SHELL = ['./', './index.html', './manifest.webmanifest', './assets/app/icon-192.png', './assets/institute-emblem-gold.svg'];
+// v3: /index.html now redirects to /, and a redirected response cannot answer a page load, so only / is kept.
+const CACHE = 'anna-shell-v3';
+const SHELL = ['/', './manifest.webmanifest', './assets/app/icon-192.png', './assets/institute-emblem-gold.svg'];
 const STATIC = /\.(?:css|js|svg|png|jpg|webp|woff2)$/;
 const OFFLINE_PAGE = `<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Нет соединения</title><body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#130d0b;color:#f6eee3;font:16px/1.5 Arial,sans-serif;text-align:center;padding:24px">
@@ -23,11 +24,10 @@ async function networkFirst(request) {
   try {
     const response = await fetch(request);
     // Only the app page itself becomes the offline copy, never another HTML response.
-    const path = new URL(request.url).pathname;
-    if (response.ok && (path === '/' || path.endsWith('/index.html'))) cache.put('./index.html', response.clone());
+    if (response.ok && !response.redirected && new URL(request.url).pathname === '/') cache.put('/', response.clone());
     return response;
   } catch {
-    return (await cache.match('./index.html')) ?? new Response(OFFLINE_PAGE, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+    return (await cache.match('/')) ?? new Response(OFFLINE_PAGE, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
   }
 }
 

@@ -531,9 +531,62 @@ test('after a model failure the written forecast is tried again a minute later, 
       await request('/api/forecast/day');
       assert.equal(calls, 1, 'within a minute the plain text is reused');
       shift = 61_000;
-      const { data } = await request('/api/forecast/day');
+      // The retry runs in the background: this visitor gets the calculated text at once, the next one the written text.
+      assert.equal((await request('/api/forecast/day')).data.generation.kind, 'rules');
       assert.equal(calls, 2);
-      assert.equal(data.generation.kind, 'model');
+      await new Promise((resolve) => setImmediate(resolve));
+      assert.equal((await request('/api/forecast/day')).data.generation.kind, 'model');
+      assert.equal(calls, 2);
     }, { forecastWriter: { async refine(forecast) { calls++; if (fail) throw new Error('model down'); return { ...forecast, generation: { kind: 'model' } }; } } });
   } finally { Date.now = realNow; }
 });
+
+test('a hanging model never makes forecast visitors wait after the first failure', async () => {
+  let calls = 0;
+  const realNow = Date.now;
+  let shift = 0;
+  Date.now = () => realNow() + shift;
+  try {
+    await fixture(async ({ request }) => {
+      await request('/api/forecast/day');
+      shift = 61_000;
+      // The model now hangs; the retry must not hold the reply.
+      const reply = await Promise.race([request('/api/forecast/day').then(() => 'answered'),
+        new Promise((resolve) => setTimeout(() => resolve('waiting'), 1000))]);
+      assert.equal(reply, 'answered');
+      await request('/api/forecast/day');
+      assert.equal(calls, 2, 'only one retry runs at a time');
+    }, { forecastWriter: { refine() { calls++; return calls === 1 ? Promise.reject(new Error('model down')) : new Promise(() => {}); } } });
+  } finally { Date.now = realNow; }
+});
+
+test('registering a taken address answers like a new one and mails a notice without a code', async () => fixture(async ({ store, sent, request }) => {
+  const { hashPassword } = await import('../server/auth.js');
+  await store.createUser('taken@example.com', await hashPassword(signup.password), Date.now(), Date.now());
+  const fresh = await request('/api/auth/register', 'POST', { ...signup, email: 'fresh@example.com' });
+  const taken = await request('/api/auth/register', 'POST', { ...signup, email: 'taken@example.com' });
+  assert.equal(taken.response.status, fresh.response.status);
+  assert.deepEqual(Object.keys(taken.data).sort(), Object.keys(fresh.data).sort());
+  assert.equal(taken.data.message, fresh.data.message);
+  const notice = sent.at(-1);
+  assert.equal(notice.to, 'taken@example.com');
+  assert.equal(notice.purpose, 'account_exists');
+  assert.equal(notice.code, null);
+  // The same one-minute cooldown as for a new address.
+  assert.equal((await request('/api/auth/register', 'POST', { ...signup, email: 'taken@example.com' })).data.error, 'too_soon');
+  // No code can turn that challenge into a second account.
+  for (const code of ['000000', '123456']) {
+    assert.equal((await request('/api/auth/register/verify', 'POST', { challenge: taken.data.challenge, code })).response.status, 400);
+  }
+  assert.equal((await store.q.one("SELECT COUNT(*) AS count FROM users WHERE email = 'taken@example.com'")).count, 1);
+}));
+
+test('the 404 page may use its inline styles but still runs no scripts', async () => fixture(async ({ request }) => {
+  const response = await fetch(`${request.base}/no-such-page`);
+  assert.equal(response.status, 404);
+  const policy = response.headers.get('content-security-policy');
+  assert.match(policy, /style-src 'self' 'unsafe-inline'/);
+  assert.match(policy, /default-src 'none'/);
+  assert.doesNotMatch(policy, /script-src/);
+  assert.match(await response.text(), /Такой страницы нет/);
+}));

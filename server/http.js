@@ -30,6 +30,8 @@ const CONTENT_SECURITY_POLICY = [
   "manifest-src 'self'", "worker-src 'self'",
   "form-action 'self'", "base-uri 'self'", "object-src 'none'", "frame-ancestors 'none'",
 ].join('; ');
+// The 404 page is a fixed text with inline styles and no scripts; the site-wide policy would leave it unstyled.
+const NOT_FOUND_POLICY = "default-src 'none'; style-src 'self' 'unsafe-inline'; font-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.webp': 'image/webp',
   '.png': 'image/png', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json; charset=utf-8',
   '.txt': 'text/plain; charset=utf-8' };
@@ -81,7 +83,7 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
   const personalCache = new Map();
   // Issues a code and its mail. Besides the site-wide daily budget, each address and each visitor IP gets
   // its own small daily cap, so one visitor cannot spend everyone's budget or mail strangers in bulk.
-  async function prepareCode({ purpose, email, userId = null, passwordHash = null, ip, policyVersion = null }) {
+  async function prepareCode({ purpose, mailPurpose = purpose, email, userId = null, passwordHash = null, ip, policyVersion = null }) {
     if (!mailer || mailDailyLimit === 0) return { status: 503, data: { error: 'mail_unavailable', message: 'Отправка кодов временно недоступна.' } };
     const today = new Date().toISOString().slice(0, 10);
     if (!(await store.consumeDailyQuota(`mail-ip:${ip}`, today, MAIL_PER_IP_PER_DAY))
@@ -98,7 +100,7 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
       return { status: 429, data: { error: 'mail_quota_exceeded', message: 'Лимит писем на сегодня исчерпан. Попробуйте завтра.' } };
     }
     const deliver = async () => {
-      try { await mailer.sendCode({ to: email, purpose, code }); return true; }
+      try { await mailer.sendCode({ to: email, purpose: mailPurpose, code: mailPurpose === 'account_exists' ? null : code }); return true; }
       catch (error) {
         await store.deleteChallenge(challengeHash).catch(() => {});
         console.error('Mail delivery failed:', error.message);
@@ -199,10 +201,10 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
           const common = await dailyCache.promise;
           if (dailyDrawCacheDay !== day) { dailyDrawCache.clear(); dailyDrawCacheDay = day; }
           // A text written by the model is kept for the day. If the model server is down, the calculated text is served
-          // and kept only for a minute, so the written text appears as soon as the model is back.
-          const cachedDraw = dailyDrawCache.get(draw);
-          if (!cachedDraw || (cachedDraw.fallbackUntil && cachedDraw.fallbackUntil <= Date.now())) {
-            const entry = { promise: null, fallbackUntil: null };
+          // and the model is asked again a minute later in the background: visitors keep getting the calculated text
+          // at once instead of waiting for a hanging model, and the written text replaces it once it is ready.
+          const writeDraw = () => {
+            const entry = { promise: null, fallbackUntil: null, refreshing: false };
             entry.promise = (async () => {
               const selected = draw === 0 ? common : forecastForDate(day, draw);
               const forecast = { ...selected, astronomy: { ...selected.astronomy, sotis: common.astronomy.sotis } };
@@ -215,7 +217,14 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
               }
               return forecast;
             })();
-            dailyDrawCache.set(draw, entry);
+            return entry;
+          };
+          const cachedDraw = dailyDrawCache.get(draw);
+          if (!cachedDraw) dailyDrawCache.set(draw, writeDraw());
+          else if (cachedDraw.fallbackUntil && cachedDraw.fallbackUntil <= Date.now() && !cachedDraw.refreshing) {
+            cachedDraw.refreshing = true;
+            const next = writeDraw();
+            next.promise.then(() => { if (dailyDrawCacheDay === day && dailyDrawCache.get(draw) === cachedDraw) dailyDrawCache.set(draw, next); });
           }
           const general = await dailyDrawCache.get(draw).promise;
           const dailyUser = user;
@@ -244,9 +253,11 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
           if (requirePrivacyConsent && !consented) {
             return json(res, 400, { error: 'consent_required', message: 'Чтобы создать аккаунт, подтвердите согласие на обработку персональных данных.' });
           }
-          if (await store.findUserByEmail(email)) return json(res, 409, { error: 'email_exists', message: 'Этот email уже зарегистрирован.' });
-          const sent = await sendCode({ purpose: 'registration', email, passwordHash: await hashPassword(body.password), ip: clientAddress(req, trustProxy),
-            policyVersion: consented ? legal.privacyPolicyVersion : null });
+          // A taken address gets the same reply, cooldown and quotas, but its letter says the account exists and carries
+          // no code, so the form cannot be used to learn who is a client. That challenge can never create a user.
+          const exists = !!(await store.findUserByEmail(email));
+          const sent = await sendCode({ purpose: 'registration', mailPurpose: exists ? 'account_exists' : 'registration', email,
+            passwordHash: await hashPassword(body.password), ip: clientAddress(req, trustProxy), policyVersion: consented ? legal.privacyPolicyVersion : null });
           return json(res, sent.status, sent.data);
         }
         if (path === '/api/auth/register/verify' && req.method === 'POST') {
@@ -388,7 +399,10 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
         return res.end(req.method === 'HEAD' ? undefined : body);
       } catch {
         // Pages get a readable 404; missing files (scripts, images) just the status.
-        if (!extname(path)) { res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' }); return res.end(req.method === 'HEAD' ? undefined : notFoundPage()); }
+        if (!extname(path)) {
+          res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Security-Policy': NOT_FOUND_POLICY });
+          return res.end(req.method === 'HEAD' ? undefined : notFoundPage());
+        }
         res.writeHead(404); return res.end();
       }
     } catch (error) {
