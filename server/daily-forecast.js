@@ -83,7 +83,8 @@ export function planetPositionsAt(instant) {
   };
 }
 
-export function forecastForDate(day, position = 0) {
+// ownerId picks the signed-in account's own five cards; without it the shared set for guests is used.
+export function forecastForDate(day, position = 0, ownerId = null) {
   if (typeof day !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(day)
     || new Date(`${day}T09:00:00Z`).toISOString().slice(0, 10) !== day) throw new Error('invalid_forecast_date');
   const instant = new Date(`${day}T09:00:00Z`);
@@ -92,7 +93,7 @@ export function forecastForDate(day, position = 0) {
   const sun = signFor(positions.sun.longitude);
   const moon = signFor(positions.moon.longitude);
   const phase = positions.moonPhase;
-  const card = tarotForDate(day, null, position);
+  const card = tarotForDate(day, ownerId, position);
   const { number: cardIndex, name, focus, action, question } = card;
   return {
     date: day,

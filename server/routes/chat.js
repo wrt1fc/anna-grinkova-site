@@ -1,6 +1,7 @@
-import { forecastForDate, moscowDate } from '../daily-forecast.js';
+import { forecastForDate, moscowDate, tarotForDate } from '../daily-forecast.js';
 import { personalForecastForDate } from '../personal-forecast.js';
-import { ANSWER_LENGTHS, DEFAULT_ANSWER_LENGTH, MAX_ANSWER_CHARS, chatForecastContext, forecastForQuestion } from '../local-chat.js';
+import { ANSWER_LENGTHS, DEFAULT_ANSWER_LENGTH, MAX_ANSWER_CHARS, TAROT_MODE, TAROT_QUESTION_MAX_CHARS,
+  chatForecastContext, forecastForQuestion, tarotReadingContext } from '../local-chat.js';
 import { SAFE_FALLBACK_ANSWER, unsafeChatAnswer } from '../chat-safety.js';
 import { planFor } from '../plans.js';
 import { CRISIS_ANSWER, isCrisisMessage } from '../crisis.js';
@@ -32,6 +33,12 @@ function invalidChatBody(body) {
     || !Number.isInteger(draw) || draw < 0 || draw > 4
     || (body.length !== undefined && !Object.hasOwn(ANSWER_LENGTHS, body.length))
     || (body.profileId !== undefined && body.profileId !== null && !(Number.isSafeInteger(body.profileId) && body.profileId > 0));
+}
+
+// A reading is one question and the number of one of the five cards (0–4) the account was shown.
+function invalidTarotBody(body) {
+  const question = typeof body.question === 'string' ? body.question.trim() : '';
+  return !question || question.length > TAROT_QUESTION_MAX_CHARS || !Number.isInteger(body.draw) || body.draw < 0 || body.draw > 4;
 }
 
 // The owner's own chart, or a partner/family profile the plan currently allows.
@@ -66,11 +73,23 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
   const answeringIps = new Map();
   const perIpSlots = Math.max(1, Math.floor((chatGate.limit ?? 2) / 2));
 
-  async function postChat({ req, res, user, json, readJson }) {
-    if (!chatWriter) return json(res, 503, { error: 'chat_unavailable', message: 'Чат пока недоступен. Попробуйте позже.' });
-    if (!user) return json(res, 401, { error: 'login_required', message: 'Чат доступен после входа в личный кабинет.' });
+  // One pipeline for chat messages and card readings: the same gate, locks, limits, stream and safety checks.
+  // A reading differs in its own daily limit, its prompt mode and in leaving no chat history.
+  async function postChat({ req, res, user, json, readJson }, tarot = false) {
+    const unavailable = tarot
+      ? { error: 'tarot_unavailable', message: 'Расклад сейчас недоступен. Попробуйте позже.' }
+      : { error: 'chat_unavailable', message: 'Чат пока недоступен. Попробуйте позже.' };
+    if (!chatWriter) return json(res, 503, unavailable);
+    if (!user) {
+      return json(res, 401, { error: 'login_required', message: tarot
+        ? 'Расклад с трактовкой доступен после регистрации.' : 'Чат доступен после входа в личный кабинет.' });
+    }
     const body = await readJson(req, MAX_CHAT_BODY_BYTES);
-    if (invalidChatBody(body)) return json(res, 400, { error: 'invalid_chat_message', message: 'Проверьте текст сообщения.' });
+    if (tarot ? invalidTarotBody(body) : invalidChatBody(body)) {
+      return json(res, 400, tarot ? { error: 'invalid_tarot_reading', message: 'Напишите вопрос (до 300 символов) и выберите карту от 1 до 5.' }
+        : { error: 'invalid_chat_message', message: 'Проверьте текст сообщения.' });
+    }
+    if (tarot) body.message = body.question.trim();
     if (isCrisisMessage(body.message)) { metrics.count('chat_crisis'); return replyCrisis(req, res, json); }
     const ip = clientAddress(req, trustProxy);
     if (answering.has(user.id)) return json(res, 429, { error: 'chat_in_progress', message: 'Дождитесь ответа на предыдущий вопрос.' });
@@ -81,7 +100,8 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
       return json(res, 429, { error: 'chat_rate_limited', message: 'Слишком много сообщений. Попробуйте через минуту.' },
         { 'Retry-After': String(limit.retryAfter) });
     }
-    const chart = await chartFor(store, user, body.profileId ?? null);
+    // A reading is about the account's own card for the question, so it never reads a natal chart or a profile.
+    const chart = tarot ? { profile: null, subject: null, profileId: null } : await chartFor(store, user, body.profileId ?? null);
     if (chart.error) return json(res, ...chart.error);
 
     // Another person behind the same address sees an ordinary "busy", not someone else's "wait for your answer".
@@ -100,32 +120,43 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
       releaseGate();
     };
     const day = moscowDate();
-    const quotaKind = `chat:${user.id}`;
+    // Readings are counted apart from chat messages: spending one never uses up the other.
+    const quotaKind = `${tarot ? 'tarot' : 'chat'}:${user.id}`;
     // A database failure here must still free the slot and the per-user lock, or chat would stay blocked.
     let plan, allowed;
     try {
       plan = planFor(await store.getPlan(user.id));
-      allowed = await store.consumeDailyQuota(quotaKind, day, plan.dailyChatMessages);
+      allowed = await store.consumeDailyQuota(quotaKind, day, tarot ? plan.dailyTarotReadings : plan.dailyChatMessages);
     } catch (error) { release(); throw error; }
     if (!allowed) {
       release();
-      metrics.count('chat_daily_limit');
-      return json(res, 429, { error: 'chat_daily_limit', message: `Сообщения на сегодня по тарифу «${plan.label}» закончились. Возвращайтесь завтра.` });
+      metrics.count(tarot ? 'tarot_daily_limit' : 'chat_daily_limit');
+      return json(res, 429, tarot
+        ? { error: 'tarot_daily_limit', message: `Расклады на сегодня по тарифу «${plan.label}» закончились. Возвращайтесь завтра.` }
+        : { error: 'chat_daily_limit', message: `Сообщения на сегодня по тарифу «${plan.label}» закончились. Возвращайтесь завтра.` });
     }
 
     const message = body.message.trim();
     const draw = body.draw ?? 0;
     // Any failure while preparing the prompt frees the slot and gives the message back.
-    let context, astro, materials;
+    let context, astro, materials, card;
     try {
-      const general = forecastForDate(day, draw);
-      const forecast = chart.profile?.birthUtc
-        ? personalForecastForDate(day, chart.profile, chart.profileId ? PROFILE_SEED_OFFSET + chart.profileId : user.id, general, draw)
-        : general;
-      context = chatForecastContext(forecast, chart.subject);
-      astro = chartContext(chart.profile, message);
-      // Only the text goes to the model; file names and scores stay on the server.
-      materials = findMaterials(knowledge, message, astro.queries);
+      if (tarot) {
+        // The same function and key that drew the five cards on the page, so the number picks the card the person saw.
+        card = tarotForDate(day, user.id, draw);
+        context = tarotReadingContext(day, card);
+        astro = { chart: null };
+        materials = [];
+      } else {
+        const general = forecastForDate(day, draw, user.id);
+        const forecast = chart.profile?.birthUtc
+          ? personalForecastForDate(day, chart.profile, chart.profileId ? PROFILE_SEED_OFFSET + chart.profileId : user.id, general, draw)
+          : general;
+        context = chatForecastContext(forecast, chart.subject);
+        astro = chartContext(chart.profile, message);
+        // Only the text goes to the model; file names and scores stay on the server.
+        materials = findMaterials(knowledge, message, astro.queries);
+      }
     } catch (error) {
       release();
       await store.refundDailyQuota(quotaKind, day).catch(() => {});
@@ -148,9 +179,14 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
       if (send && safeUpTo > sent) { send('delta', { text: full.slice(sent, safeUpTo) }); sent = safeUpTo; }
     };
     const finish = async (answer, filtered, extra = {}) => {
-      metrics.count('chat_messages');
+      metrics.count(tarot ? 'tarot_readings' : 'chat_messages');
       if (filtered) metrics.count('chat_filtered');
       metrics.timing('chat_answer', performance.now() - started);
+      if (tarot) {
+        // Questions of a reading are not stored: no history, no signature to continue it as a chat.
+        const payload = { answer, filtered, card: { number: card.number, name: card.name, position: draw + 1 } };
+        return streaming ? (send('done', payload), res.end()) : json(res, 200, payload);
+      }
       // A failed history write must not take the answer away from the visitor.
       try {
         await store.appendChatMessages(user.id, chart.profileId, [{ role: 'user', content: message }, { role: 'assistant', content: answer }]);
@@ -160,9 +196,10 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
       return streaming ? (send('done', payload), res.end()) : json(res, 200, payload);
     };
     try {
-      const reply = await chatWriter.answer({ message, history: historySigner.trusted(body.history ?? []), forecast: forecastForQuestion(context, message),
-        visitorName: user.displayName || null, chart: astro.chart,
-        length: body.length ?? DEFAULT_ANSWER_LENGTH, materials, signal: abort.signal, onDelta });
+      const reply = await chatWriter.answer({ message, history: tarot ? [] : historySigner.trusted(body.history ?? []),
+        forecast: tarot ? context : forecastForQuestion(context, message),
+        visitorName: user.displayName || null, chart: astro.chart, ...(tarot ? { mode: TAROT_MODE } : {}),
+        length: tarot ? 'medium' : body.length ?? DEFAULT_ANSWER_LENGTH, materials, signal: abort.signal, onDelta });
       const filtered = unsafeChatAnswer(reply.answer, day);
       if (filtered) console.warn('Chat answer rejected by safety check');
       return await finish(filtered ? SAFE_FALLBACK_ANSWER : reply.answer, filtered, reply);
@@ -179,8 +216,8 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
       await store.refundDailyQuota(quotaKind, day);
       if (abort.signal.aborted) return undefined;
       metrics.count('chat_errors');
-      console.warn('Local chat failed:', error.message);
-      const failure = { error: 'chat_unavailable', message: 'Сейчас не удалось получить ответ. Попробуйте ещё раз.' };
+      console.warn(tarot ? 'Tarot reading failed:' : 'Local chat failed:', error.message);
+      const failure = { error: tarot ? 'tarot_unavailable' : 'chat_unavailable', message: 'Сейчас не удалось получить ответ. Попробуйте ещё раз.' };
       return streaming ? (send('error', failure), res.end()) : json(res, 503, failure);
     } finally {
       res.off('close', onClose);
@@ -191,6 +228,7 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
   return async function handleChatRoutes(ctx) {
     const { req, res, path, user, json, readJson } = ctx;
     if (path === '/api/chat' && req.method === 'POST') return await postChat(ctx), true;
+    if (path === '/api/tarot/reading' && req.method === 'POST') return await postChat(ctx, true), true;
     if (!path.startsWith('/api/chat/')) return false;
     if (!user) return json(res, 401, { error: 'login_required' }), true;
     if (path === '/api/chat/history' && req.method === 'GET') {

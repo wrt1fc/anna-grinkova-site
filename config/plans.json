@@ -5,18 +5,21 @@
       "label": "Бесплатный",
       "maxPeople": 1,
       "dailyChatMessages": 5,
+      "dailyTarotReadings": 1,
       "relations": []
     },
     "individual": {
       "label": "Индивидуальный",
       "maxPeople": 1,
       "dailyChatMessages": 30,
+      "dailyTarotReadings": 3,
       "relations": []
     },
     "partner": {
       "label": "Партнёрский",
       "maxPeople": 2,
       "dailyChatMessages": 60,
+      "dailyTarotReadings": 5,
       "relations": [
         "partner"
       ]
@@ -25,6 +28,7 @@
       "label": "Семейный",
       "maxPeople": 3,
       "dailyChatMessages": 90,
+      "dailyTarotReadings": 8,
       "relations": [
         "partner",
         "child",

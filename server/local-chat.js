@@ -1,4 +1,5 @@
 import chatContext from '../config/chat-context.json' with { type: 'json' };
+import tarotReading from '../config/tarot-reading.json' with { type: 'json' };
 import { ollamaGenerateUrl } from './ollama.js';
 
 const ENDPOINT = ollamaGenerateUrl();
@@ -34,11 +35,25 @@ export const ANSWER_LENGTHS = chatContext.answerLengths;
 export const DEFAULT_ANSWER_LENGTH = chatContext.defaultAnswerLength;
 export const MAX_ANSWER_CHARS = Math.max(...Object.values(ANSWER_LENGTHS).map((item) => item.maxChars));
 
+export const TAROT_MODE = 'tarot';
+export const TAROT_QUESTION_MAX_CHARS = 300;
+
+// Context for one drawn card: only what the reading may rely on, no sky or birth data.
+export function tarotReadingContext(day, card) {
+  return { date: day, scope: 'tarot', subject: null,
+    card: { name: card.name, theme: card.focus, position: card.position + 1 },
+    reading: { action: card.action, question: card.question } };
+}
+
 // The same prompt shape is used for training examples, so the tuned model learns to follow length.
-export function chatPrompt({ message, history, forecast, visitorName = null, length = DEFAULT_ANSWER_LENGTH, materials = [], chart = null }) {
+export function chatPrompt({ message, history, forecast, visitorName = null, length = DEFAULT_ANSWER_LENGTH, materials = [], chart = null, mode = null }) {
   // The natal chart block is sent only for chart questions, so ordinary answers keep the trained prompt shape.
-  return JSON.stringify({ facts: chatContext.facts, materials, forecast, ...(chart ? { chart } : {}), history, visitorName, length,
+  return JSON.stringify({ facts: chatContext.facts, materials, forecast, ...(chart ? { chart } : {}), ...(mode ? { mode } : {}), history, visitorName, length,
     lengthInstruction: ANSWER_LENGTHS[length].instruction, question: message });
+}
+
+function systemFor(mode) {
+  return (mode === TAROT_MODE ? [...chatContext.systemInstructions, ...tarotReading.systemInstructions] : chatContext.systemInstructions).join(' ');
 }
 
 // Ollama streams one JSON object per line.
@@ -66,7 +81,7 @@ function lastFullSentence(text) {
 export function createLocalChat({ model, fetchImpl = fetch }) {
   if (typeof model !== 'string' || !/^[\w./:-]{2,80}$/.test(model)) throw new Error('Invalid local model name');
   return {
-    async answer({ message, history, forecast, visitorName = null, signal, length = DEFAULT_ANSWER_LENGTH, materials = [], chart = null, onDelta = null }) {
+    async answer({ message, history, forecast, visitorName = null, signal, length = DEFAULT_ANSWER_LENGTH, materials = [], chart = null, mode = null, onDelta = null }) {
       const size = ANSWER_LENGTHS[length];
       if (!size) throw new Error('Unknown answer length');
       const timeout = AbortSignal.timeout(MODEL_TIMEOUT_MS);
@@ -79,8 +94,8 @@ export function createLocalChat({ model, fetchImpl = fetch }) {
           think: false,
           // Fixed context size: Ollama reloads the model whenever num_ctx changes between requests.
           options: { temperature: 0.25, num_predict: size.numPredict, num_ctx: 8192 },
-          system: chatContext.systemInstructions.join(' '),
-          prompt: chatPrompt({ message, history, forecast, visitorName, length, materials, chart }),
+          system: systemFor(mode),
+          prompt: chatPrompt({ message, history, forecast, visitorName, length, materials, chart, mode }),
         }),
         // Also stops generation when the visitor presses Stop or leaves the page.
         signal: signal ? AbortSignal.any([signal, timeout]) : timeout,

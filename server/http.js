@@ -166,7 +166,8 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
           }
           const draw = drawParameters.length ? Number(drawParameters[0]) : 0;
           const day = moscowDate();
-          const general = forecastForDate(day, draw);
+          // A signed-in account always draws from its own five cards, with or without birth data.
+          const general = forecastForDate(day, draw, user?.id ?? null);
           const profile = user ? await store.getBirthProfile(user.id) : null;
           const forecast = profile?.birthUtc ? personalForecastForDate(day, profile, user.id, general, draw) : general;
           return json(res, 200, { date: day, tarot: { number: forecast.tarot.number, name: forecast.tarot.name } });
@@ -238,6 +239,11 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
               personalCache.set(key, { ...personal, astronomy: { ...personal.astronomy, sotis: general.astronomy.sotis } });
             }
             return json(res, 200, personalCache.get(key));
+          }
+          if (dailyUser) {
+            // Own cards without birth data: the calculated text, not the model's text for the shared card.
+            const own = forecastForDate(day, draw, dailyUser.id);
+            return json(res, 200, { ...own, astronomy: { ...own.astronomy, sotis: general.astronomy.sotis } });
           }
           return json(res, 200, general);
         }

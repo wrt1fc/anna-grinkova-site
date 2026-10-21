@@ -12,5 +12,5 @@ export function isPlan(name) { return Object.hasOwn(PLANS, name); }
 export function publicPlan(name) {
   const plan = planFor(name);
   return { id: Object.hasOwn(PLANS, name) ? name : DEFAULT_PLAN, label: plan.label, maxPeople: plan.maxPeople,
-    dailyChatMessages: plan.dailyChatMessages, relations: plan.relations };
+    dailyChatMessages: plan.dailyChatMessages, dailyTarotReadings: plan.dailyTarotReadings, relations: plan.relations };
 }

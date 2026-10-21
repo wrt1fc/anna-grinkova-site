@@ -106,3 +106,26 @@ test('the model address comes from OLLAMA_URL and must be http(s)', async () => 
   assert.equal(ollamaGenerateUrl('http://127.0.0.1:11434'), 'http://127.0.0.1:11434/api/generate');
   assert.throws(() => ollamaGenerateUrl('file:///etc/passwd'), /http/);
 });
+
+test('a card reading adds its own rules and mode, and ordinary chat keeps the trained prompt shape', async () => {
+  const { tarotForDate } = await import('../server/daily-forecast.js');
+  const { tarotReadingContext } = await import('../server/local-chat.js');
+  const reading = tarotReadingContext('2026-10-07', tarotForDate('2026-10-07', 5, 2));
+  const tarotCapture = {};
+  await chatReturning(['Карта показывает возможную линию. Присмотритесь к одному шагу.'], {}, tarotCapture)
+    .answer({ message: 'Что со мной будет в работе?', history: [], forecast: reading, mode: 'tarot', length: 'medium' });
+  const prompt = JSON.parse(tarotCapture.payload.prompt);
+  assert.equal(prompt.mode, 'tarot');
+  assert.equal(prompt.question, 'Что со мной будет в работе?');
+  assert.equal(prompt.forecast.card.position, 3);
+  assert.equal(JSON.stringify(prompt).includes('sky'), false);
+  assert.match(tarotCapture.payload.system, /Расклад по запросу/);
+  assert.match(tarotCapture.payload.system, /Не обещайте исход/);
+  assert.match(tarotCapture.payload.system, /не выдавайте себя за Анну/i);
+
+  const chatCapture = {};
+  await chatReturning(['Карта поднимает тему выбора. Сначала проверьте факты.'], {}, chatCapture)
+    .answer({ message: 'Что значит карта?', history: [], forecast });
+  assert.equal('mode' in JSON.parse(chatCapture.payload.prompt), false);
+  assert.equal(/Расклад по запросу/.test(chatCapture.payload.system), false);
+});
