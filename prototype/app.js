@@ -438,7 +438,7 @@ function renderAccount(data) {
   document.body.dataset.visitorName = currentUser?.displayName || '';
   document.dispatchEvent(new CustomEvent('anna-account-state', { detail: { signedIn: !!currentUser, name: currentUser?.displayName || '' } }));
   document.getElementById('account-heading').textContent = currentUser ? 'Вы в кабинете.' : 'Войдите в кабинет.';
-  document.getElementById('account-email').textContent = currentUser ? currentUser.email : 'Создайте аккаунт, чтобы подготовить профиль для персонального прогноза.';
+  document.getElementById('account-email').textContent = currentUser ? currentUser.email : 'Создайте аккаунт, и прогноз станет личным.';
   document.getElementById('account-login').hidden = !!currentUser;
   document.getElementById('account-name-form').hidden = !currentUser;
   document.getElementById('account-name').value = currentUser?.displayName || '';

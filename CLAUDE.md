@@ -10,9 +10,9 @@
 - Рабочие копии (git worktree):
   - `E:\ai сайт` — `main`;
   - `E:\ai-site-intl` — `feat/intl-payments`, сервер и модель (Claude);
-  - `E:\ai-site-codex` — `feat/account-payments`, интерфейс (Codex).
+  - `E:\ai-site-codex` — `feat/account-payments`, интерфейс (перенос дизайна из Figma, Claude).
 - После работы: тесты, коммит в свою ветку, fast-forward остальных двух, push всех трёх (`git -C "E:\ai сайт" push origin main feat/account-payments feat/intl-payments`).
-- `prototype/` (HTML/CSS/JS интерфейса) ведёт **Codex** — его не трогать, задачи для него писать в `docs/codex-ui-tasks.md`. Исключения: `prototype/sw.js`, `prototype/pwa.js`, `manifest.webmanifest`, `<head>` с SEO и PWA.
+- **Дизайн ведётся только в Figma** (https://www.figma.com/design/BggW2QztAkK0GdWCSrHOKy/, «Анна Гринькова — сайт и UI-kit»): это единственный источник правды, расхождение сайта с макетом считается ошибкой сайта. Сайт (`prototype/`, HTML/CSS/JS) переносит из макета Claude. Codex с 21.10.2026 в проекте не участвует (решение пользователя); `docs/codex-ui-tasks.md` остался как описание API для интерфейса. `docs/site-copy.md` — черновик текстов, при расхождении с Figma верен Figma. Не менять `prototype/sw.js`, `prototype/pwa.js`, `manifest.webmanifest` и служебное в `<head>` (SEO, PWA), кроме нового адреса страницы.
 
 ## Стек
 

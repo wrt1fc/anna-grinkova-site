@@ -332,3 +332,122 @@
   .week-feature-number,
   .week-feature-rule i { transition: none; }
 }
+
+/* ================= About Anna: arch portrait, ray ring, institute seal, entry index ================= */
+.site-shell .about-section.section-wrap {
+  max-width: none;
+  padding: var(--space-section) var(--pad);
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);
+  gap: clamp(40px, 6vw, 104px);
+  align-items: center;
+}
+.about-kicker { margin: 0 0 12px; font: italic 500 clamp(17px, 1.35vw, 20px)/1.25 var(--accent); color: var(--gold); }
+.about-copy h2 { margin: 0 0 22px; }
+.about-copy .about-lead { max-width: 525px; margin: 0; }
+.about-index { max-width: 620px; margin: 40px 0 32px; padding: 0; list-style: none; border-bottom: 1px solid rgba(222, 184, 88, .3); }
+.about-index li { border-top: 1px solid rgba(222, 184, 88, .3); }
+.about-index a {
+  display: grid;
+  grid-template-columns: minmax(130px, 190px) minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 0;
+}
+.about-index strong { font: 700 20px/1.2 var(--display); letter-spacing: -.02em; transition: color var(--motion-base) var(--ease-out); }
+.about-index span { color: var(--muted); font-size: 15px; line-height: 1.4; }
+.about-index a::after {
+  content: "";
+  width: 18px;
+  height: 18px;
+  background: var(--gold-light);
+  -webkit-mask: url('./assets/icon-arrow-up-right.svg') center / contain no-repeat;
+  mask: url('./assets/icon-arrow-up-right.svg') center / contain no-repeat;
+  transition: transform var(--motion-base) var(--ease-out);
+}
+.about-index a:hover strong { color: var(--gold-light); }
+.about-index a:hover::after { transform: translate(3px, -3px); }
+
+.about-portrait { position: relative; justify-self: center; width: min(100%, 432px); margin: 0; padding: 16px; }
+.about-portrait::before {              /* the same ray ring as on the card backs */
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 153%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  background: url('./assets/about-rays.svg') center / contain no-repeat;
+  pointer-events: none;
+}
+.about-arch {
+  position: relative;
+  aspect-ratio: 400 / 528;
+  overflow: hidden;
+  border-radius: 999px 999px 0 0;
+  outline: 1px solid rgba(222, 184, 88, .55);
+  outline-offset: 16px;
+  background: #1b1411;
+}
+.about-arch img { width: 100%; height: 100%; object-fit: cover; object-position: 37% center; }
+.about-arch::after { content: ""; position: absolute; inset: auto 0 0; height: 22%; background: linear-gradient(0deg, rgba(19, 13, 11, .85), rgba(19, 13, 11, 0)); pointer-events: none; }
+.about-seal {
+  position: absolute;
+  left: -24px;
+  bottom: 104px;
+  width: 112px;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(222, 184, 88, .7);
+  border-radius: 50%;
+  background: var(--bg);
+}
+.about-seal::before { content: ""; position: absolute; inset: 8px; border: 1px solid rgba(222, 184, 88, .35); border-radius: 50%; }
+.about-seal img { width: 46px; height: 46px; object-fit: contain; }
+.about-portrait figcaption { margin-top: 36px; text-align: center; color: var(--gold-light); font: italic 500 16px/1.3 var(--accent); }
+
+@media (max-width: 900px) {
+  .site-shell .about-section.section-wrap { display: flex; flex-direction: column; align-items: stretch; gap: 0; padding-block: 64px 96px; }
+  .about-copy { display: contents; }
+  .about-kicker { order: 0; margin-bottom: 20px; }
+  .about-portrait { order: 1; width: min(100%, 330px); margin-bottom: 36px; }
+  .about-copy > :not(.about-kicker) { order: 2; }
+  .about-portrait::before { width: 165%; }
+  .about-seal { left: -8px; bottom: 92px; width: 84px; }
+  .about-seal img { width: 34px; height: 34px; }
+  .about-portrait figcaption { margin-top: 30px; font-size: 15px; }
+  .about-index { margin: 28px 0 24px; }
+  .about-index a { grid-template-columns: 1fr 18px; row-gap: 4px; padding: 16px 0; }
+  .about-index strong { grid-column: 1; font-size: 18px; }
+  .about-index span { grid-column: 1; font-size: 14px; }
+  .about-index a::after { grid-column: 2; grid-row: 1 / span 2; }
+}
+@media (prefers-reduced-motion: reduce) { .about-index strong, .about-index a::after { transition: none; } }
+
+/* ================= Copy update (site-copy.md): longer headlines and labels ================= */
+/* Portrait in the About arch: a long soft fade so the photo edge never shows. */
+.about-arch::after { height: 38%; background: linear-gradient(0deg, var(--bg) 0%, rgba(19, 13, 11, .7) 45%, rgba(19, 13, 11, 0) 100%); }
+
+/* Home headline is now a sentence, not two short words. */
+.site-shell .hero h1 { max-width: 640px; font-size: clamp(40px, 3.75vw, 64px); line-height: 1.1; text-wrap: balance; }
+.site-shell .hero h1 em { white-space: normal; }
+.site-shell .hero-lead { max-width: 520px; }
+.hero-actions { margin-top: 4px; }
+
+/* Chat page headline. */
+.site-shell .chat-hero h1 { font-size: clamp(36px, 3.9vw, 56px); }
+
+/* Long button labels may wrap instead of overflowing. */
+.button-gold { white-space: normal; line-height: 1.25; }
+.unlock-section .button { max-width: 100%; }
+
+/* Small SEO paragraph under the day forecast. */
+.site-shell .seo-note.section-wrap { padding-block: 0 var(--space-section); }
+.seo-note p { max-width: 760px; margin: 0; color: var(--muted); font-size: 14px; line-height: 1.7; opacity: .85; }
+
+@media (max-width: 760px) {
+  .site-shell .hero h1 { font-size: clamp(34px, 10vw, 42px); }
+  .site-shell .chat-hero h1 { font-size: clamp(32px, 9.6vw, 40px); }
+  .unlock-section .button { width: 100%; }
+}
