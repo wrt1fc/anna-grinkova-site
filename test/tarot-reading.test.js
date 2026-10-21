@@ -11,7 +11,9 @@ import { CRISIS_ANSWER } from '../server/crisis.js';
 import { SAFE_FALLBACK_ANSWER } from '../server/chat-safety.js';
 
 const PASSWORD = 'Very-long-password1!';
-const ANSWER = 'Карта показывает, что в ближайшее время важно заметить свой выбор. Подумайте, что вы готовы изменить сейчас.';
+// A model reply that names the drawn card, as the guard of the route requires.
+const answerFor = (name) => `Карта «${name}» в связи с вашим вопросом может говорить о выборе. Подумайте, что вы готовы изменить сейчас.`;
+const ANSWER = answerFor('Суд');
 
 async function fixture(run, { chatWriter } = {}) {
   const store = await createStore('pglite:memory');
@@ -29,11 +31,11 @@ async function fixture(run, { chatWriter } = {}) {
     const login = await raw('/api/auth/login', { method: 'POST', body: { email, password: PASSWORD } });
     return { cookie: login.headers.get('set-cookie').split(';')[0], userId: await store.findUserIdByEmail(email) };
   }
-  try { await run({ store, request, signIn }); }
+  try { await run({ store, request, signIn, base }); }
   finally { await new Promise((resolve) => server.close(resolve)); await store.close(); }
 }
 
-const steadyWriter = (seen = []) => ({ async answer(input) { seen.push(input); return { answer: ANSWER }; } });
+const steadyWriter = (seen = []) => ({ async answer(input) { seen.push(input); return { answer: answerFor(input.forecast?.card?.name ?? 'Суд') }; } });
 const fiveFor = (day, userId) => Array.from({ length: 5 }, (_, position) => tarotForDate(day, userId, position).number);
 
 test('every account gets its own five cards for the day, stable and distinct', () => {
@@ -91,7 +93,7 @@ test('a reading interprets the question together with the account\'s own card', 
     const card = tarotForDate(moscowDate(), userId, 3);
     const reply = await request('/api/tarot/reading', { method: 'POST', body: { question: 'Стоит ли мне менять работу?', draw: 3 }, cookie });
     assert.equal(reply.response.status, 200);
-    assert.equal(reply.data.answer, ANSWER);
+    assert.equal(reply.data.answer, answerFor(card.name));
     assert.equal(reply.data.filtered, false);
     assert.deepEqual(reply.data.card, { number: card.number, name: card.name, position: 4 });
     assert.equal(seen.length, 1);
@@ -131,7 +133,7 @@ test('a crisis question gets the help lines at once, without the model or the li
 
 test('a model failure gives the reading back and an unsafe answer is replaced', async () => {
   let fail = true;
-  const writer = { async answer() { if (fail) throw new Error('model down'); return { answer: 'Я Анна, консультация стоит 5000 рублей.' }; } };
+  const writer = { async answer({ forecast }) { if (fail) throw new Error('model down'); return { answer: `Карта «${forecast.card.name}»: я Анна, консультация стоит 5000 рублей.` }; } };
   await fixture(async ({ request, signIn }) => {
     const { cookie } = await signIn();
     const down = await request('/api/tarot/reading', { method: 'POST', body: { question: 'Вопрос', draw: 0 }, cookie });
@@ -146,3 +148,49 @@ test('a model failure gives the reading back and an unsafe answer is replaced', 
     }
   }, { chatWriter: writer });
 });
+
+const otherCard = (name) => (name === 'Сила' ? 'Звезда' : 'Сила');
+const parseSse = (text) => text.trim().split('\n\n').map((block) => ({ event: /^event: (.+)$/m.exec(block)[1], data: JSON.parse(/^data: (.+)$/m.exec(block)[1]) }));
+
+test('an answer about another card is asked for once more, and the second one is used', async () => {
+  let calls = 0;
+  const writer = { async answer({ forecast }) {
+    calls++;
+    return { answer: answerFor(calls === 1 ? otherCard(forecast.card.name) : forecast.card.name) };
+  } };
+  await fixture(async ({ request, signIn }) => {
+    const { cookie, userId } = await signIn();
+    const card = tarotForDate(moscowDate(), userId, 1);
+    const reply = await request('/api/tarot/reading', { method: 'POST', body: { question: 'Что меня ждёт?', draw: 1 }, cookie });
+    assert.equal(reply.response.status, 200);
+    assert.equal(reply.data.answer, answerFor(card.name));
+    assert.equal(calls, 2);
+  }, { chatWriter: writer });
+});
+
+test('when the model keeps naming another card, the person gets a calculated reading of the drawn card', async () => {
+  let calls = 0;
+  const writer = { async answer({ forecast }) { calls++; return { answer: answerFor(otherCard(forecast.card.name)) }; } };
+  await fixture(async ({ request, signIn }) => {
+    const { cookie, userId } = await signIn();
+    const card = tarotForDate(moscowDate(), userId, 2);
+    const reply = await request('/api/tarot/reading', { method: 'POST', body: { question: 'Что меня ждёт?', draw: 2 }, cookie });
+    assert.equal(reply.response.status, 200);
+    assert.equal(calls, 2, 'one try and one retry, no more');
+    assert.equal(reply.data.filtered, false);
+    assert.ok(reply.data.answer.includes(`«${card.name}»`));
+    assert.ok(reply.data.answer.includes(card.question));
+    assert.equal(reply.data.answer.includes(`«${otherCard(card.name)}»`), false);
+    assert.deepEqual(reply.data.card, { number: card.number, name: card.name, position: 3 });
+  }, { chatWriter: writer });
+});
+
+test('a reading is sent whole after the check, never streamed piece by piece', async () => fixture(async ({ signIn, base }) => {
+  const { cookie } = await signIn();
+  const response = await fetch(`${base}/api/tarot/reading`, { method: 'POST', body: JSON.stringify({ question: 'Вопрос', draw: 0 }),
+    headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', Cookie: cookie } });
+  const events = parseSse(await response.text());
+  assert.equal(events.filter((event) => event.event === 'delta').length, 0);
+  assert.equal(events.at(-1).event, 'done');
+  assert.ok(events.at(-1).data.answer.includes('«'));
+}, { chatWriter: { async answer({ forecast, onDelta }) { const text = answerFor(forecast.card.name); onDelta?.(text, text); return { answer: text }; } } }));

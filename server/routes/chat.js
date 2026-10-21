@@ -8,6 +8,7 @@ import { CRISIS_ANSWER, isCrisisMessage } from '../crisis.js';
 import { profilesWithAccess } from './profiles.js';
 import { chartContext, findMaterials } from '../chat-grounding.js';
 import { clientAddress } from '../traffic.js';
+import { fallbackReading, wrongCard } from '../tarot-guard.js';
 
 const MAX_MESSAGE_CHARS = 600;
 // Seeds the personal tarot card for a partner/family profile apart from any account id.
@@ -176,7 +177,8 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
       // Checked on every chunk, so a reply that turns unsafe is stopped and replaced mid-stream.
       if (unsafeChatAnswer(full, day)) { unsafe = true; abort.abort(); return; }
       const safeUpTo = full.length - STREAM_HOLDBACK_CHARS;
-      if (send && safeUpTo > sent) { send('delta', { text: full.slice(sent, safeUpTo) }); sent = safeUpTo; }
+      // A reading is sent whole after it has been checked against the drawn card, never piece by piece.
+      if (send && !tarot && safeUpTo > sent) { send('delta', { text: full.slice(sent, safeUpTo) }); sent = safeUpTo; }
     };
     const finish = async (answer, filtered, extra = {}) => {
       metrics.count(tarot ? 'tarot_readings' : 'chat_messages');
@@ -196,10 +198,18 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
       return streaming ? (send('done', payload), res.end()) : json(res, 200, payload);
     };
     try {
-      const reply = await chatWriter.answer({ message, history: tarot ? [] : historySigner.trusted(body.history ?? []),
+      const generate = (extra = {}) => chatWriter.answer({ message, history: tarot ? [] : historySigner.trusted(body.history ?? []),
         forecast: tarot ? context : forecastForQuestion(context, message),
         visitorName: user.displayName || null, chart: astro.chart, ...(tarot ? { mode: TAROT_MODE } : {}),
-        length: tarot ? 'medium' : body.length ?? DEFAULT_ANSWER_LENGTH, materials, signal: abort.signal, onDelta });
+        length: tarot ? 'medium' : body.length ?? DEFAULT_ANSWER_LENGTH, materials, signal: abort.signal, onDelta, ...extra });
+      let reply = await generate();
+      if (tarot && wrongCard(reply.answer, card)) {
+        // The model wrote about another card: one more try, then a calculated reading of the card the person was shown.
+        metrics.count('tarot_wrong_card');
+        try { reply = await generate({ temperature: 0.4 }); }
+        catch (error) { if (abort.signal.aborted) throw error; reply = { answer: '' }; }
+        if (wrongCard(reply.answer, card)) { metrics.count('tarot_calculated'); reply = { answer: fallbackReading(card) }; }
+      }
       const filtered = unsafeChatAnswer(reply.answer, day);
       if (filtered) console.warn('Chat answer rejected by safety check');
       return await finish(filtered ? SAFE_FALLBACK_ANSWER : reply.answer, filtered, reply);

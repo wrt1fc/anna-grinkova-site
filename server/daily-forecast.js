@@ -42,6 +42,8 @@ const CARDS = [
   ['Мир', 'результат заслуживает признания', 'Отметьте завершённое дело.', 'Что я уже довела до конца?'],
 ];
 
+export const CARD_NAMES = CARDS.map(([name]) => name);
+
 export function tarotForDate(day, userId = null, position = 0) {
   if (!Number.isInteger(position) || position < 0 || position > 4) throw new Error('invalid_draw_position');
   const key = userId == null ? `anna-day:${day}` : `anna-personal:${userId}:${day}`;
