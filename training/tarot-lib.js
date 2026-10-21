@@ -1,14 +1,15 @@
 // Shared by the tooling for card-reading examples: which cards go with which question, and the quality filter
 // a reading must pass to become a training example. Drafts are written by the model and approved by Anna.
 import { createHash } from 'node:crypto';
+import tarotReading from '../config/tarot-reading.json' with { type: 'json' };
 import { unsafeChatAnswer } from '../server/chat-safety.js';
 
 export const READINGS_PER_QUESTION = 3;
 const DECK_SIZE = 22;
 const EVAL_SHARE = 0.12;
-// The "medium" answer of chat-context.json, which readings use.
-export const MIN_CHARS = 250;
-export const MAX_CHARS = 900;
+// The answer size of a reading (config/tarot-reading.json).
+export const MIN_CHARS = tarotReading.answer.minChars;
+export const MAX_CHARS = tarotReading.answer.maxChars;
 
 const digest = (text) => createHash('sha256').update(text).digest();
 const share = (text) => digest(text).readUInt32BE(0) / 0x1_0000_0000;
@@ -55,6 +56,8 @@ export function tarotReadingProblems(answer, { name, sensitive = false }) {
   if (PROMISE.test(answer)) problems.push('обещание исхода');
   if (TIMEFRAME.test(answer)) problems.push('срок или дата события');
   if (MARKUP.test(answer)) problems.push('разметка или список');
+  // The page shows paragraphs apart, so a reading comes as two or three of them.
+  if (answer.trim().split(/\n\s*\n/).length < 2) problems.push('нет абзацев (нужно два-три, через пустую строку)');
   if (/[A-Za-z]{3,}/.test(answer)) problems.push('латиница в тексте');
   if (AI_WORDS.test(answer)) problems.push('называет себя ИИ');
   if (!POSSIBILITY.test(answer)) problems.push('нет оговорок о возможном («может», «скорее»)');

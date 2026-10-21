@@ -129,3 +129,20 @@ test('a card reading adds its own rules and mode, and ordinary chat keeps the tr
   assert.equal('mode' in JSON.parse(chatCapture.payload.prompt), false);
   assert.equal(/Расклад по запросу/.test(chatCapture.payload.system), false);
 });
+
+test('a reading has its own answer size, ordinary chat keeps the length of its mode', async () => {
+  const { tarotForDate } = await import('../server/daily-forecast.js');
+  const { tarotReadingContext, TAROT_ANSWER } = await import('../server/local-chat.js');
+  const reading = tarotReadingContext('2026-10-07', tarotForDate('2026-10-07', 5, 1));
+  const tarotCapture = {};
+  await chatReturning(['Карта показывает возможную линию. Присмотритесь к одному шагу.'], {}, tarotCapture)
+    .answer({ message: 'Что со мной будет?', history: [], forecast: reading, mode: 'tarot', length: 'short' });
+  assert.equal(JSON.parse(tarotCapture.payload.prompt).lengthInstruction, TAROT_ANSWER.instruction);
+  assert.match(TAROT_ANSWER.instruction, /абзац/);
+  assert.equal(tarotCapture.payload.options.num_predict, TAROT_ANSWER.numPredict);
+  const chatCapture = {};
+  await chatReturning(['Карта поднимает тему выбора. Сначала проверьте факты.'], {}, chatCapture)
+    .answer({ message: 'Что значит карта?', history: [], forecast, length: 'short' });
+  assert.notEqual(chatCapture.payload.options.num_predict, TAROT_ANSWER.numPredict);
+  assert.match(JSON.parse(chatCapture.payload.prompt).lengthInstruction, /1–2 предложения/);
+});

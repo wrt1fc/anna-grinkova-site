@@ -37,6 +37,9 @@ export const MAX_ANSWER_CHARS = Math.max(...Object.values(ANSWER_LENGTHS).map((i
 
 export const TAROT_MODE = 'tarot';
 export const TAROT_QUESTION_MAX_CHARS = 300;
+// A reading has its own answer size (three short paragraphs) instead of the chat lengths.
+export const TAROT_ANSWER = tarotReading.answer;
+const answerSize = (mode, length) => (mode === TAROT_MODE ? TAROT_ANSWER : ANSWER_LENGTHS[length]);
 
 // Context for one drawn card: only what the reading may rely on, no sky or birth data.
 export function tarotReadingContext(day, card) {
@@ -49,7 +52,7 @@ export function tarotReadingContext(day, card) {
 export function chatPrompt({ message, history, forecast, visitorName = null, length = DEFAULT_ANSWER_LENGTH, materials = [], chart = null, mode = null }) {
   // The natal chart block is sent only for chart questions, so ordinary answers keep the trained prompt shape.
   return JSON.stringify({ facts: chatContext.facts, materials, forecast, ...(chart ? { chart } : {}), ...(mode ? { mode } : {}), history, visitorName, length,
-    lengthInstruction: ANSWER_LENGTHS[length].instruction, question: message });
+    lengthInstruction: answerSize(mode, length).instruction, question: message });
 }
 
 export function systemFor(mode) {
@@ -82,7 +85,7 @@ export function createLocalChat({ model, fetchImpl = fetch }) {
   if (typeof model !== 'string' || !/^[\w./:-]{2,80}$/.test(model)) throw new Error('Invalid local model name');
   return {
     async answer({ message, history, forecast, visitorName = null, signal, length = DEFAULT_ANSWER_LENGTH, materials = [], chart = null, mode = null, onDelta = null, temperature = 0.25 }) {
-      const size = ANSWER_LENGTHS[length];
+      const size = answerSize(mode, length);
       if (!size) throw new Error('Unknown answer length');
       const timeout = AbortSignal.timeout(MODEL_TIMEOUT_MS);
       const response = await fetchImpl(ENDPOINT, {
