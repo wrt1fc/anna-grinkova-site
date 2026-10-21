@@ -1,6 +1,6 @@
 import { forecastForDate, moscowDate, tarotForReading } from '../daily-forecast.js';
 import { personalForecastForDate } from '../personal-forecast.js';
-import { ANSWER_LENGTHS, DEFAULT_ANSWER_LENGTH, MAX_ANSWER_CHARS, TAROT_MODE, TAROT_QUESTION_MAX_CHARS,
+import { ANSWER_LENGTHS, DEFAULT_ANSWER_LENGTH, MAX_ANSWER_CHARS, TAROT_MODE, TAROT_QUESTION_MAX_CHARS, TAROT_QUESTION_MIN_CHARS,
   chatForecastContext, forecastForQuestion, tarotReadingContext } from '../local-chat.js';
 import { SAFE_FALLBACK_ANSWER, unsafeChatAnswer } from '../chat-safety.js';
 import { planFor } from '../plans.js';
@@ -42,7 +42,7 @@ function invalidChatBody(body) {
 // A reading is one question and the number of one of the five cards (0–4) the account was shown.
 function invalidTarotBody(body) {
   const question = typeof body.question === 'string' ? body.question.trim() : '';
-  return !question || question.length > TAROT_QUESTION_MAX_CHARS || !Number.isInteger(body.draw) || body.draw < 0 || body.draw > 4;
+  return question.length < TAROT_QUESTION_MIN_CHARS || question.length > TAROT_QUESTION_MAX_CHARS || !Number.isInteger(body.draw) || body.draw < 0 || body.draw > 4;
 }
 
 // The owner's own chart, or a partner/family profile the plan currently allows.
@@ -92,7 +92,7 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
     }
     const body = await readJson(req, MAX_CHAT_BODY_BYTES);
     if (tarot ? invalidTarotBody(body) : invalidChatBody(body)) {
-      return json(res, 400, tarot ? { error: 'invalid_tarot_reading', message: 'Напишите вопрос (до 300 символов) и выберите карту от 1 до 5.' }
+      return json(res, 400, tarot ? { error: 'invalid_tarot_reading', message: 'Напишите вопрос (от 10 до 300 символов) и выберите карту от 1 до 5.' }
         : { error: 'invalid_chat_message', message: 'Проверьте текст сообщения.' });
     }
     if (tarot) body.message = body.question.trim();

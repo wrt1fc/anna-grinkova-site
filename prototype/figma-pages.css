@@ -1,0 +1,99 @@
+/* Inner pages from the Figma frames. Loaded after figma-home.css. Node ids in comments point at the Figma layer.
+   Day page: "Desktop / Прогноз на день" (7:16, 1440 px) and "Mobile / Прогноз на день" (9:71, 390 px). */
+
+/* "← На главную" is the same on every page: 15 px, bright gold */
+.back-link { color: var(--gold-light); font-size: 15px; }
+
+/* ================= Day page, desktop ================= */
+@media (min-width: 1281px) {
+  /* Hero 7:39: 540 px tall; the text on the left is placed from the top of the hero, the card stage on the right */
+  #route-day .forecast-hero.section-wrap { position: relative; height: 540px; padding: 37px 88px 0; box-sizing: border-box; }
+  #route-day .back-link { margin: 0; font: 400 15px/22px var(--body); }                                              /* 7:40 */
+  #route-day .forecast-hero-grid { display: block; position: static; }
+  #route-day .forecast-hero-copy { position: static; }
+  #route-day .forecast-kicker { position: absolute; left: 88px; top: 116px; margin: 0; font: italic 500 20px/24px var(--accent); color: var(--gold); } /* 7:41 */
+  #route-day .forecast-hero h1 { position: absolute; left: 88px; top: 165px; margin: 0; width: 700px; font: 800 76px/98.8px var(--display); letter-spacing: 0; color: var(--ink); } /* 7:42 */
+  #route-day .forecast-hero h1 em { font: inherit; font-style: normal; color: inherit; }
+  #route-day .forecast-hero-copy > p:not(.forecast-kicker) { position: absolute; left: 88px; top: 273px; width: 515px; margin: 0; font: 400 20px/26px var(--body); color: var(--muted); } /* 7:43 */
+  #route-day .reading-entry { position: absolute; left: 88px; top: 345px; margin: 0; }
+  #route-day .sample-label { position: absolute; left: 88px; top: 402px; margin: 0; display: flex; align-items: center; gap: 11px; font: 400 14px/22px var(--body); color: var(--muted); } /* 45:135, 45:136 */
+  #route-day .sample-dot { width: 7px; height: 7px; flex: none; }
+
+  /* Card stage 7:46: 590 x 455 at x = 760; the card 213 x 332 stands straight, no frame, title and caption on soft shades */
+  #route-day .forecast-visual.daily-visual { position: absolute; left: 760px; top: 35px; width: 590px; height: 455px; margin: 0; overflow: hidden; }
+  #route-day .day-card-scene { position: absolute; left: 188px; top: 38px; width: 213px; height: 332px; transform: none; display: block; }
+  #route-day:not([hidden]) .daily-visual .mini-card { position: absolute; inset: 0; width: 213px; height: 332px; border-radius: 0; animation: none; }
+  #route-day .mini-card-face { padding: 0; border: 0; border-radius: 0; box-shadow: none; background: #1a110d; }
+  #route-day .mini-card-face-front::before { inset: 0; border-radius: 0; filter: none; }
+  #route-day .mini-card-face-front::after { content: ''; position: absolute; z-index: 1; left: 9px; right: 9px; top: 9px; height: 54px; background: linear-gradient(180deg, rgba(26, 15, 13, .94), rgba(26, 15, 13, 0)); } /* 68:940 */
+  #route-day .mini-card-title { position: absolute; z-index: 2; left: 9px; right: 9px; top: 18px; margin: 0; font: italic 500 24px/normal var(--accent); color: #fff1c4; text-align: center; } /* 68:942 */
+  #route-day .mini-card-footer { position: absolute; z-index: 2; left: 9px; right: 9px; bottom: 9px; height: 54px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 9px; margin: 0; background: linear-gradient(0deg, rgba(26, 15, 13, .94), rgba(26, 15, 13, 0)); font: 400 13px/16px var(--body); letter-spacing: 0; color: #fff1c4; } /* 68:941, 68:943 */
+  #route-day .day-card-hint { position: absolute; left: 92px; top: 410px; right: auto; bottom: auto; width: 420px; margin: 0; font: 400 14px/22px var(--body); color: var(--gold-light); text-align: left; } /* 7:50 */
+
+  /* Reading 7:51: a darker full-width band, 630 px tall */
+  .site-shell #route-day .reading-section { position: relative; min-height: 630px; padding: 55px 88px 0; box-sizing: border-box; background: rgba(14, 9, 8, .45); }
+  #route-day .reading-section::before { content: ''; position: absolute; left: 88px; top: 0; width: 1264px; height: 1px; background: rgba(222, 184, 88, .4); } /* 45:137 */
+  #route-day .reading-section::after { left: 940px; right: auto; top: 20px; width: 440px; height: 586px; opacity: .12; filter: blur(20px); }                /* 45:138 */
+  #route-day .reading-meta { margin: 0; font: italic 500 20px/27px var(--accent); color: var(--gold-light); }                                          /* 7:52 */
+  #route-day .reading-layout { display: block; padding: 0; }
+  #route-day .reading-main h2 { margin: 53px 0 0; font: 800 50px/65px var(--display); letter-spacing: 0; color: var(--ink); }                          /* 7:53 */
+  #route-day #day-reading-body { max-width: 780px; min-height: 150px; margin: 25px 0 0; font: 400 19px/24.7px var(--body); color: var(--muted); }        /* 7:54 */
+  #route-day .reading-main blockquote { max-width: 760px; margin: 55px 0 0; padding: 0; border: 0; font: italic 500 34px/44px var(--accent); color: var(--gold-light); } /* 7:55 */
+  #route-day .reading-side { position: absolute; left: 1012px; top: 291px; width: 340px; margin: 0; }                                                  /* 7:56 */
+  #route-day .reading-side-label { display: block; font: italic 500 20px/26px var(--accent); color: var(--gold); }
+  #route-day .reading-side p { margin: 7px 0 27px; font: 700 24px/31px var(--display); color: var(--ink); }
+  #route-day .reading-side p:last-child { margin-bottom: 0; }
+  #route-day .form-status { margin: 19px 0 0; font: 400 13px/16px var(--body); color: var(--gold-light); }                                           /* 68:944 */
+
+  /* Cabinet call 7:61: 230 px, the heading and text on the left, the button on the right */
+  .site-shell #route-day .unlock-section { position: relative; display: block; height: 230px; padding: 0 88px; box-sizing: border-box; }
+  #route-day .unlock-text { position: static; }
+  #route-day .unlock-text h2 { position: absolute; left: 88px; top: 52px; margin: 0; font: 700 38px/49.4px var(--display); letter-spacing: 0; color: var(--ink); } /* 7:62 */
+  #route-day .unlock-text p { position: absolute; left: 88px; top: 112px; width: 690px; margin: 0; font: 400 17px/22.1px var(--body); color: var(--muted); }           /* 7:63 */
+  #route-day .unlock-section .button { position: absolute; left: 1058px; top: 80px; height: 58px; min-height: 58px; min-width: 250px; }                /* 7:64 */
+}
+
+/* ================= Day page, phone (9:71) ================= */
+@media (max-width: 760px) {
+  #route-day .forecast-hero.section-wrap { height: auto; padding: 26px 20px 0; }
+  #route-day .back-link { margin: 0; font: 400 14px/22px var(--body); }                                              /* 9:84 */
+  #route-day .forecast-hero-grid { display: block; }
+  #route-day .forecast-kicker { margin: 30px 0 0; font: italic 500 17px/normal var(--accent); color: var(--gold); }  /* 9:85 */
+  #route-day .forecast-hero h1 { margin: 17px 0 0; font: 800 52px/67.6px var(--display); letter-spacing: 0; color: var(--ink); } /* 9:86 */
+  #route-day .forecast-hero h1 em { font: inherit; font-style: normal; color: inherit; }
+  #route-day .forecast-hero-copy > p:not(.forecast-kicker) { margin: 16px 0 0; font: 400 16px/21px var(--body); color: var(--muted); }   /* 9:87 */
+  #route-day .reading-entry { margin: 14px 0 0; }
+  #route-day .sample-label { display: none; }
+
+  /* Card stage 9:88: 350 x 360, the card 145 x 226 at (103, 20), the hint below it */
+  #route-day .forecast-visual.daily-visual { position: relative; width: 350px; max-width: 100%; height: 360px; margin: 71px 0 0; overflow: visible; }
+  #route-day .day-card-scene { position: absolute; left: 103px; top: 20px; width: 145px; height: 226px; transform: none; display: block; }
+  #route-day:not([hidden]) .daily-visual .mini-card { position: absolute; inset: 0; width: 145px; height: 226px; border-radius: 0; animation: none; }
+  #route-day .mini-card-face { padding: 0; border: 0; border-radius: 0; box-shadow: none; background: #1a110d; }
+  #route-day .mini-card-face-front::before { inset: 0; border-radius: 0; filter: none; }
+  #route-day .mini-card-face-front::after { content: ''; position: absolute; z-index: 1; left: 6px; right: 6px; top: 6px; height: 40px; background: linear-gradient(180deg, rgba(26, 15, 13, .94), rgba(26, 15, 13, 0)); } /* 68:2042 */
+  #route-day .mini-card-title { position: absolute; z-index: 2; left: 6px; right: 6px; top: 10px; margin: 0; font: italic 500 18px/normal var(--accent); color: #fff1c4; text-align: center; } /* 68:2044 */
+  #route-day .mini-card-footer { position: absolute; z-index: 2; left: 6px; right: 6px; bottom: 6px; height: 40px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 6px; margin: 0; background: linear-gradient(0deg, rgba(26, 15, 13, .94), rgba(26, 15, 13, 0)); font: 400 11px/14px var(--body); letter-spacing: 0; color: #fff1c4; } /* 68:2043, 68:2045 */
+  #route-day .day-card-hint { position: absolute; left: 19px; top: 310px; right: auto; bottom: auto; width: 310px; margin: 0; font: 400 13px/22px var(--body); color: var(--gold-light); text-align: left; } /* 9:91 */
+
+  /* Reading band 51:187: darker, 690 px, the note comes before the focus panel */
+  .site-shell #route-day .reading-section { position: relative; display: flex; flex-direction: column; margin-top: 35px; padding: 25px 20px 16px; background: rgba(14, 9, 8, .45); }
+  #route-day .reading-section::before { content: ''; position: absolute; left: 20px; right: 20px; top: 5px; height: 1px; background: rgba(222, 184, 88, .4); } /* 51:188 */
+  #route-day .reading-section::after { left: 160px; right: auto; top: 45px; width: 250px; height: 333px; opacity: .12; filter: blur(15px); }              /* 51:189 */
+  #route-day .reading-layout, #route-day .reading-main { display: contents; }
+  #route-day .reading-meta { order: 0; margin: 0; font: italic 500 17px/22px var(--accent); color: var(--gold-light); }                                /* 9:92 */
+  #route-day .reading-main h2 { order: 1; margin: 30px 0 0; font: 800 37px/48px var(--display); letter-spacing: 0; color: var(--ink); }                /* 9:93 */
+  #route-day #day-reading-body { order: 2; margin: 25px 0 0; font: 400 17px/22px var(--body); color: var(--muted); }                                  /* 9:94 */
+  #route-day .reading-main blockquote { order: 3; margin: 40px 0 0; padding: 0; border: 0; font: italic 500 27px/33px var(--accent); color: var(--gold-light); } /* 9:95 */
+  #route-day .form-status { order: 4; margin: 18px 0 0; font: 400 13px/16px var(--body); color: var(--gold-light); }                                  /* 68:2046 */
+  #route-day .reading-side { order: 5; position: static; width: auto; margin: 46px 0 0; }                                                              /* 9:96 */
+  #route-day .reading-side-label { display: block; font: italic 500 17px/22px var(--accent); color: var(--gold); }
+  #route-day .reading-side p { margin: 4px 0 30px; font: 700 22px/28px var(--display); color: var(--ink); }
+  #route-day .reading-side p:last-child { margin: 4px 0 0; font-size: 20px; line-height: 26px; }
+
+  /* Cabinet call 9:101 ... 9:105 */
+  .site-shell #route-day .unlock-section { display: block; padding: 84px 20px 0; height: auto; }
+  #route-day .unlock-text h2 { margin: 0; font: 700 30px/39px var(--display); letter-spacing: 0; color: var(--ink); }                                   /* 9:101 */
+  #route-day .unlock-text p { margin: 48px 0 0; font: 400 15px/18px var(--body); color: var(--muted); }                                                  /* 9:102 */
+  #route-day .unlock-section .button { margin-top: 28px; height: 58px; min-height: 58px; min-width: 250px; width: auto; }                              /* 9:103 */
+}

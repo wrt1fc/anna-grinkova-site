@@ -4,6 +4,7 @@
 (() => {
   const route = document.getElementById('route-reading');
   if (!route) return;
+  const MIN_QUESTION = 10;
   const byId = (id) => document.getElementById(id);
   const el = {
     ask: byId('rd-ask'), result: byId('rd-result'), kicker: byId('rd-kicker'), title: byId('rd-title'), lead: byId('rd-lead'),
@@ -22,6 +23,7 @@
     idle: 'Открыть карту',
     busy: 'Открываем карту…',
     needInput: 'Напишите вопрос и выберите номер карты.',
+    tooShort: 'Вопрос должен быть не короче 10 символов.',
     failed: 'Не удалось получить трактовку. Попытка не списана.',
     limit: 'Лимит раскладов на сегодня исчерпан. Новые откроются завтра — или выберите другой тариф.',
     guestFailed: 'Не удалось открыть карту. Попробуйте ещё раз.',
@@ -149,6 +151,7 @@
     const question = el.question.value.trim();
     clearNotice();
     if (!question || selected === null) { notice('hint', TEXT.needInput); return; }
+    if (question.length < MIN_QUESTION) { notice('hint', TEXT.tooShort); return; }
     lastQuestion = question;
     setBusy(true);
     const turn = (controller = new AbortController());

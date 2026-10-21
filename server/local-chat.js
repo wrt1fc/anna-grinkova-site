@@ -37,6 +37,7 @@ export const MAX_ANSWER_CHARS = Math.max(...Object.values(ANSWER_LENGTHS).map((i
 
 export const TAROT_MODE = 'tarot';
 export const TAROT_QUESTION_MAX_CHARS = 300;
+export const TAROT_QUESTION_MIN_CHARS = 10;
 // A reading has its own answer size (three short paragraphs) instead of the chat lengths.
 export const TAROT_ANSWER = tarotReading.answer;
 const answerSize = (mode, length) => (mode === TAROT_MODE ? TAROT_ANSWER : ANSWER_LENGTHS[length]);

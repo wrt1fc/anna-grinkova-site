@@ -114,7 +114,6 @@ function renderDailyForecast(data) {
   document.getElementById('day-reading-question').textContent = data.reading.question;
   document.getElementById('day-reading-focus').textContent = data.reading.focus;
   document.getElementById('day-reading-action').textContent = data.reading.action;
-  document.getElementById('day-scope-label').lastChild.textContent = data.scope === 'personal' ? ' Персональный прогноз' : ' Общий прогноз';
   document.getElementById('day-status').textContent = 'Расчёт на 12:00 МСК.';
 }
 

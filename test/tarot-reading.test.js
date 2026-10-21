@@ -80,7 +80,7 @@ test('a reading needs an account and a valid question and card number', async ()
   assert.equal(guest.response.status, 401);
   assert.equal(guest.data.error, 'login_required');
   const { cookie } = await signIn();
-  for (const body of [{ draw: 0 }, { question: '   ', draw: 0 }, { question: 'a'.repeat(301), draw: 0 },
+  for (const body of [{ draw: 0 }, { question: '   ', draw: 0 }, { question: 'Что ждёт?', draw: 0 }, { question: 'a'.repeat(301), draw: 0 },
     { question: 'Что меня ждёт?', draw: 5 }, { question: 'Что меня ждёт?', draw: -1 }, { question: 'Что меня ждёт?', draw: '1' }, { question: 'Что меня ждёт?' }]) {
     const bad = await request('/api/tarot/reading', { method: 'POST', body, cookie });
     assert.equal(bad.response.status, 400, JSON.stringify(body));
@@ -110,7 +110,7 @@ test('readings have their own daily limit and do not use up chat messages', asyn
   const { cookie } = await signIn();
   const limit = PLANS.free.dailyTarotReadings;
   for (let i = 0; i < limit; i++) {
-    assert.equal((await request('/api/tarot/reading', { method: 'POST', body: { question: 'Вопрос', draw: i % 5 }, cookie })).response.status, 200);
+    assert.equal((await request('/api/tarot/reading', { method: 'POST', body: { question: 'Вопрос о работе', draw: i % 5 }, cookie })).response.status, 200);
   }
   const limited = await request('/api/tarot/reading', { method: 'POST', body: { question: 'Ещё вопрос', draw: 0 }, cookie });
   assert.equal(limited.response.status, 429);
@@ -128,7 +128,7 @@ test('a crisis question gets the help lines at once, without the model or the li
     assert.equal(reply.data.answer, CRISIS_ANSWER);
     assert.equal(calls, 0);
     for (let i = 0; i < PLANS.free.dailyTarotReadings; i++) {
-      assert.equal((await request('/api/tarot/reading', { method: 'POST', body: { question: 'Вопрос', draw: 0 }, cookie })).response.status, 200);
+      assert.equal((await request('/api/tarot/reading', { method: 'POST', body: { question: 'Вопрос о работе', draw: 0 }, cookie })).response.status, 200);
     }
   }, { chatWriter: { async answer() { calls++; return { answer: ANSWER }; } } });
 });
@@ -138,12 +138,12 @@ test('a model failure gives the reading back and an unsafe answer is replaced', 
   const writer = { async answer({ forecast }) { if (fail) throw new Error('model down'); return { answer: `Карта «${forecast.card.name}»: я Анна, консультация стоит 5000 рублей.` }; } };
   await fixture(async ({ request, signIn }) => {
     const { cookie } = await signIn();
-    const down = await request('/api/tarot/reading', { method: 'POST', body: { question: 'Вопрос', draw: 0 }, cookie });
+    const down = await request('/api/tarot/reading', { method: 'POST', body: { question: 'Вопрос о работе', draw: 0 }, cookie });
     assert.equal(down.response.status, 503);
     assert.equal(down.data.error, 'tarot_unavailable');
     fail = false;
     for (let i = 0; i < PLANS.free.dailyTarotReadings; i++) {
-      const safe = await request('/api/tarot/reading', { method: 'POST', body: { question: 'Вопрос', draw: 0 }, cookie });
+      const safe = await request('/api/tarot/reading', { method: 'POST', body: { question: 'Вопрос о работе', draw: 0 }, cookie });
       assert.equal(safe.response.status, 200);
       assert.equal(safe.data.filtered, true);
       assert.equal(safe.data.answer, SAFE_FALLBACK_ANSWER);
@@ -189,7 +189,7 @@ test('when the model keeps naming another card, the person gets a calculated rea
 
 test('a reading is sent whole after the check, never streamed piece by piece', async () => fixture(async ({ signIn, base }) => {
   const { cookie } = await signIn();
-  const response = await fetch(`${base}/api/tarot/reading`, { method: 'POST', body: JSON.stringify({ question: 'Вопрос', draw: 0 }),
+  const response = await fetch(`${base}/api/tarot/reading`, { method: 'POST', body: JSON.stringify({ question: 'Вопрос о работе', draw: 0 }),
     headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', Cookie: cookie } });
   const events = parseSse(await response.text());
   assert.equal(events.filter((event) => event.event === 'delta').length, 0);
@@ -212,16 +212,16 @@ test('the second reading of the day is dealt from a new spread; a failed one dea
   let fail = true;
   await fixture(async ({ request, signIn }) => {
     const { cookie, userId } = await signIn();
-    assert.equal((await request('/api/tarot/reading', { method: 'POST', body: { question: 'Вопрос', draw: 2 }, cookie })).response.status, 503);
+    assert.equal((await request('/api/tarot/reading', { method: 'POST', body: { question: 'Вопрос о работе', draw: 2 }, cookie })).response.status, 503);
     fail = false;
-    const first = await request('/api/tarot/reading', { method: 'POST', body: { question: 'Вопрос', draw: 2 }, cookie });
+    const first = await request('/api/tarot/reading', { method: 'POST', body: { question: 'Вопрос о работе', draw: 2 }, cookie });
     assert.equal(first.data.card.number, readingCard(userId, 0, 2).number);
   }, { chatWriter: { async answer(input) { if (fail) throw new Error('model down'); return { answer: answerFor(input.forecast.card.name) }; } } });
   await fixture(async ({ request, signIn, store }) => {
     const { cookie, userId } = await signIn();
     await store.setPlan(userId, 'individual');
     for (let round = 0; round < 3; round++) {
-      const reply = await request('/api/tarot/reading', { method: 'POST', body: { question: `Вопрос ${round}`, draw: 0 }, cookie });
+      const reply = await request('/api/tarot/reading', { method: 'POST', body: { question: `Вопрос о работе ${round}`, draw: 0 }, cookie });
       assert.equal(reply.response.status, 200);
       assert.equal(reply.data.card.number, readingCard(userId, round, 0).number);
     }
