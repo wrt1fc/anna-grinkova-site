@@ -106,3 +106,30 @@ test('every file the service worker stores for offline use is served directly, n
     await store.close();
   }
 });
+
+test('the reading page has its own address, five cards with numbers, and its stylesheet and script are served', async () => {
+  const store = await createStore('pglite:memory');
+  const server = createServer({ store, codeSecret: 'test-secret-with-at-least-thirty-two-characters', publicUrl: 'https://anna.example' });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const page = await (await fetch(`${base}/rasklad`)).text();
+    assert.match(page, /<title>Расклад таро онлайн по вопросу — Анна Гринькова<\/title>/);
+    assert.match(page, /<link rel="canonical" href="https:\/\/anna\.example\/rasklad" \/>/);
+    assert.match(page, /data-page="reading">/);
+    assert.match(page, /data-page="day" hidden>/);
+    assert.equal(page.includes('noindex'), false);
+    assert.equal((page.match(/data-rd-card="[0-4]"/g) ?? []).length, 5);
+    assert.equal((page.match(/data-rd-num="[0-4]"/g) ?? []).length, 5);
+    assert.match(page, /maxlength="300"/);
+    const assets = [...page.matchAll(/(?:href|src)="\.\/(reading\.(?:css|js)\?v=\d+)"/g)].map((match) => match[1]);
+    assert.equal(assets.length, 2);
+    for (const asset of assets) assert.equal((await fetch(`${base}/${asset}`)).status, 200, asset);
+    assert.match(await (await fetch(`${base}/sitemap.xml`)).text(), /<loc>https:\/\/anna\.example\/rasklad<\/loc>/);
+    // The entry link from the day page leads to it.
+    assert.match(await (await fetch(`${base}/karta-dnya`)).text(), /href="\/rasklad"/);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    await store.close();
+  }
+});

@@ -35,10 +35,12 @@
     <link rel="stylesheet" href="./polish.css?v=10" />
     <link rel="stylesheet" href="./tarot.css?v=2" />
     <link rel="stylesheet" href="./forecast-blocks.css?v=10" />
+    <link rel="stylesheet" href="./reading.css?v=5" />
     <script src="./birth-ui.js?v=1" defer></script>
     <script src="./birth-time.js?v=1" defer></script>
-    <script src="./app.js?v=21" defer></script>
+    <script src="./app.js?v=22" defer></script>
     <script src="./chat.js?v=12" defer></script>
+    <script src="./reading.js?v=1" defer></script>
     <script src="./pwa.js?v=1" defer></script>
   </head>
   <body>
@@ -123,7 +125,7 @@
           <section class="forecast-hero forecast-hero-day section-wrap">
             <a class="back-link" href="/"><span aria-hidden="true">←</span> На главную</a>
             <div class="forecast-hero-grid">
-              <div class="forecast-hero-copy"><p class="forecast-kicker">Таро и астропсихология</p><h1>Карта <em>дня.</em></h1><p>Прочитайте карту и выберите один вопрос, который стоит держать в уме.</p><span class="sample-label" id="day-scope-label"><span class="sample-dot"></span> Общий прогноз</span></div>
+              <div class="forecast-hero-copy"><p class="forecast-kicker">Таро и астропсихология</p><h1>Карта <em>дня.</em></h1><p>Прочитайте карту и выберите один вопрос, который стоит держать в уме.</p><a class="reading-entry" href="/rasklad">Расклад по запросу <span aria-hidden="true">↗</span></a><span class="sample-label" id="day-scope-label"><span class="sample-dot"></span> Общий прогноз</span></div>
               <div class="forecast-visual daily-visual"><div class="day-card-scene"><button class="mini-card" id="day-interactive-card" type="button" aria-label="Перевернуть карту дня" aria-describedby="day-card-hint" aria-pressed="false"><span class="mini-card-face mini-card-face-front"><span class="mini-card-title" id="day-card-title">Карта дня</span><span class="mini-card-footer" id="day-card-footer">12:00 МСК</span></span><span class="mini-card-face mini-card-face-back" aria-hidden="true"><span class="mini-card-back-orbit"><img src="./assets/institute-emblem-gold.svg" alt="" /></span><span class="mini-card-back-name">Анна Гринькова</span><span class="mini-card-back-caption">Карта дня</span></span></button></div><p class="day-card-hint" id="day-card-hint">Потяните карту или нажмите, чтобы перевернуть</p></div>
             </div>
           </section>
@@ -133,6 +135,68 @@
             <p class="form-status" id="day-status" role="status">Загружаем прогноз…</p>
           </section>
           <section class="unlock-section section-wrap"><div class="unlock-text"><h2>Ваши данные рождения.</h2><p>Сохраните дату, время и место рождения в личном кабинете для персонального расчёта.</p></div><a class="button button-gold" href="/kabinet">Перейти в кабинет <span aria-hidden="true">↗</span></a></section>
+        </div>
+
+        <div class="route" id="route-reading" data-page="reading" hidden>
+          <section class="forecast-hero reading-hero section-wrap">
+            <a class="back-link" href="/"><span aria-hidden="true">←</span> На главную</a>
+            <div class="forecast-hero-copy">
+              <p class="forecast-kicker" id="rd-kicker">Таро и астропсихология</p>
+              <h1 id="rd-title">Расклад по запросу.</h1>
+              <p class="rd-lead" id="rd-lead">Задайте вопрос, выберите номер карты — и откройте трактовку.</p>
+            </div>
+          </section>
+          <section class="rd-ask section-wrap" id="rd-ask" aria-label="Расклад по запросу">
+            <div class="rd-deck">
+              <h2 class="rd-heading">Колода</h2>
+              <div class="rd-cards" id="rd-cards">
+                <button class="rd-card" type="button" data-rd-card="0" aria-pressed="false" aria-label="Карта 1"><span class="rd-card-face" aria-hidden="true"></span><span class="rd-card-num" aria-hidden="true">1</span></button>
+                <button class="rd-card" type="button" data-rd-card="1" aria-pressed="false" aria-label="Карта 2"><span class="rd-card-face" aria-hidden="true"></span><span class="rd-card-num" aria-hidden="true">2</span></button>
+                <button class="rd-card" type="button" data-rd-card="2" aria-pressed="false" aria-label="Карта 3"><span class="rd-card-face" aria-hidden="true"></span><span class="rd-card-num" aria-hidden="true">3</span></button>
+                <button class="rd-card" type="button" data-rd-card="3" aria-pressed="false" aria-label="Карта 4"><span class="rd-card-face" aria-hidden="true"></span><span class="rd-card-num" aria-hidden="true">4</span></button>
+                <button class="rd-card" type="button" data-rd-card="4" aria-pressed="false" aria-label="Карта 5"><span class="rd-card-face" aria-hidden="true"></span><span class="rd-card-num" aria-hidden="true">5</span></button>
+              </div>
+              <p class="rd-deck-note" id="rd-deck-note" role="status">Карты закрыты, пока вы не назвали номер.</p>
+            </div>
+            <form class="rd-form" id="rd-form" novalidate>
+              <label class="rd-label" for="rd-question">Ваш вопрос</label>
+              <div class="rd-field">
+                <textarea id="rd-question" name="question" rows="4" maxlength="300" placeholder="Что мне важно понять о работе в ближайшее время?" aria-describedby="rd-count"></textarea>
+                <span class="rd-count" id="rd-count">0 / 300</span>
+              </div>
+              <div class="rd-numbers" role="group" aria-labelledby="rd-numbers-label">
+                <span class="rd-label" id="rd-numbers-label">Номер карты</span>
+                <div class="rd-numbers-row">
+                  <button class="rd-num" type="button" data-rd-num="0" aria-pressed="false">1</button>
+                  <button class="rd-num" type="button" data-rd-num="1" aria-pressed="false">2</button>
+                  <button class="rd-num" type="button" data-rd-num="2" aria-pressed="false">3</button>
+                  <button class="rd-num" type="button" data-rd-num="3" aria-pressed="false">4</button>
+                  <button class="rd-num" type="button" data-rd-num="4" aria-pressed="false">5</button>
+                </div>
+              </div>
+              <button class="button button-gold rd-submit" type="submit" id="rd-submit"><span id="rd-submit-label">Открыть карту</span> <span aria-hidden="true">↗</span></button>
+              <p class="rd-stream" id="rd-stream" hidden></p>
+              <div class="rd-notice" id="rd-notice" role="alert" hidden></div>
+            </form>
+            <div class="rd-guest" id="rd-guest" hidden>
+              <h2>Трактовка по вашему вопросу — после регистрации</h2>
+              <p>У каждого вошедшего свои пять карт на день, а вопрос и трактовка доступны в личном кабинете.</p>
+              <button class="button button-gold" type="button" data-open-signup>Войти или создать аккаунт <span aria-hidden="true">↗</span></button>
+            </div>
+            <p class="rd-guest-card" id="rd-guest-card" hidden></p>
+          </section>
+          <section class="rd-result section-wrap" id="rd-result" aria-labelledby="rd-title" hidden>
+            <div class="rd-result-grid">
+              <figure class="rd-result-card"><div class="rd-result-art" id="rd-result-art" role="img" aria-label="Открытая карта"></div><figcaption id="rd-result-caption"></figcaption></figure>
+              <div class="rd-result-text">
+                <p class="rd-result-label">Ваш вопрос</p>
+                <p class="rd-result-question" id="rd-result-question"></p>
+                <div class="rd-answer" id="rd-answer"></div>
+                <p class="rd-disclaimer">Расклад — повод для размышления, а не предсказание. Не заменяет консультацию специалиста.</p>
+                <button class="rd-again" type="button" id="rd-again">Открыть ещё одну</button>
+              </div>
+            </div>
+          </section>
         </div>
 
         <div class="route" id="route-week" data-page="week" hidden>

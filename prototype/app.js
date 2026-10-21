@@ -206,11 +206,11 @@ drawReset.addEventListener('click', () => resetDraw(true));
 
 
 // Each section has its own address, so search engines can index it (config/seo.json on the server).
-const ROUTE_PATHS = { home: '/', day: '/karta-dnya', week: '/prognoz-na-nedelyu', chat: '/chat', account: '/kabinet' };
+const ROUTE_PATHS = { home: '/', day: '/karta-dnya', reading: '/rasklad', week: '/prognoz-na-nedelyu', chat: '/chat', account: '/kabinet' };
 const PAGE_BY_PATH = Object.fromEntries(Object.entries(ROUTE_PATHS).map(([page, path]) => [path, page]));
 const PAGE_TITLES = { home: 'Анна Гринькова — астропсихолог: карта дня и прогноз', day: 'Карта дня таро онлайн бесплатно — Анна Гринькова',
   week: 'Астрологический прогноз на неделю — Анна Гринькова', chat: 'Чат с Анной Гриньковой — астрология и психология',
-  account: 'Личный кабинет — Анна Гринькова' };
+  reading: 'Расклад таро онлайн по вопросу — Анна Гринькова', account: 'Личный кабинет — Анна Гринькова' };
 
 function navigateTo(page) {
   const path = ROUTE_PATHS[page] ?? '/';
@@ -244,7 +244,8 @@ function showRoute() {
   for (const element of pages) element.hidden = element.dataset.page !== page;
   for (const element of navigation) {
     const navPage = element.dataset.nav || element.dataset.mobileNav;
-    if (navPage === page || (hash === 'about' && navPage === 'about')) element.setAttribute('aria-current', 'page');
+    // The reading page belongs to the day section in the menus.
+    if (navPage === (page === 'reading' ? 'day' : page) || (hash === 'about' && navPage === 'about')) element.setAttribute('aria-current', 'page');
     else element.removeAttribute('aria-current');
   }
   document.title = PAGE_TITLES[page];
@@ -256,7 +257,8 @@ function showRoute() {
     updateDayCard();
     loadDailyForecast();
   }
-  if (page === 'account' || page === 'chat') refreshAccount();
+  if (page === 'account' || page === 'chat' || page === 'reading') refreshAccount();
+  document.dispatchEvent(new CustomEvent('anna-route', { detail: { page } }));
 }
 
 const modes = {

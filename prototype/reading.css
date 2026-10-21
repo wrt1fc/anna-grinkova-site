@@ -1,0 +1,215 @@
+/* Reading by request (/rasklad): deck of five closed cards, a question, a card number, then the interpretation.
+   Sizes follow the Figma frames "Расклад — вопрос и номер / трактовка / гость / состояния" (1440 px and 390 px). */
+
+#route-reading { position: relative; isolation: isolate; overflow-x: clip; }
+
+/* ---- Heading block: reuses the forecast hero, only the spacing below it is shorter ---- */
+.reading-hero.section-wrap { padding-bottom: clamp(40px, 6.6vw, 95px); }
+.reading-hero .forecast-hero-copy h1 { font-size: clamp(44px, 5vw, 72px); line-height: 1.04; margin-bottom: 22px; }
+.reading-hero .forecast-hero-copy .rd-lead { max-width: 640px; margin: 0; color: var(--muted); font-size: clamp(16px, 1.4vw, 20px); line-height: 1.4; }
+
+/* ---- Ask view: two columns, 640 + 552 px at 1440 ---- */
+.rd-ask.section-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 640px) minmax(0, 552px);
+  grid-template-areas: "form deck" ". gcard";
+  column-gap: clamp(32px, 5vw, 72px);
+  align-items: start;
+  max-width: none;
+  padding-inline: var(--pad);
+  padding-bottom: var(--space-section);
+}
+.rd-ask[data-mode="guest"] { grid-template-areas: "deck guest" "gcard ."; }
+.rd-ask[hidden], .rd-result[hidden] { display: none; }
+.rd-deck { grid-area: deck; }
+.rd-form { grid-area: form; }
+.rd-guest { grid-area: guest; }
+.rd-guest-card { grid-area: gcard; }
+
+.rd-heading {
+  margin: 0 0 clamp(18px, 2vw, 26px);
+  font: italic 500 clamp(17px, 1.4vw, 20px)/1.25 var(--accent);
+  color: var(--gold);
+}
+
+/* ---- Deck: five closed cards with their numbers ---- */
+.rd-cards { display: grid; grid-template-columns: repeat(5, minmax(0, 100px)); gap: 8px; padding-top: 14px; }
+.rd-card {
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.rd-card-face {
+  display: block;
+  width: 100%;
+  aspect-ratio: 100 / 154;
+  border-radius: 10px;
+  background: #1a110d url('./assets/card-back.svg') center / 100% 100% no-repeat;
+  transition: transform .25s ease, box-shadow .25s ease;
+}
+.rd-card-num { font: 700 clamp(18px, 1.6vw, 22px)/1 var(--display); transition: color .2s ease; }
+.rd-card:hover .rd-card-face { transform: translateY(-6px); }
+.rd-card[aria-pressed="true"] .rd-card-face { transform: translateY(-14px); border-radius: 8px; box-shadow: inset 0 0 0 2px var(--gold-light); }
+.rd-card[aria-pressed="true"] .rd-card-num { color: var(--gold-light); }
+.rd-card:focus-visible { outline: 2px solid #fff0b3; outline-offset: 6px; border-radius: 10px; }
+/* A guest may open a card to see its name: the face shows the card's own illustration. */
+.rd-card.is-open .rd-card-face { background: #1a110d var(--rd-art, none) center / cover no-repeat; }
+.rd-deck-note { margin: 22px 0 0; color: var(--muted); font-size: 14px; line-height: 1.4; }
+.rd-ask[data-mode="guest"] .rd-deck-note { display: none; }
+.rd-guest-card { margin: 22px 0 0; font: italic 500 clamp(17px, 1.4vw, 20px)/1.3 var(--accent); color: var(--gold-light); }
+
+/* ---- Question form ---- */
+.rd-label { display: block; margin: 0 0 10px; font-size: 13px; line-height: 1; color: var(--gold-light); }
+.rd-field { position: relative; margin-bottom: 28px; }
+.rd-field textarea {
+  display: block;
+  width: 100%;
+  height: 140px;
+  padding: 18px 18px 40px;
+  background: #140d0b;
+  border: 1px solid #856135;
+  border-radius: 5px;
+  color: var(--ink);
+  font: 400 17px/1.4 var(--body);
+  resize: none;
+}
+.rd-field textarea::placeholder { color: #a99685; opacity: 1; }
+.rd-field textarea:focus-visible { outline: 2px solid #fff0b3; outline-offset: 2px; border-color: var(--gold-light); }
+.rd-count { position: absolute; right: 14px; bottom: 12px; font-size: 13px; line-height: 1; color: var(--muted); pointer-events: none; }
+.rd-numbers { margin: 0 0 32px; }
+.rd-numbers-row { display: grid; grid-template-columns: repeat(5, 56px); gap: 12px; }
+.rd-num {
+  height: 56px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid rgba(222, 184, 88, .45);
+  border-radius: 8px;
+  color: var(--ink);
+  font: 700 20px/1 var(--display);
+  cursor: pointer;
+  transition: background-color .2s ease, color .2s ease, border-color .2s ease;
+}
+.rd-num:hover { border-color: var(--gold); }
+.rd-num[aria-pressed="true"] { background: var(--gold); border-color: var(--gold); color: #26180d; }
+.rd-num:focus-visible { outline: 2px solid #fff0b3; outline-offset: 3px; }
+.rd-submit[disabled] { opacity: .55; cursor: default; }
+.rd-stream { max-width: 560px; margin: 22px 0 0; color: #e4d9cf; font-size: 17px; line-height: 1.5; white-space: pre-wrap; }
+
+/* ---- Messages: error with retry, daily limit, crisis ---- */
+.rd-notice { max-width: 600px; margin-top: 22px; }
+.rd-notice p { margin: 0; color: #e4d9cf; font-size: 17px; line-height: 1.5; }
+.rd-retry {
+  min-width: 150px;
+  height: 48px;
+  margin-top: 20px;
+  padding: 0 18px;
+  background: none;
+  border: 1px solid var(--gold);
+  border-radius: 5px;
+  color: var(--gold-light);
+  font: 400 15px/1 var(--body);
+  cursor: pointer;
+  transition: background-color .2s ease;
+}
+.rd-retry:hover { background: rgba(222, 184, 88, .12); }
+.rd-retry:focus-visible, .rd-link:focus-visible, .rd-again:focus-visible { outline: 2px solid #fff0b3; outline-offset: 4px; }
+.rd-link, .rd-again {
+  display: inline-block;
+  margin-top: 20px;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--gold-light);
+  font: 700 15px/1.4 var(--body);
+  text-decoration: underline;
+  text-underline-position: from-font;
+  cursor: pointer;
+}
+.rd-notice.is-crisis { padding: 24px; background: rgba(33, 22, 18, .6); border: 1px solid rgba(222, 184, 88, .35); border-radius: 12px; }
+.rd-notice.is-crisis p { color: var(--ink); font-size: 16px; line-height: 1.5; }
+.rd-notice.is-crisis a { color: var(--gold-light); text-decoration: underline; text-underline-position: from-font; }
+
+/* ---- Guest panel ---- */
+.rd-guest { padding-top: 30px; border-top: 1px solid rgba(222, 184, 88, .3); }
+.rd-guest h2 { margin: 0 0 18px; font: 700 clamp(24px, 2.1vw, 30px)/1.2 var(--display); color: var(--ink); }
+.rd-guest p { max-width: 520px; margin: 0 0 37px; color: var(--muted); font-size: 17px; line-height: 1.45; }
+
+/* ---- Result: the heading block becomes the card's name, the text sits beside the card ---- */
+.rd-result.section-wrap { max-width: none; padding-inline: var(--pad); padding-bottom: var(--space-section); }
+.rd-result-grid { display: grid; grid-template-columns: 240px minmax(0, 760px); column-gap: clamp(32px, 6.4vw, 92px); align-items: start; }
+.rd-result-card { margin: 0; }
+.rd-result-art {
+  width: 240px;
+  aspect-ratio: 240 / 374;
+  background: #1a110d var(--rd-art, none) center / cover no-repeat;
+  border: 2px solid var(--gold-light);
+  border-radius: 10px;
+}
+.rd-result-card figcaption { margin-top: 16px; text-align: center; font: italic 500 18px/1.3 var(--accent); color: var(--gold-light); }
+.rd-result-label { margin: 0 0 12px; font: italic 500 19px/1.2 var(--accent); color: var(--gold); }
+.rd-result-question { margin: 0 0 40px; padding-bottom: 40px; border-bottom: 1px solid rgba(222, 184, 88, .3); font: italic 500 clamp(21px, 1.8vw, 26px)/1.35 var(--accent); color: #f1dfb7; overflow-wrap: anywhere; }
+.rd-answer p { margin: 0 0 1.6em; color: #e4d9cf; font-size: 18px; line-height: 1.6; max-width: 720px; white-space: pre-wrap; }
+.rd-disclaimer { margin: 0; padding-top: 22px; border-top: 1px solid rgba(222, 184, 88, .3); color: var(--muted); font-size: 14px; line-height: 1.45; max-width: 720px; }
+.rd-again { margin-top: 36px; }
+
+/* The card's illustration becomes the page background once a card is open, as on the day page. */
+#route-reading.is-result::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  left: -8%;
+  right: -8%;
+  height: min(1100px, 130vh);
+  background: var(--rd-art, none) center 22% / cover no-repeat;
+  filter: blur(45px) sepia(.4) saturate(1.3) brightness(.4);
+  opacity: .5;
+  -webkit-mask-image: linear-gradient(180deg, #000 40%, transparent);
+  mask-image: linear-gradient(180deg, #000 40%, transparent);
+  pointer-events: none;
+}
+
+/* Entry link on the day page */
+.reading-entry { display: flex; width: fit-content; gap: 8px; margin: 22px 0 16px; color: var(--gold-light); font-weight: 700; font-size: 15px; text-decoration: underline; text-underline-position: from-font; }
+.reading-entry:focus-visible { outline: 2px solid #fff0b3; outline-offset: 4px; }
+
+/* ---- Tablet and phone ---- */
+@media (max-width: 1100px) {
+  .rd-ask.section-wrap { grid-template-columns: minmax(0, 1fr); row-gap: 32px; }
+  .rd-ask[data-mode="user"] { grid-template-areas: "deck" "form"; }
+  .rd-ask[data-mode="guest"] { grid-template-areas: "deck" "gcard" "guest"; }
+  .rd-guest-card { margin-top: 0; }
+  .rd-cards { grid-template-columns: repeat(5, minmax(0, 100px)); max-width: 532px; }
+  .rd-form { max-width: 640px; }
+  .rd-result-grid { grid-template-columns: minmax(0, 1fr); row-gap: 36px; }
+}
+@media (max-width: 760px) {
+  .reading-hero .forecast-hero-copy h1 { font-size: 46px; }
+  .rd-cards { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; max-width: none; }
+  .rd-card { gap: 10px; }
+  .rd-deck-note { margin-top: 18px; font-size: 13px; }
+  .rd-field textarea { height: 130px; font-size: 16px; }
+  .rd-count { font-size: 12px; }
+  .rd-numbers-row { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+  .rd-submit { width: 100%; }
+  .rd-guest .button { width: 100%; }
+  .rd-guest p, .rd-notice p { font-size: 16px; }
+  .rd-result-art { width: 168px; }
+  .rd-result-card { width: 168px; }
+  .rd-result-card figcaption { font-size: 16px; }
+  .rd-result-label { font-size: 17px; }
+  .rd-result-question { margin-bottom: 28px; padding-bottom: 28px; font-size: 22px; }
+  .rd-answer p { font-size: 16px; line-height: 1.55; }
+  .rd-disclaimer { font-size: 13px; }
+  .rd-ask.section-wrap, .rd-result.section-wrap { padding-bottom: 96px; }   /* room above the bottom menu */
+}
+@media (prefers-reduced-motion: reduce) {
+  .rd-card-face, .rd-card-num, .rd-num, .rd-retry { transition: none; }
+  .rd-card:hover .rd-card-face { transform: none; }
+}
