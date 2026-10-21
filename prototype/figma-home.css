@@ -2,6 +2,9 @@
    Loaded last. Below 1281 px the fluid rules of the other files stay in charge; the phone frames are matched separately.
    Node ids in comments point at the Figma layer a rule comes from. */
 
+/* The frames set no tracking on headings; the older rules narrowed them and changed where lines break. */
+#route-home h1, #route-home h2, #route-home h3 { letter-spacing: 0; }
+
 @media (min-width: 1281px) {
   /* ---------- Hero 6:22: 700 px tall, text column 88 px from the left, portrait 730 px wide from x = 710 ---------- */
   .site-shell #route-home .hero { height: 700px; min-height: 0; grid-template-columns: 710px minmax(0, 1fr); }
@@ -115,4 +118,123 @@
   .site-footer .footer-links { position: absolute; left: 610px; top: 33px; display: flex; gap: 21px; font: 400 14px/24px var(--body); }   /* 6:76 */
   .site-footer .footer-links a { color: var(--muted); }
   .site-footer .footer-links a[href*="instagram.com"] { display: none; }
+}
+
+/* ---------- Text variants: the frames use different wording on desktop and on the phone ---------- */
+.vw-mobile { display: none; }
+.about-ring-m { display: none; }
+
+/* ============ Home page, phone: sizes from the Figma frame "Mobile / Главная" (node 9:2, 390 px wide) ============ */
+@media (max-width: 760px) {
+  .vw-desktop { display: none; }
+  .vw-mobile { display: inline; }
+  body { padding-bottom: 95px; }
+  .site-shell .site-header { height: 70px; }
+  .mobile-nav { height: 74px; }
+
+  /* Hero 9:15, 9:16: the portrait 440 px tall, then the copy block 605 px on the hero colour */
+  .site-shell #route-home .hero { display: flex; flex-direction: column; height: auto; min-height: 0; }
+  .site-shell #route-home .hero-portrait-wrap { height: 440px; }
+  #route-home .hero-blend-left { display: none; }
+  .site-shell #route-home .hero-copy { box-sizing: border-box; height: 605px; padding: 31px 20px 0; }
+  #route-home .hero-date { margin: 0; font: italic 500 17px/normal var(--accent); }                                   /* 9:17 */
+  #route-home .hero h1 { margin: 37px 0 0; font-size: 38px; line-height: normal; }                                  /* 9:18 */
+  #route-home .hero h1 em { display: block; font-size: 38px; line-height: normal; }                                 /* 9:19 */
+  #route-home .hero-lead { max-width: none; margin: 20px 0 0; font: 400 16px/normal var(--body); color: var(--ink); } /* 9:20 */
+  #route-home .hero-actions { display: block; margin-top: 29px; }                                                   /* 9:21 */
+  #route-home .hero-actions .button { height: 58px; min-height: 58px; min-width: 250px; width: auto; }
+  #route-home .hero .text-link { display: block; margin-top: 22px; font: 700 15px/22px var(--body); color: var(--gold-light); text-decoration: underline; text-underline-position: from-font; border: 0; } /* 9:24 */
+  #route-home .hero .text-link::after, #route-home .hero .text-link > span { display: none; }
+
+  /* Choose a forecast 9:25 ... 9:47 */
+  .site-shell .forecasts-section.section-wrap { padding: 55px 20px 0; }
+  .forecasts-section .section-heading { margin: 0 0 29px; }
+  .forecasts-section .section-heading h2 { margin: 0; font-size: 32px; line-height: 40px; }                          /* 9:25 */
+  .forecasts-section .section-heading p { display: none; }
+  .daily-draw { display: block; min-height: 474px; height: auto; }
+  .daily-draw-stage { position: relative; width: 100%; height: 306px; min-height: 0; }
+  .daily-draw-fan { inset: 0; }
+  .daily-draw-fan .draw-card { width: 96.8px; height: 149.6px; transform-origin: 50% 50%; }
+  .daily-draw-fan .draw-card:nth-child(1) { left: calc(50% - 80.9px); top: 29.4px; --angle: -18deg; z-index: 1; }       /* 9:29 */
+  .daily-draw-fan .draw-card:nth-child(2) { left: calc(50% - 35.5px); top: 39.5px; --angle: -9deg;  z-index: 2; }       /* 9:32 */
+  .daily-draw-fan .draw-card:nth-child(3) { left: calc(50% + 8.4px);  top: 48px;   --angle: 0deg;   z-index: 3; }       /* 9:35 */
+  .daily-draw-fan .draw-card:nth-child(4) { left: calc(50% + 51.1px); top: 54.7px; --angle: 9deg;   z-index: 4; }       /* 9:38 */
+  .daily-draw-fan .draw-card:nth-child(5) { left: calc(50% + 92.9px); top: 59.3px; --angle: 18deg;  z-index: 5; }       /* 9:41 */
+  .daily-draw-fan .draw-card.is-selected { z-index: 20; }
+  .daily-draw-stage-note { position: absolute; left: 20px; top: 282px; width: 310px; height: 22px; margin: 0; text-align: left; font: 400 13px/22px var(--body); color: var(--gold-light); } /* 9:44 */
+  .daily-draw-copy { padding: 10px 0 0; }
+  .daily-draw-kicker { display: block; font: italic 500 19px/26px var(--accent); color: var(--gold); }              /* 51:166 */
+  .daily-draw-copy h3 { margin: 0; font: 700 30px/38px var(--display); color: var(--ink); letter-spacing: 0; }     /* 9:45 */
+  .daily-draw-copy #draw-intro p { max-width: 310px; margin: 12px 0 0; font: 400 15px/18px var(--body); color: var(--muted); } /* 9:46 */
+  .draw-read-link { display: inline-block; margin-top: 24px; font: 700 15px/22px var(--body); color: var(--gold-light); text-decoration: underline; text-underline-position: from-font; } /* 9:47 */
+
+  /* Week 9:48: 348 px, the 7 and the seven days with their letters */
+  .week-feature { position: relative; display: block; height: 348px; margin-top: 56px; padding: 0; border-top: 1px solid rgba(222, 184, 88, .3); }
+  .week-feature-art { position: absolute; left: 0; top: 0; right: auto; bottom: auto; width: 350px; height: 348px; padding: 0; }
+  .week-feature-number { position: absolute; left: 0; top: 24px; font-size: 130px; line-height: 112px; letter-spacing: -7.8px; }  /* 9:51 */
+  .week-feature-word { position: absolute; left: 84px; top: 98px; margin: 0; font-size: 25px; line-height: 32.5px; }                  /* 9:52 */
+  .week-feature-rule { position: absolute; left: 0; right: 0; top: 150px; display: flex; gap: 6px; }                                   /* ticks 51:168 ... */
+  .week-feature-rule i { position: relative; display: block; flex: 1 1 0; height: 1px; background: rgba(222, 184, 88, .45); opacity: 1; }
+  .week-feature-rule i.is-today { height: 4px; margin-top: -1px; background: var(--gold-light); }
+  .week-feature-rule i::after { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); font: 400 13px/16px var(--body); color: var(--muted); }
+  .week-feature-rule i.is-today::after { top: 11px; font-weight: 700; color: var(--gold-light); }
+  .week-feature-rule i:nth-child(1)::after { content: 'Пн'; } .week-feature-rule i:nth-child(2)::after { content: 'Вт'; }
+  .week-feature-rule i:nth-child(3)::after { content: 'Ср'; } .week-feature-rule i:nth-child(4)::after { content: 'Чт'; }
+  .week-feature-rule i:nth-child(5)::after { content: 'Пт'; } .week-feature-rule i:nth-child(6)::after { content: 'Сб'; }
+  .week-feature-rule i:nth-child(7)::after { content: 'Вс'; }
+  .week-feature-copy { position: absolute; left: 0; top: 192px; width: 350px; padding: 0; }
+  .week-feature-copy .subtle-tag { display: block; font: italic 500 19px/25px var(--accent); color: var(--gold); }                      /* 51:182 */
+  .week-feature-copy h3 { margin: 5px 0 0; font: 700 28px/36.4px var(--display); color: var(--ink); letter-spacing: 0; }               /* 9:53 */
+  .week-feature-copy p { max-width: 330px; margin: 10px 0 0; font: 400 15px/18px var(--body); color: var(--muted); }                   /* 9:54 */
+  .week-feature-cta { display: inline-block; margin-top: 22px; font: 700 14px/22px var(--body); color: var(--gold-light); text-decoration: underline; text-underline-position: from-font; } /* 9:55 */
+  .week-feature-cta > span, .week-feature .week-arrow, .week-feature-cta::after { display: none; }
+
+  /* Chat invitation 73:1815 ... 73:1820 */
+  .forecasts-section .chat-invite { position: relative; display: block; height: 154px; margin-top: 44px; padding: 0; border-top: 1px solid rgba(222, 184, 88, .3); }
+  .chat-invite-portrait { position: absolute; left: 0; top: 28px; width: 56px; height: 56px; }
+  .chat-invite-copy { position: absolute; left: 72px; top: 24px; display: block; width: 172px; }
+  .chat-invite-copy strong { display: block; font: 700 21px/26px var(--display); color: var(--ink); }
+  .chat-invite-copy span { display: block; margin-top: 6px; font: 400 14px/17px var(--body); color: var(--muted); }
+  .chat-invite-action { position: absolute; left: 238px; top: 42px; font: 700 14px/17px var(--body); color: var(--gold-light); text-decoration: underline; text-underline-position: from-font; }
+  .chat-invite-action > span { display: none; }
+  .chat-invite-action::after { display: block; content: ''; position: absolute; left: 98px; top: 3px; width: 14px; height: 14px; background: url('./assets/about/arrow-14.svg') center / contain no-repeat; -webkit-mask: none; mask: none; }
+
+  /* About 9:56: 870 px, the portrait first, then the name, the lead and the index */
+  .site-shell .about-section.section-wrap { position: relative; display: block; height: 870px; padding: 0 20px; margin-top: 0; }
+  .about-copy { display: contents; }
+  .about-copy .about-kicker { position: absolute; left: 20px; top: 0; margin: 0; font: italic 500 17px/23px var(--accent); color: var(--gold); }        /* 79:3743 */
+  .about-portrait { position: absolute; left: 20px; top: 0; width: 350px; height: 870px; margin: 0; padding: 0; overflow: hidden; pointer-events: none; }
+  .about-portrait::before { display: none; }
+  .about-ring { display: none; }
+  .about-ring-m { display: block; position: absolute; left: -85px; top: -28px; width: 520px; height: 520px; }                                           /* 79:3744 */
+  .about-frame { left: 27px; top: 40px; width: 296px; height: 384px; border-radius: 148px 148px 0 0; }                                                  /* 79:3802 */
+  .about-arch { left: 39px; top: 52px; width: 272px; height: 360px; border-radius: 136px 136px 0 0; }                                                  /* 79:3803 */
+  .about-fade { left: 39px; top: 322px; width: 272px; height: 90px; background: linear-gradient(180deg, rgba(19, 13, 11, 0), rgba(19, 13, 11, .85)); }  /* 79:3804 */
+  .about-seal { left: 4px; top: 324px; width: 76px; height: 76px; background: url('./assets/about/m-seal.svg') center / 76px 76px no-repeat; }          /* 79:3805 */
+  .about-seal-inner { display: none; }
+  .about-seal-mark { left: 21px; top: 21px; width: 34px; height: 34px; }                                                                               /* 79:3806 */
+  .about-portrait figcaption { left: 0; top: 440px; width: 350px; text-align: center; font: italic 500 15px/20px var(--accent); }                       /* 79:3815 */
+  .about-star { display: none; }
+  .about-copy h2 { position: absolute; left: 20px; top: 488px; margin: 0; font: 700 30px/38px var(--display); color: var(--ink); }                      /* 9:57 */
+  .about-copy h2 br { display: none; }
+  .about-copy h2 em { display: inline; font: inherit; font-style: normal; color: inherit; }
+  .about-copy h2 em::before { content: ' '; }
+  .about-copy .about-lead { position: absolute; left: 20px; top: 538px; width: 350px; max-width: none; margin: 0; font: 400 15px/18px var(--body); color: var(--muted); } /* 9:58 */
+  .about-index { position: absolute; left: 20px; top: 598px; width: 350px; margin: 0; }                                                                  /* rules 79:3816 ... */
+  .about-index a { position: relative; display: block; height: 76px; padding: 0; }
+  .about-index strong { position: absolute; left: 0; top: 14px; width: 280px; font: 700 18px/23px var(--display); }
+  .about-index span { position: absolute; left: 0; top: 40px; width: 290px; font: 400 14px/17px var(--body); }
+  .about-index a::after { content: ''; position: absolute; left: 328px; top: 22px; width: 18px; height: 18px; border: 0; border-radius: 0; box-shadow: none; transform: none; -webkit-mask: none; mask: none; background: url('./assets/about/arrow.svg') center / contain no-repeat; }
+  .about-copy .inline-action::after { display: none; }
+  .about-copy .inline-action { position: absolute; left: 20px; top: 848px; font: 700 15px/22px var(--body); color: var(--gold-light); text-decoration: underline; text-underline-position: from-font; } /* 9:59 */
+
+  /* Footer 68:2047 ... 68:2051: a hairline, the name, the line of links and the note, on the page colour */
+  .site-shell .site-footer.section-wrap { display: block; height: auto; margin: 36px 20px 0; padding: 22px 0 0; background: none; border-top: 1px solid rgba(222, 184, 88, .17); }
+  .site-footer .footer-brand { display: block; font: 700 18px/23px var(--display); color: var(--gold-light); }                                          /* 68:2048 */
+  .site-footer > div:first-child p { margin: 5px 0 0; font: 400 12px/15px var(--body); color: var(--muted); }                                           /* 68:2049 */
+  .site-footer .footer-links { display: flex; flex-wrap: wrap; gap: 0; margin-top: 11px; font: 400 12px/17px var(--body); }                            /* 68:2050 */
+  .site-footer .footer-links a { color: var(--muted); }
+  .site-footer .footer-links a + a::before { content: '·'; margin: 0 8px; }
+  .site-footer .footer-links a::after { display: none; }
+  .site-footer .footer-legal { margin: 8px 0 0; max-width: none; font: 400 11px/15px var(--body); color: var(--muted); opacity: .75; }                  /* 68:2051 */
 }

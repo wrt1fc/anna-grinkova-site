@@ -36,7 +36,7 @@
     <link rel="stylesheet" href="./tarot.css?v=2" />
     <link rel="stylesheet" href="./forecast-blocks.css?v=12" />
     <link rel="stylesheet" href="./reading.css?v=5" />
-    <link rel="stylesheet" href="./figma-home.css?v=4" />
+    <link rel="stylesheet" href="./figma-home.css?v=10" />
     <script src="./birth-ui.js?v=1" defer></script>
     <script src="./birth-time.js?v=1" defer></script>
     <script src="./app.js?v=23" defer></script>
@@ -99,13 +99,13 @@
               </div>
               <div class="daily-draw-copy" aria-live="polite">
                 <span class="daily-draw-kicker">Карта дня</span>
-                <div id="draw-intro"><h3 id="daily-draw-title">Выберите одну карту</h3><p>Откройте тему и вопрос на сегодня. Прогноз доступен без регистрации.</p><a class="draw-read-link" href="/karta-dnya">Читать прогноз</a></div>
+                <div id="draw-intro"><h3 id="daily-draw-title">Выберите одну карту<span class="vw-mobile">.</span></h3><p>Откройте тему и вопрос на сегодня. Прогноз доступен без регистрации.</p><a class="draw-read-link" href="/karta-dnya">Читать прогноз</a></div>
                 <div id="draw-result" hidden><span class="draw-result-number" id="draw-result-number"></span><h3 id="draw-result-title"></h3><p id="draw-result-text"></p><blockquote id="draw-result-question"></blockquote><div class="draw-result-actions"><a class="inline-action" href="/karta-dnya">Читать прогноз <span aria-hidden="true">↗</span></a><button type="button" id="draw-reset">Выбрать другую</button></div></div>
               </div>
             </div>
             <a class="week-feature" href="/prognoz-na-nedelyu">
               <div class="week-feature-art" aria-hidden="true"><span class="week-feature-number">7</span><span class="week-feature-word">дней</span><span class="week-feature-rule"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div>
-              <div class="week-feature-copy"><span class="subtle-tag">Карта недели: Умеренность</span><h3>Прогноз на неделю.</h3><p>Как распределить дела и оставить время на то, чего не было в планах.</p><span class="week-feature-cta">Читать прогноз <span aria-hidden="true">↗</span></span></div>
+              <div class="week-feature-copy"><span class="subtle-tag">Карта недели: Умеренность</span><h3>Прогноз на неделю.</h3><p><span class="vw-desktop">Как распределить дела и оставить время на то, чего не было в планах.</span><span class="vw-mobile">Как распределить дела и оставить время для себя.</span></p><span class="week-feature-cta">Читать прогноз <span aria-hidden="true">↗</span></span></div>
               <span class="week-arrow" aria-hidden="true">↗</span>
             </a>
             <a class="chat-invite" href="/chat"><span class="chat-invite-portrait"><img src="./assets/anna-horizontal-branded.jpg" alt="Анна Гринькова, астропсихолог" /></span><span class="chat-invite-copy"><strong>Есть вопрос к карте дня?</strong><span>Напишите вопрос помощнику Анны.</span></span><span class="chat-invite-action">Задать вопрос <span aria-hidden="true">↗</span></span></a>
@@ -115,7 +115,7 @@
             <div class="about-copy">
               <p class="about-kicker">Об Анне</p>
               <h2 id="about-title">Анна<br /><em>Гринькова</em></h2>
-              <p class="about-lead">Астропсихолог и основатель Института прогрессивной психологии. На этой странице Анна делится картой дня и прогнозом на неделю.</p>
+              <p class="about-lead"><span class="vw-desktop">Астропсихолог и основатель Института прогрессивной психологии. На этой странице Анна делится картой дня и прогнозом на неделю.</span><span class="vw-mobile">Астропсихолог и основатель Института прогрессивной психологии.</span></p>
               <ul class="about-index" aria-label="Что есть на сайте">
                 <li><a href="/karta-dnya"><strong>Карта дня</strong><span>Тема и вопрос на сегодня</span></a></li>
                 <li><a href="/prognoz-na-nedelyu"><strong>Прогноз недели</strong><span>Как распределить дела на неделе</span></a></li>
@@ -125,6 +125,7 @@
             </div>
             <figure class="about-portrait">
               <img class="about-ring" src="./assets/about/ray-ring.svg" width="660" height="660" alt="" aria-hidden="true" />
+              <img class="about-ring-m" src="./assets/about/m-ray-ring.svg" width="520" height="520" alt="" aria-hidden="true" />
               <div class="about-arch"><picture><source srcset="./assets/anna-horizontal-branded.webp" type="image/webp" /><img src="./assets/anna-horizontal-branded.jpg" width="1484" height="1060" loading="lazy" decoding="async" alt="Портрет Анны Гриньковой" /></picture></div>
               <span class="about-fade" aria-hidden="true"></span>
               <span class="about-frame" aria-hidden="true"></span>
