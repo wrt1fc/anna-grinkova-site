@@ -14,7 +14,7 @@ from pathlib import Path
 
 import torch
 from datasets import load_dataset
-from peft import LoraConfig
+from peft import LoraConfig, PeftModel, prepare_model_for_kbit_training
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from trl import SFTConfig, SFTTrainer
 
@@ -31,6 +31,7 @@ def main():
     parser.add_argument('--batch', type=int, default=1)
     parser.add_argument('--grad-accum', type=int, default=8)
     parser.add_argument('--max-steps', type=int, default=-1)
+    parser.add_argument('--init-adapter', help='continue training an existing LoRA adapter instead of starting a new one')
     args = parser.parse_args()
 
     data = Path(args.data)
@@ -48,6 +49,10 @@ def main():
                                                bnb_4bit_use_double_quant=True),
         device_map='auto',
     )
+    if args.init_adapter:
+        # Further training of an earlier adapter on a focused set: the adapter keeps what it learned and is updated, not replaced.
+        model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True)
+        model = PeftModel.from_pretrained(model, args.init_adapter, is_trainable=True)
 
     config = SFTConfig(
         output_dir=args.out,
@@ -80,14 +85,14 @@ def main():
         train_dataset=dataset['train'],
         eval_dataset=dataset.get('eval'),
         processing_class=tokenizer,
-        peft_config=LoraConfig(r=args.rank, lora_alpha=args.rank * 2, lora_dropout=0.05, task_type='CAUSAL_LM',
-                               target_modules='all-linear'),
+        peft_config=None if args.init_adapter else LoraConfig(r=args.rank, lora_alpha=args.rank * 2, lora_dropout=0.05, task_type='CAUSAL_LM',
+                                                              target_modules='all-linear'),
     )
     trainer.train()
     trainer.save_model(args.out)
     (Path(args.out) / 'anna-training.json').write_text(json.dumps({
         'base': args.base, 'train_examples': len(dataset['train']), 'epochs': args.epochs, 'lr': args.lr,
-        'rank': args.rank, 'max_steps': args.max_steps,
+        'rank': args.rank, 'max_steps': args.max_steps, 'init_adapter': args.init_adapter,
     }, ensure_ascii=False, indent=2), encoding='utf-8')
     print(f'adapter saved to {args.out}')
 
