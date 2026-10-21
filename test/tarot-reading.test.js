@@ -5,7 +5,7 @@ import { createStore } from '../server/store.js';
 import { createTrafficLimiter } from '../server/traffic.js';
 import { createMetrics } from '../server/metrics.js';
 import { hashPassword } from '../server/auth.js';
-import { forecastForDate, moscowDate, tarotForDate } from '../server/daily-forecast.js';
+import { forecastForDate, moscowDate, readingCardKey, tarotForDate, tarotForReading } from '../server/daily-forecast.js';
 import { PLANS, publicPlan } from '../server/plans.js';
 import { CRISIS_ANSWER } from '../server/crisis.js';
 import { SAFE_FALLBACK_ANSWER } from '../server/chat-safety.js';
@@ -14,6 +14,8 @@ const PASSWORD = 'Very-long-password1!';
 // A model reply that names the drawn card, as the guard of the route requires.
 const answerFor = (name) => `Карта «${name}» в связи с вашим вопросом может говорить о выборе. Подумайте, что вы готовы изменить сейчас.`;
 const ANSWER = answerFor('Суд');
+const CODE_SECRET = 'test-secret-with-at-least-thirty-two-characters';
+const readingCard = (userId, round, position) => tarotForReading(readingCardKey(CODE_SECRET), { userId, day: moscowDate(), round, position });
 
 async function fixture(run, { chatWriter } = {}) {
   const store = await createStore('pglite:memory');
@@ -90,7 +92,7 @@ test('a reading interprets the question together with the account\'s own card', 
   const seen = [];
   await fixture(async ({ request, signIn }) => {
     const { cookie, userId } = await signIn();
-    const card = tarotForDate(moscowDate(), userId, 3);
+    const card = readingCard(userId, 0, 3);
     const reply = await request('/api/tarot/reading', { method: 'POST', body: { question: 'Стоит ли мне менять работу?', draw: 3 }, cookie });
     assert.equal(reply.response.status, 200);
     assert.equal(reply.data.answer, answerFor(card.name));
@@ -160,7 +162,7 @@ test('an answer about another card is asked for once more, and the second one is
   } };
   await fixture(async ({ request, signIn }) => {
     const { cookie, userId } = await signIn();
-    const card = tarotForDate(moscowDate(), userId, 1);
+    const card = readingCard(userId, 0, 1);
     const reply = await request('/api/tarot/reading', { method: 'POST', body: { question: 'Что меня ждёт?', draw: 1 }, cookie });
     assert.equal(reply.response.status, 200);
     assert.equal(reply.data.answer, answerFor(card.name));
@@ -173,7 +175,7 @@ test('when the model keeps naming another card, the person gets a calculated rea
   const writer = { async answer({ forecast }) { calls++; return { answer: answerFor(otherCard(forecast.card.name)) }; } };
   await fixture(async ({ request, signIn }) => {
     const { cookie, userId } = await signIn();
-    const card = tarotForDate(moscowDate(), userId, 2);
+    const card = readingCard(userId, 0, 2);
     const reply = await request('/api/tarot/reading', { method: 'POST', body: { question: 'Что меня ждёт?', draw: 2 }, cookie });
     assert.equal(reply.response.status, 200);
     assert.equal(calls, 2, 'one try and one retry, no more');
@@ -194,3 +196,34 @@ test('a reading is sent whole after the check, never streamed piece by piece', a
   assert.equal(events.at(-1).event, 'done');
   assert.ok(events.at(-1).data.answer.includes('«'));
 }, { chatWriter: { async answer({ forecast, onDelta }) { const text = answerFor(forecast.card.name); onDelta?.(text, text); return { answer: text }; } } }));
+
+test('reading cards cannot be worked out in advance: secret key, new spread for every reading', () => {
+  const key = readingCardKey(CODE_SECRET);
+  const day = '2026-10-07';
+  const spread = (round, secret = key) => Array.from({ length: 5 }, (_, position) => tarotForReading(secret, { userId: 11, day, round, position }).number);
+  assert.equal(new Set(spread(0)).size, 5);
+  assert.deepEqual(spread(0), spread(0), 'stable within one reading');
+  assert.notDeepEqual(spread(0), fiveFor(day, 11), 'the cards of the day do not reveal the reading');
+  assert.notDeepEqual(spread(0), spread(1), 'the next reading gets a new spread');
+  assert.notDeepEqual(spread(0), spread(0, readingCardKey('another-secret-with-at-least-thirty-two-chars')), 'depends on the server key');
+});
+
+test('the second reading of the day is dealt from a new spread; a failed one deals the same unseen cards again', async () => {
+  let fail = true;
+  await fixture(async ({ request, signIn }) => {
+    const { cookie, userId } = await signIn();
+    assert.equal((await request('/api/tarot/reading', { method: 'POST', body: { question: 'Вопрос', draw: 2 }, cookie })).response.status, 503);
+    fail = false;
+    const first = await request('/api/tarot/reading', { method: 'POST', body: { question: 'Вопрос', draw: 2 }, cookie });
+    assert.equal(first.data.card.number, readingCard(userId, 0, 2).number);
+  }, { chatWriter: { async answer(input) { if (fail) throw new Error('model down'); return { answer: answerFor(input.forecast.card.name) }; } } });
+  await fixture(async ({ request, signIn, store }) => {
+    const { cookie, userId } = await signIn();
+    await store.setPlan(userId, 'individual');
+    for (let round = 0; round < 3; round++) {
+      const reply = await request('/api/tarot/reading', { method: 'POST', body: { question: `Вопрос ${round}`, draw: 0 }, cookie });
+      assert.equal(reply.response.status, 200);
+      assert.equal(reply.data.card.number, readingCard(userId, round, 0).number);
+    }
+  }, { chatWriter: steadyWriter() });
+});

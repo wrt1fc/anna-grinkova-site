@@ -98,6 +98,10 @@ function createAccounts(q, transaction) {
     await q.run('UPDATE daily_quotas SET used = used - 1 WHERE kind = $1 AND day = $2 AND used > 0', [kind, day]);
   }
 
+  async function dailyQuotaUsed(kind, day) {
+    return (await q.one('SELECT used FROM daily_quotas WHERE kind = $1 AND day = $2', [kind, day]))?.used ?? 0;
+  }
+
   async function consumeDailyQuota(kind, day, limit) {
     if (!Number.isSafeInteger(limit) || limit < 1) return false;
     return (await q.run(`INSERT INTO daily_quotas (kind, day, used) VALUES ($1, $2, 1)
@@ -193,7 +197,7 @@ function createAccounts(q, transaction) {
   async function lockUser(userId) { await q.one('SELECT id FROM users WHERE id = $1 FOR UPDATE', [userId]); }
 
   return { createUser, findUserByEmail, findUserById, saveSession, userForSession, deleteSession, saveDisplayName,
-    getBirthProfile, saveBirthProfile, issueChallenge, deleteChallenge, consumeChallenge, consumeDailyQuota, refundDailyQuota, lockUser, pruneExpired, deleteAccount, exportAccount };
+    getBirthProfile, saveBirthProfile, issueChallenge, deleteChallenge, consumeChallenge, consumeDailyQuota, dailyQuotaUsed, refundDailyQuota, lockUser, pruneExpired, deleteAccount, exportAccount };
 }
 
 function storeApi(q, transaction) {

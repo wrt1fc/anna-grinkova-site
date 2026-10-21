@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { emailCodeHash, hashPassword, newChallenge, newEmailCode, newSessionToken, normalizeEmail, tokenHash, validPassword, verifyLogin } from './auth.js';
-import { forecastForDate, moscowDate } from './daily-forecast.js';
+import { forecastForDate, moscowDate, readingCardKey } from './daily-forecast.js';
 import { clientAddress, createTrafficLimiter } from './traffic.js';
 import { createLoginGuard } from './login-guard.js';
 import { searchCities } from './cities.js';
@@ -75,7 +75,7 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
   const billing = createBilling({ store, provider: paymentProvider, providers: paymentProviders, publicUrl });
   const handleBillingRoutes = createBillingRoutes({ store, billing, trustProxy, metrics });
   const handleChatRoutes = createChatRoutes({ store, chatWriter, chatLimiter, chatGate, historySigner, metrics, knowledge, trustProxy,
-    keepAliveMs: streamKeepAliveMs });
+    keepAliveMs: streamKeepAliveMs, readingKey: readingCardKey(codeSecret) });
   const sessionCookie = (value, maxAge) => `anna_session=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secureCookies ? '; Secure' : ''}`;
   let dailyCache = null;
   let dailyDrawCacheDay = null;

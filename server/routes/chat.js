@@ -1,4 +1,4 @@
-import { forecastForDate, moscowDate, tarotForDate } from '../daily-forecast.js';
+import { forecastForDate, moscowDate, tarotForReading } from '../daily-forecast.js';
 import { personalForecastForDate } from '../personal-forecast.js';
 import { ANSWER_LENGTHS, DEFAULT_ANSWER_LENGTH, MAX_ANSWER_CHARS, TAROT_MODE, TAROT_QUESTION_MAX_CHARS,
   chatForecastContext, forecastForQuestion, tarotReadingContext } from '../local-chat.js';
@@ -71,7 +71,8 @@ function replyCrisis(req, res, json) {
 }
 
 export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, historySigner, metrics, knowledge = null, trustProxy = false,
-  keepAliveMs = STREAM_KEEPALIVE_MS }) {
+  keepAliveMs = STREAM_KEEPALIVE_MS, readingKey }) {
+  if (!readingKey) throw new Error('readingKey is required');
   // One answer at a time per account; one visitor address may hold at most half of the model slots, so a few accounts
   // cannot take them all, while people behind the same mobile-carrier address (CGNAT) still get answers.
   const answering = new Set();
@@ -128,10 +129,12 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
     // Readings are counted apart from chat messages: spending one never uses up the other.
     const quotaKind = `${tarot ? 'tarot' : 'chat'}:${user.id}`;
     // A database failure here must still free the slot and the per-user lock, or chat would stay blocked.
-    let plan, allowed;
+    let plan, allowed, round = 0;
     try {
       plan = planFor(await store.getPlan(user.id));
       allowed = await store.consumeDailyQuota(quotaKind, day, tarot ? plan.dailyTarotReadings : plan.dailyChatMessages);
+      // Readings already given today; a failed one is given back, so its unseen cards are dealt again next time.
+      if (allowed && tarot) round = (await store.dailyQuotaUsed(quotaKind, day)) - 1;
     } catch (error) { release(); throw error; }
     if (!allowed) {
       release();
@@ -147,8 +150,8 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
     let context, astro, materials, card;
     try {
       if (tarot) {
-        // The same function and key that drew the five cards on the page, so the number picks the card the person saw.
-        card = tarotForDate(day, user.id, draw);
+        // The five cards are face down on the page; the number picks one of this reading's own hidden spread.
+        card = tarotForReading(readingKey, { userId: user.id, day, round, position: draw });
         context = tarotReadingContext(day, card);
         astro = { chart: null };
         materials = [];

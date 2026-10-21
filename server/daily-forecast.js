@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import { EclipticGeoMoon, MoonPhase, SunPosition } from 'astronomy-engine';
 import { dailySkyEvents } from './astro-personal.js';
 
@@ -44,18 +44,38 @@ const CARDS = [
 
 export const CARD_NAMES = CARDS.map(([name]) => name);
 
-export function tarotForDate(day, userId = null, position = 0) {
+// Five distinct cards laid out from one key; digest turns a text into bytes (a plain hash or a keyed one).
+function spreadCard(key, position, digest) {
   if (!Number.isInteger(position) || position < 0 || position > 4) throw new Error('invalid_draw_position');
-  const key = userId == null ? `anna-day:${day}` : `anna-personal:${userId}:${day}`;
   const chosen = new Set();
   let number;
   for (let slot = 0; slot <= position; slot++) {
-    number = createHash('sha256').update(slot === 0 ? key : `${key}:draw:${slot}`).digest().readUInt32BE(0) % CARDS.length;
+    number = digest(slot === 0 ? key : `${key}:draw:${slot}`).readUInt32BE(0) % CARDS.length;
     while (chosen.has(number)) number = (number + 1) % CARDS.length;
     chosen.add(number);
   }
   const [name, focus, action, question] = CARDS[number];
   return { number, name, focus, action, question, position, method: 'digital-deterministic' };
+}
+
+const sha256 = (text) => createHash('sha256').update(text).digest();
+
+// Cards of the day: anyone may open all five on the day page, so a plain hash is enough.
+export function tarotForDate(day, userId = null, position = 0) {
+  return spreadCard(userId == null ? `anna-day:${day}` : `anna-personal:${userId}:${day}`, position, sha256);
+}
+
+// The server's own key for reading cards, derived from AUTH_CODE_SECRET so no extra setting is needed.
+export function readingCardKey(codeSecret) {
+  return createHmac('sha256', String(codeSecret)).update('anna-reading-cards').digest();
+}
+
+// Cards of a reading by request are laid out anew for every reading of the day (round = readings already given)
+// with the server's secret key: the code is public, so without the key anyone could work out the cards from an account
+// id, and the cards of the day would show them in advance. A card becomes known only together with its answer.
+export function tarotForReading(key, { userId, day, round, position }) {
+  if (!Number.isSafeInteger(userId) || !Number.isSafeInteger(round) || round < 0) throw new Error('invalid_reading');
+  return spreadCard(`anna-reading:${userId}:${day}:${round}`, position, (text) => createHmac('sha256', key).update(text).digest());
 }
 
 // One card of the deck by its number, for tooling that builds training examples without an account.
