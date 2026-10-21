@@ -1,0 +1,62 @@
+/* Chat page ("Вопрос Анне") from the Figma frames "Desktop / Чат — до входа" (54:327, 1440 px) and
+   "Desktop / Чат — ответ идёт" (72:1773). Loaded after figma-pages.css. Coordinates in comments are page coordinates of the frame. */
+
+@media (min-width: 1281px) {
+  /* Head: back link y = 130, heading y = 194 (56 px, one line), the lead on the right at x = 880 */
+  .site-shell #route-chat .chat-hero { max-width: none; padding: 36px 88px 0; }
+  #route-chat .back-link { margin: 0 0 42px; }                                                              /* 54:349 */
+  #route-chat .chat-hero-head { position: relative; display: block; height: 71px; }
+  #route-chat .chat-hero h1 { margin: 0; font: 800 56px/normal var(--display); letter-spacing: 0; color: var(--ink); } /* 54:350 */
+  #route-chat .chat-hero h1 em { font: inherit; font-style: normal; color: inherit; }
+  #route-chat .chat-hero-head > p { position: absolute; left: 792px; top: 31px; width: 465px; max-width: none; margin: 0; font: 400 17px/22px var(--body); color: var(--muted); } /* 54:351 */
+
+  /* Layout: sidebar 290 px at x = 88, conversation 942 px at x = 410, both from y = 330 */
+  .site-shell #route-chat .chat-layout { max-width: none; grid-template-columns: 290px 942px; gap: 32px; padding: 65px 88px 141px; }
+  #route-chat .chat-aside-portrait { height: 210px; border: 0; background: transparent; }                  /* 54:353 */
+  #route-chat .chat-aside-portrait img { object-position: 50% 20%; }
+  #route-chat .chat-aside-caption { margin: 35px 0 0; font: italic 500 18px/22px var(--accent); letter-spacing: 0; text-transform: none; color: var(--gold); } /* 54:354 */
+  #route-chat .chat-prompt-list { display: block; margin-top: 22px; border: 0; }
+  #route-chat .chat-prompt-list button { display: block; width: 100%; height: 74px; min-height: 0; margin: 0 0 2px; padding: 17px 13px; border: 1px solid #6e4929; background: var(--panel); font: 400 15px/22px var(--body); color: var(--ink); } /* 54:355 */
+  #route-chat .chat-prompt-list button::after { display: none; }
+  #route-chat .chat-aside-note { width: 285px; margin: 33px 0 0; font: 400 13px/18px var(--body); color: var(--muted); } /* 54:361 */
+
+  /* Conversation panel 54:362: no inner scrolling before the dialog starts */
+  #route-chat .chat-panel { height: auto; min-height: 0; overflow: visible; border: 1px solid var(--bronze); border-radius: 0; background: var(--panel); }
+  #route-chat .chat-panel-head { height: 79px; min-height: 0; margin: -1px -1px 0; padding: 0 24px; border: 1px solid #6e4929; background: var(--panel); position: relative; } /* 54:363 */
+  #route-chat .chat-panel-mark { width: 40px; height: 40px; border: 0; font: italic 500 36px/46px var(--accent); color: var(--gold-light); }
+  #route-chat .chat-panel-head strong { font: 700 18px/23px var(--display); color: var(--ink); }
+  #route-chat .chat-panel-head div span { font: 400 13px/22px var(--body); color: var(--muted); }
+  #route-chat .chat-clear { position: absolute; right: 21px; top: 25px; min-height: 0; font: 400 14px/22px var(--body); color: var(--gold-light); }
+  #route-chat .chat-transcript { max-height: none; overflow: visible; padding: 26px 29px 40px; }
+  #route-chat .chat-message { max-width: none; }
+
+  /* Greeting 54:382–54:396 */
+  #route-chat .chat-greeting { position: relative; margin: 0; padding: 0 0 0 60px; border: 0 !important; }
+  #route-chat .chat-greeting-avatar { position: absolute; left: 0; top: 2px; width: 44px; height: 44px; border: 1px solid rgba(245, 217, 133, .7); border-radius: 50%; display: grid; place-items: center; }
+  #route-chat .chat-greeting-avatar img { width: 22px; height: 22px; }
+  #route-chat .chat-greeting .chat-message-label { margin: 0 0 6px; font: italic 500 17px/22px var(--accent); color: var(--gold); }
+  #route-chat .chat-greeting > p { max-width: 760px; font: 400 17px/22px var(--body); color: var(--ink); white-space: normal; }
+  #route-chat .chat-greeting > p + p { margin-top: 14px; color: var(--muted); }
+  #route-chat .chat-format { display: flex; gap: 16px; margin-top: 26px; }
+  #route-chat .chat-format button { width: 232px; height: 64px; padding: 12px 18px; border: 1px solid rgba(222, 184, 88, .4); border-radius: 8px; background: transparent; text-align: left; }
+  #route-chat .chat-format button strong { display: block; font: 700 16px/20px var(--display); color: var(--ink); }
+  #route-chat .chat-format button span { display: block; margin-top: 4px; font: 400 13px/17px var(--body); color: var(--muted); }
+  #route-chat .chat-library { margin-top: 30px; }
+  #route-chat .chat-library-title { margin: 0 0 14px; font: italic 500 17px/22px var(--accent); color: var(--gold); }
+  #route-chat .chat-library-group { border-top: 1px solid rgba(222, 184, 88, .2); max-width: 740px; }
+  #route-chat .chat-library-group:last-child { border-bottom: 1px solid rgba(222, 184, 88, .2); }
+  #route-chat .chat-library-group summary { height: 49px; display: flex; align-items: center; justify-content: space-between; font: 400 16px/20px var(--body); color: var(--ink); }
+  #route-chat .chat-library-group[open] summary { color: var(--gold-light); height: 56px; }
+  #route-chat .chat-library-list { display: block; padding: 0 0 0 24px; }
+  #route-chat .chat-library-list button { display: block; height: 36px; padding: 0; border: 0; background: transparent; font: 400 15px/20px var(--body); color: var(--muted); text-align: left; }
+  #route-chat .chat-library-list button:last-child { height: 30px; }
+  #route-chat .chat-status:empty { display: none; }
+
+  /* Composer 54:370: 100 px, copy on the left, the sign-in button on the right; example chips are not in the frame */
+  #route-chat .chat-composer { position: relative; margin: 0; padding: 0; background: #1b120e; border-top: 1px solid #6e4929; }
+  #route-chat .chat-examples { display: none; }
+  #route-chat .chat-locked { display: flex; align-items: center; justify-content: space-between; height: 100px; padding: 0 29px 0 33px; }
+  #route-chat .chat-locked p { max-width: 520px; font: 400 16px/22px var(--body); color: var(--muted); }
+  #route-chat .chat-locked .button { height: 58px; min-height: 58px; min-width: 250px; }
+  #route-chat .chat-disclaimer { margin: 0; padding: 0 0 0; border-top: 1px solid #6e4929; height: 51px; display: grid; place-items: center; font: 400 12px/16px var(--body); color: var(--muted); text-align: center; }
+}

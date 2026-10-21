@@ -97,3 +97,12 @@
   #route-day .unlock-text p { margin: 48px 0 0; font: 400 15px/18px var(--body); color: var(--muted); }                                                  /* 9:102 */
   #route-day .unlock-section .button { margin-top: 28px; height: 58px; min-height: 58px; min-width: 250px; width: auto; }                              /* 9:103 */
 }
+
+/* ================= Wide screens: the Figma frames are 1440 px canvases, so the page is centred at that width ================= */
+@media (min-width: 1441px) {
+  .site-shell { max-width: 1440px; margin-inline: auto; }
+}
+
+/* Chat invite on the home page, 54:135: a ready square crop of Anna with its own gold ring */
+.chat-invite-portrait { border: 0; }
+.chat-invite-portrait img { transform: none; object-position: center; }
