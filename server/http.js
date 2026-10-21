@@ -65,7 +65,7 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
   mailDailyLimit = 0, trafficLimiter = createTrafficLimiter(), chatLimiter = createTrafficLimiter({ perIpLimit: 6, globalLimit: 300 }),
   chatGate = createConcurrencyGate(2), loginGuard = createLoginGuard(), trustProxy = false, forecastWriter = null, chatWriter = null,
   requirePrivacyConsent = false, searchVerification = {}, sotisVerifier = null, metrics = NULL_METRICS, knowledge = null, paymentProvider = null, paymentProviders = null, publicUrl = 'http://localhost:3000',
-  pageViewLimiter = createTrafficLimiter({ perIpLimit: 30, globalLimit: 3000 }) }) {
+  pageViewLimiter = createTrafficLimiter({ perIpLimit: 30, globalLimit: 3000 }), streamKeepAliveMs = undefined }) {
   if (!codeSecret || String(codeSecret).length < 32) throw new Error('AUTH_CODE_SECRET must have at least 32 characters');
   if (!Number.isSafeInteger(mailDailyLimit) || mailDailyLimit < 0) throw new Error('MAIL_DAILY_LIMIT must be a non-negative integer');
   const rootPath = fileURLToPath(root);
@@ -74,7 +74,8 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
   const publicOrigin = new URL(publicUrl).origin.replace(/[<>"'&]/g, '');
   const billing = createBilling({ store, provider: paymentProvider, providers: paymentProviders, publicUrl });
   const handleBillingRoutes = createBillingRoutes({ store, billing, trustProxy, metrics });
-  const handleChatRoutes = createChatRoutes({ store, chatWriter, chatLimiter, chatGate, historySigner, metrics, knowledge, trustProxy });
+  const handleChatRoutes = createChatRoutes({ store, chatWriter, chatLimiter, chatGate, historySigner, metrics, knowledge, trustProxy,
+    keepAliveMs: streamKeepAliveMs });
   const sessionCookie = (value, maxAge) => `anna_session=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secureCookies ? '; Secure' : ''}`;
   let dailyCache = null;
   let dailyDrawCacheDay = null;

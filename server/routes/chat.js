@@ -21,6 +21,9 @@ const MAX_CHAT_BODY_BYTES = 64_000;
 const MAX_HISTORY_CHARS = 6000;
 // Text held back from the stream until it has passed the safety check, so a blocked phrase is never shown.
 const STREAM_HOLDBACK_CHARS = 40;
+// A comment line keeps a quiet stream alive behind Nginx (proxy_read_timeout 60 s for /api/): a reading is sent only
+// at the end and may take two model runs.
+const STREAM_KEEPALIVE_MS = 15_000;
 
 function invalidChatBody(body) {
   const message = typeof body.message === 'string' ? body.message.trim() : '';
@@ -67,7 +70,8 @@ function replyCrisis(req, res, json) {
   return res.end();
 }
 
-export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, historySigner, metrics, knowledge = null, trustProxy = false }) {
+export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, historySigner, metrics, knowledge = null, trustProxy = false,
+  keepAliveMs = STREAM_KEEPALIVE_MS }) {
   // One answer at a time per account; one visitor address may hold at most half of the model slots, so a few accounts
   // cannot take them all, while people behind the same mobile-carrier address (CGNAT) still get answers.
   const answering = new Set();
@@ -165,6 +169,7 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
     }
     const streaming = String(req.headers.accept ?? '').includes('text/event-stream');
     const send = streaming ? sse(res) : null;
+    const keepAlive = streaming ? setInterval(() => { if (!res.writableEnded && !res.destroyed) res.write(': keepalive\n\n'); }, keepAliveMs) : null;
     const abort = new AbortController();
     let unsafe = false;
     const onClose = () => { if (!res.writableEnded) abort.abort(); };
@@ -222,14 +227,17 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
           return streaming ? res.end() : json(res, 500, { error: 'internal_error' });
         }
       }
-      // No answer was delivered, so the message does not count against the plan.
-      await store.refundDailyQuota(quotaKind, day);
+      // A message counts only when an answer reached the visitor. Leaving after part of the answer was shown keeps it
+      // counted: otherwise reading a reply and closing the stream before its end would make the plan limit endless.
+      const clientLeftAfterAnswer = abort.signal.aborted && sent > 0;
+      if (!clientLeftAfterAnswer) await store.refundDailyQuota(quotaKind, day);
       if (abort.signal.aborted) return undefined;
       metrics.count('chat_errors');
       console.warn(tarot ? 'Tarot reading failed:' : 'Local chat failed:', error.message);
       const failure = { error: tarot ? 'tarot_unavailable' : 'chat_unavailable', message: 'Сейчас не удалось получить ответ. Попробуйте ещё раз.' };
       return streaming ? (send('error', failure), res.end()) : json(res, 503, failure);
     } finally {
+      clearInterval(keepAlive);
       res.off('close', onClose);
       release();
     }

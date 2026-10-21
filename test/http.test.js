@@ -6,11 +6,11 @@ import { createTrafficLimiter } from '../server/traffic.js';
 import { createLoginGuard } from '../server/login-guard.js';
 import { SAFE_FALLBACK_ANSWER, createConcurrencyGate } from '../server/chat-safety.js';
 
-async function fixture(run, { mailEnabled = true, mailDailyLimit = 100, trafficLimiter, chatLimiter, chatGate, loginGuard, trustProxy, secureCookies, forecastWriter, chatWriter, sotisVerifier, requirePrivacyConsent } = {}) {
+async function fixture(run, { mailEnabled = true, mailDailyLimit = 100, trafficLimiter, chatLimiter, chatGate, loginGuard, trustProxy, secureCookies, forecastWriter, chatWriter, sotisVerifier, requirePrivacyConsent, streamKeepAliveMs } = {}) {
   const store = await createStore('pglite:memory');
   const sent = [];
   const mailer = mailEnabled ? { async sendCode(message) { sent.push(message); } } : null;
-  const server = createServer({ store, mailer, mailDailyLimit, trafficLimiter, chatLimiter, chatGate, loginGuard, trustProxy, secureCookies, forecastWriter, chatWriter, sotisVerifier, requirePrivacyConsent,
+  const server = createServer({ store, mailer, mailDailyLimit, trafficLimiter, chatLimiter, chatGate, loginGuard, trustProxy, secureCookies, forecastWriter, chatWriter, sotisVerifier, requirePrivacyConsent, streamKeepAliveMs,
     codeSecret: 'test-secret-with-at-least-thirty-two-characters' });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -590,3 +590,46 @@ test('the 404 page may use its inline styles but still runs no scripts', async (
   assert.doesNotMatch(policy, /script-src/);
   assert.match(await response.text(), /Такой страницы нет/);
 }));
+
+test('closing the stream after part of the answer was shown still counts the message', async () => {
+  let delivered = Promise.withResolvers();
+  await fixture(async ({ store, request }) => {
+    const cookie = await signIn(store, request);
+    const userId = (await store.findUserByEmail('chat@example.com')).id;
+    const used = async () => (await store.q.one('SELECT used FROM daily_quotas WHERE kind = $1', [`chat:${userId}`]))?.used ?? 0;
+    for (let round = 1; round <= 2; round++) {
+      delivered = Promise.withResolvers();
+      const controller = new AbortController();
+      const response = await fetch(`${request.base}/api/chat`, { method: 'POST', signal: controller.signal,
+        headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', Cookie: cookie }, body: JSON.stringify({ message: 'Вопрос' }) });
+      const reader = response.body.getReader();
+      const { value } = await reader.read();
+      assert.match(new TextDecoder().decode(value), /event: delta/);
+      controller.abort();
+      await delivered.promise;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      assert.equal(await used(), round, 'a reply read up to the end of the stream is not given back');
+    }
+  }, { chatWriter: { async answer({ signal, onDelta }) {
+    const text = 'Карта дня предлагает спокойно посмотреть на ситуацию и выбрать один небольшой шаг, который можно сделать уже сегодня. '.repeat(3);
+    onDelta(text, text);
+    await new Promise((resolve) => signal.addEventListener('abort', resolve, { once: true }));
+    delivered.resolve();
+    throw new Error('aborted');
+  } } });
+});
+
+test('a long reading stream stays alive with keepalive lines and still ends with the answer', async () => {
+  await fixture(async ({ store, request }) => {
+    const cookie = await signIn(store, request);
+    const response = await fetch(`${request.base}/api/tarot/reading`, { method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', Cookie: cookie }, body: JSON.stringify({ question: 'Что меня ждёт в работе?', draw: 1 }) });
+    const text = await response.text();
+    assert.match(text, /^: keepalive$/m);
+    assert.match(text, /event: done/);
+    assert.equal((text.match(/event: delta/g) ?? []).length, 0);
+  }, { streamKeepAliveMs: 20, chatWriter: { async answer({ forecast }) {
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    return { answer: `Карта «${forecast.card.name}» в связи с вашим вопросом может подсказать, на что опереться.\n\nВозможно, стоит не спешить.\n\nКакой шаг вы готовы сделать сегодня?` };
+  } } });
+});
