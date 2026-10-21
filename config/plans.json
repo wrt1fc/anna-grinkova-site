@@ -8,6 +8,13 @@
       "dailyTarotReadings": 1,
       "relations": []
     },
+    "subscription": {
+      "label": "Подписка",
+      "maxPeople": 1,
+      "dailyChatMessages": 60,
+      "dailyTarotReadings": 5,
+      "relations": []
+    },
     "individual": {
       "label": "Индивидуальный",
       "maxPeople": 1,

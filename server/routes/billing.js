@@ -28,7 +28,17 @@ function invalidCheckout(body) {
     || (body.currency !== undefined && !(typeof body.currency === 'string' && CURRENCY.test(body.currency)));
 }
 
-export function createBillingRoutes({ store, billing, trustProxy, metrics }) {
+export function createBillingRoutes({ store, billing, trustProxy, metrics, prodamus = null }) {
+  // Prodamus calls this after a payment on its page; the signature is checked inside. Anything but a bad signature gets 200,
+  // so Prodamus does not keep retrying a payment we cannot match (it is logged and counted for a manual check).
+  async function prodamusWebhook({ req, res, json }) {
+    const outcome = await prodamus.handle(await readRaw(req), req.headers.sign);
+    metrics.count(`billing_prodamus_${outcome}`);
+    if (outcome === 'bad_signature') return json(res, 403, { error: 'forbidden' });
+    if (outcome === 'unknown_user' || outcome === 'unknown_amount') console.error(`Prodamus payment not applied: ${outcome}`);
+    return json(res, 200, { ok: true });
+  }
+
   async function webhook({ req, res, json }, providerName) {
     const provider = billing.providerByName(providerName);
     if (!provider) return json(res, 404, { error: 'not_found' });
@@ -58,9 +68,15 @@ export function createBillingRoutes({ store, billing, trustProxy, metrics }) {
     if (path === '/api/billing/products' && req.method === 'GET') {
       return json(res, 200, { products: billing.products(), regions: billing.regions() }), true;
     }
+    if (path === '/api/billing/webhook/prodamus' && req.method === 'POST') {
+      return prodamus ? await prodamusWebhook(ctx) : json(res, 404, { error: 'not_found' }), true;
+    }
     const hook = WEBHOOK_PATH.exec(path);
     if (hook && req.method === 'POST') return await webhook(ctx, hook[1]), true;
     if (!user) return json(res, 401, { error: 'login_required' }), true;
+    if (path === '/api/billing/subscription-links' && req.method === 'GET') {
+      return prodamus ? json(res, 200, { links: prodamus.links(user.email) }) : json(res, 404, { error: 'not_found' }), true;
+    }
     if (path === '/api/billing/checkout' && req.method === 'POST') {
       const body = await readJson(req);
       if (invalidCheckout(body)) return json(res, 400, { error: 'invalid_request' }), true;

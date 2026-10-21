@@ -1,0 +1,8 @@
+{
+  "note": "Готовые страницы оплаты Prodamus (payform.ru). После оплаты Prodamus присылает уведомление на /api/billing/webhook/prodamus, подпись проверяется секретным ключом PRODAMUS_SECRET_KEY. Подписку включаем по email покупателя.",
+  "plan": "subscription",
+  "products": [
+    { "id": "sub-30d", "label": "Подписка на месяц", "periodDays": 30, "priceRub": 990, "payUrl": "https://payform.ru/5ocQOcB/" },
+    { "id": "sub-90d", "label": "Подписка на 3 месяца", "periodDays": 90, "priceRub": 2070, "payUrl": "https://payform.ru/5ocQOex/" }
+  ]
+}

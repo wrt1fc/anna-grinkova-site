@@ -14,6 +14,7 @@ import { createChatRoutes } from './routes/chat.js';
 import { handleProfileRoutes } from './routes/profiles.js';
 import { createBillingRoutes } from './routes/billing.js';
 import { createBilling } from './billing/service.js';
+import { createProdamus } from './billing/prodamus.js';
 import legal from '../config/legal.json' with { type: 'json' };
 import { notFoundPage, renderPage, robotsTxt, seoRoute, sitemapXml } from './seo.js';
 import { NULL_METRICS } from './metrics.js';
@@ -64,7 +65,7 @@ function cookieToken(req) {
 export function createServer({ store, mailer = null, codeSecret, root = new URL('../prototype/', import.meta.url), secureCookies = false,
   mailDailyLimit = 0, trafficLimiter = createTrafficLimiter(), chatLimiter = createTrafficLimiter({ perIpLimit: 6, globalLimit: 300 }),
   chatGate = createConcurrencyGate(2), loginGuard = createLoginGuard(), trustProxy = false, forecastWriter = null, chatWriter = null,
-  requirePrivacyConsent = false, searchVerification = {}, sotisVerifier = null, metrics = NULL_METRICS, knowledge = null, paymentProvider = null, paymentProviders = null, publicUrl = 'http://localhost:3000',
+  requirePrivacyConsent = false, searchVerification = {}, sotisVerifier = null, metrics = NULL_METRICS, knowledge = null, paymentProvider = null, paymentProviders = null, prodamusKey = null, publicUrl = 'http://localhost:3000',
   pageViewLimiter = createTrafficLimiter({ perIpLimit: 30, globalLimit: 3000 }), streamKeepAliveMs = undefined }) {
   if (!codeSecret || String(codeSecret).length < 32) throw new Error('AUTH_CODE_SECRET must have at least 32 characters');
   if (!Number.isSafeInteger(mailDailyLimit) || mailDailyLimit < 0) throw new Error('MAIL_DAILY_LIMIT must be a non-negative integer');
@@ -73,7 +74,7 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
   // Only the origin of PUBLIC_URL is used in pages; it is escaped so a misconfigured value cannot inject markup.
   const publicOrigin = new URL(publicUrl).origin.replace(/[<>"'&]/g, '');
   const billing = createBilling({ store, provider: paymentProvider, providers: paymentProviders, publicUrl });
-  const handleBillingRoutes = createBillingRoutes({ store, billing, trustProxy, metrics });
+  const handleBillingRoutes = createBillingRoutes({ store, billing, trustProxy, metrics, prodamus: createProdamus({ store, secretKey: prodamusKey }) });
   const handleChatRoutes = createChatRoutes({ store, chatWriter, chatLimiter, chatGate, historySigner, metrics, knowledge, trustProxy,
     keepAliveMs: streamKeepAliveMs, readingKey: readingCardKey(codeSecret) });
   const sessionCookie = (value, maxAge) => `anna_session=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secureCookies ? '; Secure' : ''}`;

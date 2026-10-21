@@ -66,7 +66,7 @@ if (process.env.BILLING_INTL_PROVIDER && !intlProvider) throw new Error('Foreign
 if (process.env.ROBOKASSA_TEST === '1' && process.env.NODE_ENV === 'production') throw new Error('ROBOKASSA_TEST=1 is not allowed in production');
 const server = createServer({ store, mailer, codeSecret, trafficLimiter,
   mailDailyLimit: Number(process.env.MAIL_DAILY_LIMIT ?? 0), forecastWriter, chatWriter, sotisVerifier,
-  chatGate: createConcurrencyGate(Number(process.env.CHAT_MAX_CONCURRENT ?? 2)), metrics: createMetrics(store), knowledge, paymentProviders: { ru: paymentProvider, intl: intlProvider },
+  chatGate: createConcurrencyGate(Number(process.env.CHAT_MAX_CONCURRENT ?? 2)), metrics: createMetrics(store), knowledge, paymentProviders: { ru: paymentProvider, intl: intlProvider }, prodamusKey: process.env.PRODAMUS_SECRET_KEY || null,
   publicUrl: process.env.PUBLIC_URL || `http://${host}:${port}`, requirePrivacyConsent: process.env.REQUIRE_PRIVACY_CONSENT === '1',
   searchVerification: { yandex: process.env.YANDEX_VERIFICATION, google: process.env.GOOGLE_SITE_VERIFICATION },
   secureCookies: process.env.NODE_ENV === 'production', trustProxy: process.env.TRUST_PROXY === '1' });
