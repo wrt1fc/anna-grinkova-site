@@ -1,0 +1,334 @@
+/* Forecast blocks: one gutter and spacing scale, open compositions instead of boxed panels,
+   and a background that comes from the drawn card itself. Loaded last. */
+
+:root {
+  --gutter: clamp(20px, 6.1vw, 128px);               /* 88px at the 1440px Figma frames */
+  --pad: max(var(--gutter), calc((100vw - 1760px) / 2));
+  --space-section: clamp(64px, 8vw, 120px);
+  --space-block: clamp(36px, 4.4vw, 64px);
+}
+
+/* ---- One left edge for every forecast section ---- */
+.site-shell .forecasts-section.section-wrap,
+.site-shell .forecast-hero.section-wrap,
+.site-shell .reading-section.section-wrap,
+.site-shell .unlock-section.section-wrap { max-width: none; padding-inline: var(--pad); }
+.site-shell .hero-copy { padding-left: var(--pad); }
+.site-shell .forecast-hero-grid { max-width: none; }
+
+/* ---- Shared voice for small lead-ins: italic serif, sentence case ---- */
+.forecast-kicker,
+.daily-draw-kicker,
+.week-feature .subtle-tag,
+.reading-side-label {
+  font: italic 500 clamp(17px, 1.35vw, 20px)/1.25 var(--accent);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--gold);
+}
+
+/* ---- Same fixes everywhere else: no tracked caps eyebrows, no boxes, no gloss ---- */
+.subtle-tag,
+.dialog-overline,
+.draw-result-number,
+.chat-aside-caption,
+.hero-date {
+  font: italic 500 clamp(17px, 1.35vw, 20px)/1.25 var(--accent);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--gold);
+}
+.hero-date { margin-bottom: 20px; color: var(--gold-light); }
+.draw-result-number { margin-top: 14px; }
+.daily-draw-copy blockquote { padding-left: 0; border: 0; }
+.mini-card-footer { text-transform: none; letter-spacing: .04em; }
+
+/* Account: sections separated by a hairline instead of identical boxed cards. */
+.account-layout { gap: clamp(28px, 3vw, 48px); }
+.account-card {
+  min-height: 0;
+  padding: clamp(24px, 2.6vw, 36px) 0 0;
+  background: none;
+  border: 0;
+  border-top: 1px solid rgba(222, 184, 88, .3);
+}
+.account-card h2 { margin: 12px 0 14px; }
+
+/* Flat buttons: no inner highlight, no drop shadow, no glass gradient. */
+.button-gold,
+.button-gold:hover,
+.button-gold:active { box-shadow: none; }
+.header-entry { background: none; box-shadow: none; }
+.header-entry:hover { background: rgba(222, 184, 88, .12); }
+
+/* Custom card back: a sun medallion in gold line art (assets/card-back.svg), same in Figma. */
+.draw-card-back,
+.mini-card-face-back {
+  background: #1a110d url('./assets/card-back.svg') center / 100% 100% no-repeat;
+  border: 0;
+  border-radius: 5.7% / 3.7%;
+  box-shadow: none;
+}
+.draw-card-back::before,
+.draw-card-orbit,
+.draw-card-star,
+.mini-card-face-back::before,
+.mini-card-back-orbit,
+.mini-card-back-caption { display: none; }
+.draw-card-back::after {
+  content: "Анна Гринькова";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 7%;
+  color: var(--gold-light);
+  font: 700 clamp(7px, .72vw, 10px)/1 var(--display);
+  letter-spacing: .08em;
+  text-align: center;
+  text-transform: uppercase;
+}
+.mini-card-face-back { justify-content: flex-end; padding: 0; }
+.mini-card-back-name {
+  margin-bottom: 7%;
+  font-size: clamp(8px, .8vw, 11px);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+@media (max-width: 760px) { .draw-card-back::after { font-size: 6px; } }
+
+/* Chat: example questions above the input, always visible. */
+.chat-examples { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 16px 0 4px; }
+.chat-examples-label { margin-right: 4px; color: var(--gold); font: italic 500 17px/1.25 var(--accent); }
+.chat-examples button {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid rgba(222, 184, 88, .32);
+  border-radius: 999px;
+  background: none;
+  color: var(--ink);
+  font-size: 14px;
+  transition: border-color var(--motion-base) var(--ease-out), color var(--motion-base) var(--ease-out);
+}
+.chat-examples button:hover { border-color: var(--gold-light); color: var(--gold-light); }
+@media (max-width: 760px) {
+  .chat-examples { flex-wrap: nowrap; overflow-x: auto; margin-inline: -13px; padding-inline: 13px; scrollbar-width: none; }
+  .chat-examples::-webkit-scrollbar { display: none; }
+  .chat-examples-label, .chat-examples button { flex: none; }
+}
+
+/* ================= Home: choose a forecast ================= */
+.site-shell .forecasts-section.section-wrap { padding-block: var(--space-section); }
+.forecasts-section .section-heading { margin-bottom: var(--space-block); }
+.forecasts-section .section-heading h2 { margin-bottom: 16px; }
+
+/* Daily draw: no panel, the fan stands on the page itself. */
+.daily-draw {
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, .7fr);
+  gap: clamp(24px, 4vw, 72px);
+  align-items: center;
+  min-height: 0;
+  overflow: visible;
+  background: none;
+  border: 0;
+}
+.daily-draw-stage {
+  min-height: clamp(440px, 34vw, 520px);
+  overflow: visible;
+  isolation: auto;
+  background: none;
+}
+.daily-draw-stage::after { display: none; }
+.daily-draw-stage::before {
+  content: "";
+  position: absolute;
+  inset: -18% -10%;
+  z-index: 0;
+  background: url('./assets/constellations.webp') center / cover;
+  mix-blend-mode: screen;
+  opacity: .55;
+  -webkit-mask-image: radial-gradient(ellipse 52% 52% at 50% 50%, #000 20%, transparent 100%);
+  mask-image: radial-gradient(ellipse 52% 52% at 50% 50%, #000 20%, transparent 100%);
+  pointer-events: none;
+}
+.daily-draw-fan,
+.daily-draw-stage-note { z-index: 1; }
+.daily-draw-copy { padding: 0; }
+.daily-draw-copy:has(#draw-result:not([hidden])) .daily-draw-kicker { display: none; }   /* the result line already says "карта дня" */
+.draw-card.is-selected { z-index: 20; }                                                    /* the opened card always stays above the rest */
+.daily-draw-copy h3 { margin-top: 14px; }
+
+/* Week: a typographic strip, not a second card. */
+.week-feature {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: end;
+  gap: clamp(28px, 5vw, 96px);
+  min-height: 0;
+  margin-top: clamp(56px, 7vw, 104px);
+  padding: clamp(32px, 4vw, 56px) 0 0;
+  overflow: visible;
+  background: none;
+  border: 0;
+  border-top: 1px solid rgba(222, 184, 88, .3);
+}
+.week-feature:hover { background: none; }
+.week-feature-art {
+  align-self: end;
+  justify-content: flex-start;
+  align-items: flex-end;
+  gap: clamp(8px, 1vw, 16px);
+  padding-bottom: 30px;
+  background: none;
+}
+.week-feature-art::before,
+.week-feature-art::after { display: none; }
+.week-feature-number {
+  font-size: clamp(130px, 13vw, 220px);
+  line-height: .78;
+  letter-spacing: -.06em;
+  text-shadow: none;
+  transition: color var(--motion-base) var(--ease-out);
+}
+.week-feature-word { align-self: flex-end; margin: 0 0 6px; font-size: clamp(28px, 2.6vw, 46px); }
+.week-feature-rule { left: 0; right: 0; bottom: 0; gap: 7px; }
+.week-feature-rule i { opacity: .4; transition: opacity var(--motion-base) var(--ease-out); }
+.week-feature-rule i.is-today { height: 4px; margin-top: -1px; opacity: 1; background: var(--gold-light); }
+.week-feature:hover .week-feature-rule i { opacity: .7; }
+.week-feature:hover .week-feature-rule i.is-today { opacity: 1; }
+.week-feature:hover .week-feature-number { color: #fff1c4; }
+.week-feature-copy { padding-block: 0 4px; }
+.week-feature .week-arrow { align-self: end; margin-bottom: 8px; }
+
+/* Chat invitation closes the list with the same hairline, no box. */
+.forecasts-section .chat-invite {
+  min-height: 0;
+  margin-top: clamp(56px, 7vw, 104px);
+  padding: clamp(24px, 3vw, 36px) 0 0;
+  background: none;
+  border: 0;
+  border-top: 1px solid rgba(222, 184, 88, .3);
+}
+
+/* ================= Day and week pages ================= */
+#route-day,
+#route-week { position: relative; isolation: isolate; }
+#route-week { --tarot-art: url("./assets/tarot/14.webp"); }   /* Temperance, the week's card */
+
+/* The page's background is the card's own illustration, blurred into the page colour. */
+#route-day::before,
+#route-week::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  left: -8%;
+  right: -8%;
+  height: min(1500px, 170vh);
+  background: var(--tarot-art, none) center 22% / cover no-repeat;
+  filter: blur(64px) sepia(.4) saturate(1.3) brightness(.4);
+  opacity: .5;
+  -webkit-mask-image: linear-gradient(180deg, #000 45%, transparent);
+  mask-image: linear-gradient(180deg, #000 45%, transparent);
+  pointer-events: none;
+}
+
+.site-shell .forecast-hero { padding-top: clamp(24px, 2.6vw, 36px); padding-bottom: clamp(40px, 5vw, 80px); }
+.forecast-hero .back-link { margin-bottom: clamp(32px, 4vw, 56px); }
+.forecast-hero-copy { padding-bottom: 0; }
+.forecast-kicker { margin: 0 0 18px; }
+.forecast-hero h1 { margin-bottom: 24px; }
+
+/* Visuals sit on the page: no sky rectangle, no inner frame. */
+.forecast-visual { overflow: visible; background: none; border: 0; border-radius: 0; }
+.forecast-visual::before,
+.daily-visual::after,
+.weekly-visual::after { display: none; }
+.day-card-hint { left: 0; right: 0; bottom: -4px; }
+
+/* "General forecast" is a plain note, not a pill. */
+.sample-label { padding: 0; border: 0; border-radius: 0; background: none; color: var(--muted); font-size: 14px; }
+
+/* Seven days: the numeral and the week line, directly on the page. */
+.week-visual-number { text-shadow: none; letter-spacing: -.07em; }
+.week-visual-days { left: 6%; right: 6%; gap: 8px; }
+.week-visual-days span { border-top: 1px solid rgba(222, 184, 88, .45); color: var(--muted); letter-spacing: .04em; }
+.week-visual-days span.is-today { border-top: 4px solid var(--gold-light); margin-top: -1px; color: var(--gold-light); font-weight: 700; }
+
+/* Reading: open page, hairline above, no panel behind. */
+.site-shell .reading-section {
+  position: relative;
+  isolation: isolate;
+  padding-top: clamp(56px, 6vw, 88px);
+  padding-bottom: var(--space-section);
+  background: linear-gradient(180deg, rgba(14, 9, 8, .5), rgba(14, 9, 8, .2));   /* a darker band separates reading from the hero */
+  border-top: 1px solid rgba(222, 184, 88, .4);
+}
+.reading-section::after {            /* a ghost of the card, cropped, behind the margin note */
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 8%;
+  right: calc(var(--pad) - 56px);
+  width: min(34vw, 520px);
+  aspect-ratio: 3 / 4;
+  background: var(--tarot-art, none) center / cover no-repeat;
+  filter: sepia(.5) saturate(.85);
+  opacity: .13;
+  -webkit-mask-image: radial-gradient(closest-side, #000 25%, transparent 100%);
+  mask-image: radial-gradient(closest-side, #000 25%, transparent 100%);
+  pointer-events: none;
+}
+.reading-meta {
+  justify-content: flex-start;
+  gap: .6em;
+  margin-bottom: clamp(28px, 3vw, 44px);
+  padding: 0;
+  border: 0;
+  color: var(--gold-light);
+  font: italic 500 clamp(17px, 1.35vw, 20px)/1.25 var(--accent);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.reading-meta span + span::before { content: "·"; margin-right: .6em; color: var(--gold); }
+.reading-layout { grid-template-columns: minmax(0, 1fr) minmax(240px, 340px); gap: clamp(40px, 8vw, 140px); padding-top: 0; }
+.reading-main blockquote {
+  max-width: 22em;
+  margin: clamp(36px, 4.4vw, 64px) 0 0;
+  padding: 0;
+  border: 0;
+  font-size: clamp(24px, 2.3vw, 34px);
+  line-height: 1.32;
+  text-wrap: balance;
+}
+.reading-side { align-self: end; padding: 0; border: 0; }
+.reading-side p { margin: 6px 0 clamp(24px, 2.6vw, 36px); font-size: clamp(20px, 1.8vw, 26px); font-weight: 600; line-height: 1.3; }
+.reading-side p:last-child { margin-bottom: 0; }
+
+.site-shell .unlock-section { padding-block: var(--space-section); }
+
+/* ================= Phones ================= */
+@media (max-width: 900px) {
+  .daily-draw { grid-template-columns: 1fr; gap: 12px; }
+  .daily-draw-stage { min-height: 340px; }
+}
+@media (max-width: 760px) {
+  :root { --gutter: 20px; --pad: 20px; }
+  .site-shell .forecasts-section.section-wrap { padding-block: 64px; }
+  .daily-draw-copy { min-height: 0; padding: 8px 0 0; }
+  .week-feature { display: grid; grid-template-columns: 1fr; gap: 24px; margin-top: 48px; padding-top: 28px; }
+  .week-feature-art { width: auto; min-height: 0; padding-bottom: 26px; }
+  .week-feature-copy { padding: 0; }
+  .week-feature-number { font-size: 150px; }
+  .week-feature-word { font-size: 34px; }
+  .reading-section::after { right: -24px; width: 70vw; top: 3%; }
+  .reading-layout { grid-template-columns: 1fr; gap: 40px; }
+  .reading-side { display: block; }
+  .reading-side-label:nth-of-type(2) { grid-column: auto; grid-row: auto; }
+  .reading-side p { font-size: 20px; margin-bottom: 24px; }
+  .site-shell .unlock-section { padding-block: 64px 96px; }
+  .forecast-visual { margin-top: 28px; }
+  .week-visual-days { left: 0; right: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .week-feature-number,
+  .week-feature-rule i { transition: none; }
+}

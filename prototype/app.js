@@ -20,6 +20,9 @@ async function api(path, options = {}) {
 
 const tarotNumerals = ['0', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX', 'XXI'];
 function tarotArt(number) { return `url("./assets/tarot/${String(number).padStart(2, '0')}.webp")`; }
+// Today's weekday (Mon = 0) is marked on both seven-day graphics.
+document.querySelectorAll('.week-visual-days, .week-feature-rule')
+  .forEach((group) => group.children[(new Date().getDay() + 6) % 7]?.classList.add('is-today'));
 const dayCard = document.getElementById('day-interactive-card');
 const dayCardHint = document.getElementById('day-card-hint');
 let dayCardTurn = 0;
@@ -101,6 +104,7 @@ function renderDailyForecast(data) {
   updateDayCard();
   document.getElementById('day-card-title').textContent = data.tarot.name;
   document.querySelector('.daily-visual .mini-card').style.setProperty('--tarot-art', tarotArt(data.tarot.number));
+  document.getElementById('route-day').style.setProperty('--tarot-art', tarotArt(data.tarot.number));
   document.getElementById('day-card-footer').textContent = `${numeral} · карта дня`;
   document.getElementById('day-card-label').textContent = `Карта «${data.tarot.name}»`;
   document.getElementById('day-date-label').textContent = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' })
@@ -124,6 +128,7 @@ async function loadDailyForecast() {
       if (!response.ok || requestId !== dayForecastRequest) return;
       dayCardName = data.tarot.name;
       dayCard.style.setProperty('--tarot-art', tarotArt(data.tarot.number));
+      document.getElementById('route-day').style.setProperty('--tarot-art', tarotArt(data.tarot.number));
       document.getElementById('day-card-title').textContent = data.tarot.name;
       document.getElementById('day-card-footer').textContent = `${tarotNumerals[data.tarot.number]} · карта дня`;
       updateDayCard();
