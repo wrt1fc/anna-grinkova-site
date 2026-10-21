@@ -10,7 +10,8 @@
 | Проверка уязвимостей и ошибок | [04-security-review.md](04-security-review.md) | Opus 5.5 |
 | Тексты и SEO | [05-texts-seo.md](05-texts-seo.md) | Sonnet 5.5 |
 | Быстрые вопросы | [06-quick-questions.md](06-quick-questions.md) | Haiku 5.5 |
+| Дизайн и интерфейс (папка `E:i-site-codex`) | [07-design-ui.md](07-design-ui.md) | Sonnet 5.5 |
 
-Интерфейс делает Codex по `docs/codex-ui-tasks.md`, отдельный чат Claude для этого не нужен.
+Интерфейс по `docs/codex-ui-tasks.md` может делать Codex или чат «Дизайн и интерфейс» — но не оба одновременно в одной папке.
 
 Opus включать только для сложного: безопасность, архитектура, ошибка, с которой Sonnet не справился.
