@@ -129,3 +129,27 @@ test('the draft generator writes only drafts that pass the filter and carries on
     await new Promise((resolve) => model.close(resolve));
   }
 });
+
+test('hand-written drafts are matched with their pairs, checked and written as drafts', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const { readCards } = await import('../training/cards.js');
+  const dir = mkdtempSync(join(tmpdir(), 'tarot-import-'));
+  const [first] = pairsFromBank(bank).filter((pair) => pair.split === 'train');
+  const name = tarotCardByNumber(first.cardNumber).name;
+  const reading = `Карта «${name}» в связи с вашим вопросом может говорить о важном повороте, и это стоит заметить спокойно, без спешки и лишних выводов.\n\n`
+    + 'Скорее всего, возможная линия связана с тем, что вы уже давно чувствуете, но пока не называете вслух. Это не приговор, а повод присмотреться к своим решениям.\n\n'
+    + 'Шаг на сегодня: запишите одну мысль по этому вопросу и вернитесь к ней вечером.';
+  writeFileSync(join(dir, 'drafts.txt'), `=== ${first.id} | тема\n${reading}\n\n=== ${first.id.replace(/-1$/, '-9')}\n${reading}\n\n=== no-such-pair-1\n${reading}\n`);
+  const out = join(dir, 'cards-tarot.jsonl');
+  const run = () => spawnSync(process.execPath, ['training/import-drafts.js', join(dir, 'drafts.txt'), out, '--author', 'тест'], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
+  const first_run = run();
+  assert.equal(first_run.status, 1, 'unknown pairs are reported');
+  const cards = readCards(out);
+  assert.equal(cards.length, 1);
+  assert.equal(cards[0].id, first.id);
+  assert.equal(cards[0].status, 'draft');
+  assert.match(cards[0].note, /написал тест/);
+  assert.deepEqual(cardProblems(cards[0]), []);
+  assert.match(run().stdout, /уже есть, пропущено/);
+  assert.equal(readCards(out).length, 1, 'a second run does not duplicate cards');
+});
