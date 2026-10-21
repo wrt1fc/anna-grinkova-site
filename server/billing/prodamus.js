@@ -74,8 +74,10 @@ export function payLink(product, email) {
 }
 
 // Link payments: the buyer pays on the Prodamus page, Prodamus calls us, and the plan period is granted by email.
-export function createProdamus({ store, secretKey, now = Date.now }) {
+// The 1 RUB test product is accepted only while PRODAMUS_TEST=1: otherwise anyone could buy a day of the plan for a rouble.
+export function createProdamus({ store, secretKey, acceptTest = false, now = Date.now }) {
   if (!secretKey) return null;
+  const offered = PRODAMUS_PRODUCTS.filter((product) => acceptTest || !product.test);
 
   // Returns the outcome: paid, duplicate, ignored, unknown_amount, unknown_user, bad_request or bad_signature.
   async function handle(rawBody, signHeader) {
@@ -84,7 +86,7 @@ export function createProdamus({ store, secretKey, now = Date.now }) {
     if (!validSign(payload, secretKey, signHeader)) return 'bad_signature';
     if (payload.payment_status !== 'success') return 'ignored';
     const paymentId = String(payload.order_id ?? payload.payment_id ?? '');
-    const product = PRODAMUS_PRODUCTS.find((item) => Math.round(Number(payload.sum) * 100) === item.amountKop);
+    const product = offered.find((item) => Math.round(Number(payload.sum) * 100) === item.amountKop);
     if (!paymentId) return 'ignored';
     if (!product) return 'unknown_amount';
     const email = normalizeEmail(payload.customer_email);
@@ -104,6 +106,6 @@ export function createProdamus({ store, secretKey, now = Date.now }) {
     });
   }
 
-  return { handle, links: (email) => PRODAMUS_PRODUCTS.map((product) => ({ id: product.id, label: product.label, periodDays: product.periodDays,
+  return { handle, links: (email) => offered.map((product) => ({ id: product.id, label: product.label, periodDays: product.periodDays,
     priceRub: product.priceRub, payUrl: payLink(product, email) })) };
 }

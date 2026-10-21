@@ -47,13 +47,14 @@ test('a wrong signature, an unknown amount or an unknown email changes nothing',
   const buyer = await store.findUserByEmail('buyer@example.com');
   assert.equal(await notify(success(), { sign: 'bad' }), 403);
   assert.equal(await notify(success({ sum: '100.00' })), 200);
+  assert.equal(await notify(success({ sum: '1.00' })), 200, 'the test payment is off by default');
   assert.equal(await notify(success({ customer_email: 'nobody@example.com' })), 200);
   assert.equal(await notify(success({ payment_status: 'order_canceled' })), 200);
   assert.equal((await store.planState(buyer.id)).plan, 'free');
 }));
 
 test('the payment link carries the account email and the prices match the agreed ones', () => {
-  assert.deepEqual(PRODAMUS_PRODUCTS.map((item) => [item.periodDays, item.priceRub]), [[30, 990], [90, 2070]]);
+  assert.deepEqual(PRODAMUS_PRODUCTS.filter((item) => !item.test).map((item) => [item.periodDays, item.priceRub]), [[30, 990], [90, 2070]]);
   assert.equal(new URL(payLink(PRODAMUS_PRODUCTS[0], 'a@b.ru')).searchParams.get('customer_email'), 'a@b.ru');
 });
 

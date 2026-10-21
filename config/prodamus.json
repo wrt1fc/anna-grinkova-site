@@ -3,6 +3,7 @@
   "plan": "subscription",
   "products": [
     { "id": "sub-30d", "label": "Подписка на месяц", "periodDays": 30, "priceRub": 990, "payUrl": "https://payform.ru/5ocQOcB/" },
-    { "id": "sub-90d", "label": "Подписка на 3 месяца", "periodDays": 90, "priceRub": 2070, "payUrl": "https://payform.ru/5ocQOex/" }
+    { "id": "sub-90d", "label": "Подписка на 3 месяца", "periodDays": 90, "priceRub": 2070, "payUrl": "https://payform.ru/5ocQOex/" },
+    { "id": "sub-test", "label": "Тестовая оплата", "periodDays": 1, "priceRub": 1, "payUrl": "https://payform.ru/9mcQPj9/", "test": true }
   ]
 }
