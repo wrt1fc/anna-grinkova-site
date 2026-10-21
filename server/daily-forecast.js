@@ -56,6 +56,14 @@ export function tarotForDate(day, userId = null, position = 0) {
   return { number, name, focus, action, question, position, method: 'digital-deterministic' };
 }
 
+// One card of the deck by its number, for tooling that builds training examples without an account.
+export function tarotCardByNumber(number, position = 0) {
+  if (!Number.isInteger(number) || number < 0 || number >= CARDS.length) throw new Error('invalid_card_number');
+  if (!Number.isInteger(position) || position < 0 || position > 4) throw new Error('invalid_draw_position');
+  const [name, focus, action, question] = CARDS[number];
+  return { number, name, focus, action, question, position, method: 'digital-deterministic' };
+}
+
 function signFor(longitude) {
   const [name, place, guidance] = SIGNS[Math.floor(longitude / 30)];
   return { name, place, guidance };

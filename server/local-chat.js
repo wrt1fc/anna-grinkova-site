@@ -52,7 +52,7 @@ export function chatPrompt({ message, history, forecast, visitorName = null, len
     lengthInstruction: ANSWER_LENGTHS[length].instruction, question: message });
 }
 
-function systemFor(mode) {
+export function systemFor(mode) {
   return (mode === TAROT_MODE ? [...chatContext.systemInstructions, ...tarotReading.systemInstructions] : chatContext.systemInstructions).join(' ');
 }
 
@@ -81,7 +81,7 @@ function lastFullSentence(text) {
 export function createLocalChat({ model, fetchImpl = fetch }) {
   if (typeof model !== 'string' || !/^[\w./:-]{2,80}$/.test(model)) throw new Error('Invalid local model name');
   return {
-    async answer({ message, history, forecast, visitorName = null, signal, length = DEFAULT_ANSWER_LENGTH, materials = [], chart = null, mode = null, onDelta = null }) {
+    async answer({ message, history, forecast, visitorName = null, signal, length = DEFAULT_ANSWER_LENGTH, materials = [], chart = null, mode = null, onDelta = null, temperature = 0.25 }) {
       const size = ANSWER_LENGTHS[length];
       if (!size) throw new Error('Unknown answer length');
       const timeout = AbortSignal.timeout(MODEL_TIMEOUT_MS);
@@ -93,7 +93,7 @@ export function createLocalChat({ model, fetchImpl = fetch }) {
           stream: true,
           think: false,
           // Fixed context size: Ollama reloads the model whenever num_ctx changes between requests.
-          options: { temperature: 0.25, num_predict: size.numPredict, num_ctx: 8192 },
+          options: { temperature, num_predict: size.numPredict, num_ctx: 8192 },
           system: systemFor(mode),
           prompt: chatPrompt({ message, history, forecast, visitorName, length, materials, chart, mode }),
         }),

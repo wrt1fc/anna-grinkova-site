@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { unsafeChatAnswer } from '../server/chat-safety.js';
 import { ANSWER_LENGTHS, DEFAULT_ANSWER_LENGTH } from '../server/local-chat.js';
+import { tarotCardByNumber } from '../server/daily-forecast.js';
+import { tarotReadingProblems } from './tarot-lib.js';
 
 export const STATUSES = new Set(['draft', 'approved', 'rejected']);
 export const SPLITS = new Set(['train', 'eval']);
@@ -44,5 +46,15 @@ export function cardProblems(card, { forbiddenNames = [] } = {}) {
   }
   // The same rules the live chat applies; a card that would be filtered must not teach the model.
   if (unsafeChatAnswer(card.answer, card.forecastDate || '2000-01-01')) problems.push('ответ нарушает правила чата (Анна от первого лица, цены, ссылки, даты, гарантии)');
+  // A card reading (mode: tarot) also names its card and must keep to the rules of a reading.
+  if (card.mode !== undefined && card.mode !== 'tarot') problems.push('mode может быть только tarot');
+  if (card.mode === 'tarot') {
+    const pick = card.card;
+    if (!pick || !Number.isInteger(pick.number) || pick.number < 0 || pick.number > 21 || !Number.isInteger(pick.position) || pick.position < 0 || pick.position > 4) {
+      problems.push('расклад: нужна card {number 0–21, position 0–4}');
+    } else {
+      for (const problem of tarotReadingProblems(card.answer, { name: tarotCardByNumber(pick.number).name, sensitive: card.sensitive === true })) problems.push(`расклад: ${problem}`);
+    }
+  }
   return problems;
 }

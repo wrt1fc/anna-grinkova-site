@@ -6,8 +6,8 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import chatContext from '../config/chat-context.json' with { type: 'json' };
-import { forecastForDate } from '../server/daily-forecast.js';
-import { DEFAULT_ANSWER_LENGTH, chatForecastContext, chatPrompt, forecastForQuestion } from '../server/local-chat.js';
+import { forecastForDate, tarotCardByNumber } from '../server/daily-forecast.js';
+import { DEFAULT_ANSWER_LENGTH, TAROT_MODE, chatForecastContext, chatPrompt, forecastForQuestion, systemFor, tarotReadingContext } from '../server/local-chat.js';
 import { chartContext, findMaterials } from '../server/chat-grounding.js';
 import { loadKnowledge } from '../server/knowledge.js';
 import { cardProblems, readCards } from './cards.js';
@@ -44,16 +44,19 @@ cards.forEach((card, index) => {
   if (!usable || cardProblems(card).length) { skipped++; return; }
   const day = dayFor(card, index);
   const message = card.question.trim();
+  // A card reading is built exactly as the live /api/tarot/reading prompt: its own rules, one card, no history.
+  const tarot = card.mode === 'tarot';
   const profile = card.chartFor ? { birthUtc: card.chartFor.birthUtc, birthLatitude: card.chartFor.latitude, birthLongitude: card.chartFor.longitude } : null;
   const astro = chartContext(profile, message, new Date(`${day}T09:00:00Z`));
-  const prompt = chatPrompt({ message, history: [], forecast: forecastForQuestion(chatForecastContext(forecastForDate(day, index % 5)), message),
+  const prompt = tarot ? chatPrompt({ message, history: [], forecast: tarotReadingContext(day, tarotCardByNumber(card.card.number, card.card.position)),
+    length: 'medium', mode: TAROT_MODE }) : chatPrompt({ message, history: [], forecast: forecastForQuestion(chatForecastContext(forecastForDate(day, index % 5)), message),
     length: card.length ?? DEFAULT_ANSWER_LENGTH, materials: findMaterials(knowledge, message, astro.queries), chart: astro.chart });
   const side = card.split === 'eval' || heldOut(message) ? 'eval' : 'train';
   split[side].push({
     id: card.id,
     // Conversational prompt/completion: the trainer computes loss on the completion only.
     prompt: [
-      { role: 'system', content: system },
+      { role: 'system', content: tarot ? systemFor(TAROT_MODE) : system },
       { role: 'user', content: prompt },
     ],
     completion: [{ role: 'assistant', content: card.answer.trim() }],
