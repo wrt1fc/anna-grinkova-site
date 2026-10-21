@@ -98,9 +98,12 @@
   #route-day .unlock-section .button { margin-top: 28px; height: 58px; min-height: 58px; min-width: 250px; width: auto; }                              /* 9:103 */
 }
 
-/* ================= Wide screens: the Figma frames are 1440 px canvases, so the page is centred at that width ================= */
-@media (min-width: 1441px) {
-  .site-shell { max-width: 1440px; margin-inline: auto; }
+/* ================= Wide screens: the 1440 px design is scaled with the window (see page-zoom.js) ================= */
+@media (min-width: 1281px) {
+  .site-shell > .site-header, .site-shell > main, .site-shell > .site-footer { zoom: var(--page-zoom, 1); }
+}
+@media (min-width: 2305px) {
+  .site-shell { max-width: 2304px; margin-inline: auto; }
 }
 
 /* Chat invite on the home page, 54:135: a ready square crop of Anna with its own gold ring */
