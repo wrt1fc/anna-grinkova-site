@@ -10,9 +10,9 @@ import { parseForm, payLink, PRODAMUS_PRODUCTS, signPayload } from '../server/bi
 const SECRET = 'prodamus-test-secret';
 const PASSWORD = 'Very-long-password1!';
 
-async function fixture(run, { webhookLimiter } = {}) {
+async function fixture(run, { webhookLimiter, prodamusTest = false } = {}) {
   const store = await createStore('pglite:memory');
-  const server = createServer({ store, prodamusKey: SECRET, publicUrl: 'https://anna.example', webhookLimiter,
+  const server = createServer({ store, prodamusKey: SECRET, prodamusTest, publicUrl: 'https://anna.example', webhookLimiter,
     codeSecret: 'test-secret-with-at-least-thirty-two-characters', trafficLimiter: createTrafficLimiter({ perIpLimit: 500, globalLimit: 1000 }) });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -88,3 +88,15 @@ test('forged notifications are capped per address without touching visitor traff
     assert.equal((await post('sum=1')).status, 429);
   }, { webhookLimiter: limiter({ perIpLimit: 2, globalLimit: 10 }) });
 });
+
+test('the rouble test payment grants one day once per account, never a chain of days', async () => fixture(async ({ store, notify }) => {
+  assert.equal(await notify(success({ order_id: '3001', sum: '1.00' })), 200);
+  const buyer = await store.findUserByEmail('buyer@example.com');
+  const first = await store.planState(buyer.id);
+  assert.equal(first.plan, 'subscription');
+  assert.ok(Math.abs(first.expiresAt - Date.now() - 86_400_000) < 60_000);
+  assert.equal(await notify(success({ order_id: '3002', sum: '1.00' })), 200);
+  assert.equal((await store.planState(buyer.id)).expiresAt, first.expiresAt, 'a second rouble does not add a day');
+  assert.equal(await notify(success({ order_id: '3003' })), 200, 'the real plan can still be bought');
+  assert.equal((await store.planState(buyer.id)).expiresAt, first.expiresAt + 30 * 86_400_000);
+}, { prodamusTest: true }));

@@ -79,8 +79,13 @@ export function createProdamus({ store, secretKey, acceptTest = false, now = Dat
   if (!secretKey) return null;
   const offered = PRODAMUS_PRODUCTS.filter((product) => acceptTest || !product.test);
 
-  // Returns the outcome: paid, duplicate, ignored, unknown_amount, unknown_user, bad_request or bad_signature.
+  // Returns { outcome, paymentId }: paid, duplicate, test_used, ignored, unknown_amount, unknown_user, bad_request or bad_signature.
   async function handle(rawBody, signHeader) {
+    const result = await apply(rawBody, signHeader);
+    return typeof result === 'string' ? { outcome: result, paymentId: null } : result;
+  }
+
+  async function apply(rawBody, signHeader) {
     const payload = parseForm(rawBody);
     if (!payload) return 'bad_request';
     if (!validSign(payload, secretKey, signHeader)) return 'bad_signature';
@@ -88,13 +93,15 @@ export function createProdamus({ store, secretKey, acceptTest = false, now = Dat
     const paymentId = String(payload.order_id ?? payload.payment_id ?? '');
     const product = offered.find((item) => Math.round(Number(payload.sum) * 100) === item.amountKop);
     if (!paymentId) return 'ignored';
-    if (!product) return 'unknown_amount';
+    if (!product) return { outcome: 'unknown_amount', paymentId };
     const email = normalizeEmail(payload.customer_email);
     const user = email ? await store.findUserByEmail(email) : null;
-    if (!user) return 'unknown_user';
-    return store.inTransaction(async (tx) => {
+    if (!user) return { outcome: 'unknown_user', paymentId };
+    const outcome = await store.inTransaction(async (tx) => {
       await tx.lockUser(user.id);
       if (!(await tx.recordPaymentEvent('prodamus', `payment:${paymentId}`, now()))) return 'duplicate';
+      // The rouble test grants one day once per account, so it cannot be bought again and again instead of the plan.
+      if (product.test && await tx.hasPaidProduct(user.id, product.id)) return 'test_used';
       const order = await tx.createOrder({ userId: user.id, productId: product.id, plan: PRODAMUS_PLAN, periodDays: product.periodDays,
         amountKop: product.amountKop, currency: 'RUB', provider: 'prodamus' }, now());
       await tx.setOrderProviderId(order.id, `prodamus:${paymentId}`, now());
@@ -104,6 +111,7 @@ export function createProdamus({ store, secretKey, acceptTest = false, now = Dat
       await tx.setPlanPeriod(user.id, PRODAMUS_PLAN, start + product.periodDays * DAY_MS);
       return 'paid';
     });
+    return { outcome, paymentId };
   }
 
   return { handle, links: (email) => offered.map((product) => ({ id: product.id, label: product.label, periodDays: product.periodDays,
