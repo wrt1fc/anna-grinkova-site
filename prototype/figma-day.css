@@ -1,0 +1,68 @@
+/* Day page ("Карта дня"). Anchors: the Figma frames "Адаптив / … · Карта дня" at 360, 430, 768, 1024, 1280, 1366, 1536, 1920 and 2560 px.
+   Sizes come from the ramps in responsive-tokens.css (prefix d-). Layout: one column below 1024 px (the card under the text),
+   from 1024 px the card stands on the right and the reading has a side column. */
+
+:is(#route-day, #route-week) { position: relative; isolation: isolate; }
+
+/* The atmosphere: the card art blurred, a warm tint and a fade to the page colour */
+:is(#route-day, #route-week)::before { content: ''; position: absolute; z-index: -2; left: -8%; right: -8%; top: -6%; height: var(--d-atm-h); background: var(--tarot-art, none) center / cover no-repeat; filter: blur(80px); opacity: .3; pointer-events: none; }
+:is(#route-day, #route-week)::after { content: ''; position: absolute; z-index: -1; left: 0; right: 0; top: 0; height: var(--d-atm-h); pointer-events: none; background: linear-gradient(180deg, rgba(19, 13, 11, 0) 40%, #130d0b 100%), rgba(26, 15, 10, .5); }
+
+/* ---------- Hero ---------- */
+:is(#route-day, #route-week) .forecast-hero.section-wrap { position: relative; box-sizing: border-box; height: calc(var(--d-hero-h) - var(--header)); min-height: 0; padding: 36px var(--gutter) 0; background: none; overflow: visible; }
+:is(#route-day, #route-week) .forecast-hero-grid { display: block; position: static; }
+:is(#route-day, #route-week) .forecast-hero-copy { position: static; }
+:is(#route-day, #route-week) .forecast-kicker { margin: calc(var(--d-kick-gap) - 20px) 0 0; height: 44px; font: italic 500 var(--d-fs-kick)/1.25 var(--accent); color: var(--gold); }
+:is(#route-day, #route-week) .forecast-hero h1 { margin: 0; font: 800 var(--d-fs-h1)/normal var(--display); letter-spacing: 0; color: var(--ink); }
+:is(#route-day, #route-week) .forecast-hero h1 em { font: inherit; font-style: normal; color: inherit; }
+:is(#route-day, #route-week) .forecast-hero-copy > p:not(.forecast-kicker) { max-width: 520px; margin: 17px 0 0; font: 400 var(--d-fs-lead)/1.18 var(--body); color: var(--muted); }
+:is(#route-day, #route-week) .reading-entry { display: inline-flex; align-items: center; gap: 8px; margin: 24px 0 0; font: 700 15px/18px var(--body); color: var(--gold-light); text-decoration: underline; text-underline-position: from-font; }
+:is(#route-day, #route-week) .reading-entry > span { display: none; }
+:is(#route-day, #route-week) .reading-entry::after { content: ''; width: 18px; height: 18px; background: url('./assets/about/arrow.svg') center / contain no-repeat; }
+
+/* The card: stacked under the text, on the right from 1024 px */
+:is(#route-day, #route-week) .forecast-visual.daily-visual { position: relative; display: block; width: var(--d-card-w); height: auto; margin: 44px auto 0; padding: 0; overflow: visible; }
+:is(#route-day, #route-week) .day-card-scene { position: relative; width: var(--d-card-w); height: calc(var(--d-card-w) * 1.5604); transform: none; display: block; perspective: 1400px; }
+:is(#route-day, #route-week):not([hidden]) .daily-visual .mini-card { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 0; animation: none; }
+:is(#route-day, #route-week) .mini-card-face { padding: 0; border: 0; border-radius: 0; box-shadow: none; background: #1a110d; }
+:is(#route-day, #route-week) .mini-card-face-front::before { inset: 0; border-radius: 0; filter: none; }
+:is(#route-day, #route-week) .mini-card-face-front::after, :is(#route-day, #route-week) .mini-card-title, :is(#route-day, #route-week) .mini-card-footer { display: none; }
+:is(#route-day, #route-week) .day-card-hint { position: absolute; left: 50%; top: calc(100% + 24px); width: max-content; max-width: 90vw; margin: 0; transform: translateX(-50%); text-align: center; font: 400 13px/1.15 var(--body); color: var(--gold-light); }
+
+/* ---------- Reading band ---------- */
+.site-shell :is(#route-day, #route-week) .reading-section { position: relative; box-sizing: border-box; min-height: var(--d-band-h); margin: 0; padding: var(--d-band-pt) var(--gutter) 40px; background: rgba(14, 9, 8, .45); }
+:is(#route-day, #route-week) .reading-section::before { content: ''; position: absolute; left: var(--gutter); right: var(--gutter); top: 0; height: 1px; background: rgba(222, 184, 88, .4); }
+:is(#route-day, #route-week) .reading-section::after { display: none; }
+:is(#route-day, #route-week) .reading-meta { display: flex; gap: 0; margin: 0; font: italic 500 calc(var(--d-fs-kick) + 0px)/1.3 var(--accent); color: var(--gold-light); }
+:is(#route-day, #route-week) .reading-meta span + span::before { content: '  ·  '; white-space: pre; }
+:is(#route-day, #route-week) .reading-layout { display: block; padding: 0; }
+:is(#route-day, #route-week) .reading-main { display: contents; }
+:is(#route-day, #route-week) .reading-main h2 { margin: 17px 0 0; font: 800 var(--d-fs-h2)/normal var(--display); letter-spacing: 0; color: var(--ink); }
+:is(#route-day, #route-week) #day-reading-body { max-width: 680px; margin: 21px 0 0; font: 400 var(--d-fs-body)/1.25 var(--body); color: #e4d9cf; }
+:is(#route-day, #route-week) .reading-main blockquote { max-width: 700px; margin: 36px 0 0; padding: 0; border: 0; font: italic 500 var(--d-fs-quote)/1.3 var(--accent); color: #f1dfb7; }
+:is(#route-day, #route-week) .reading-side { position: static; width: auto; margin: 40px 0 0; padding: 0; }
+:is(#route-day, #route-week) .reading-side-label { display: block; font: italic 500 17px/1.35 var(--accent); color: var(--gold); }
+:is(#route-day, #route-week) .reading-side p { margin: 5px 0 22px; font: 700 var(--d-fs-side)/1.27 var(--display); color: var(--ink); }
+:is(#route-day, #route-week) .reading-side p:last-child { margin-bottom: 0; }
+:is(#route-day, #route-week) .form-status { margin: 12px 0 0; font: 400 13px/1.3 var(--body); color: var(--gold-light); }
+:is(#route-day, #route-week) .form-status:empty { display: none; }
+
+/* ---------- Call to the cabinet ---------- */
+.site-shell :is(#route-day, #route-week) .unlock-section { position: relative; box-sizing: border-box; display: block; min-height: var(--d-unl-h); margin: 0; padding: var(--d-unl-pt) var(--gutter) 0; }
+:is(#route-day, #route-week) .unlock-text h2 { margin: 0; font: 800 var(--d-fs-unlock)/normal var(--display); letter-spacing: 0; color: var(--ink); }
+:is(#route-day, #route-week) .unlock-text p { max-width: 560px; margin: 14px 0 0; font: 400 var(--d-fs-unl-p)/1.18 var(--body); color: var(--muted); }
+:is(#route-day, #route-week) .unlock-section .button { margin-top: 26px; min-width: 294px; width: auto; }
+
+@media (min-width: 1024px) {
+  :is(#route-day, #route-week) .forecast-visual.daily-visual { position: absolute; left: calc(var(--d-card-cx) - var(--d-card-w) / 2); top: var(--d-card-y); margin: 0; }
+  :is(#route-day, #route-week) .reading-layout { display: grid; grid-template-columns: 72% 28%; grid-auto-rows: auto; gap: 0; }
+  :is(#route-day, #route-week) .reading-main h2 { grid-column: 1 / -1; grid-row: 1; }
+  :is(#route-day, #route-week) #day-reading-body { grid-column: 1; grid-row: 2; }
+  :is(#route-day, #route-week) .reading-main blockquote { grid-column: 1; grid-row: 3; }
+  :is(#route-day, #route-week) .reading-side { grid-column: 2; grid-row: 2 / span 2; margin: 25px 0 0; }
+  :is(#route-day, #route-week) .unlock-section .button { position: absolute; right: var(--gutter); top: calc(var(--d-unl-pt) + 38px); margin: 0; }
+}
+
+/* resets of older rules */
+:is(#route-day, #route-week) .forecast-hero .back-link { display: flex; width: max-content; height: 20px; align-items: center; margin: 0; }
+:is(#route-day, #route-week) .reading-main h2 { max-width: none; }

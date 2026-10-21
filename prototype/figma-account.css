@@ -1,0 +1,29 @@
+/* Account page ("Личный кабинет"). Anchors: the Figma frames "Адаптив / … · Личный кабинет" at 360 … 2560 px (the signed-out view).
+   Head like the chat page, then two columns (profile | security) from 1024 px, one column below. Sizes: ramps with the prefix a-. */
+
+#route-account { position: relative; }
+@media (min-width: 768px) { #route-account { min-height: calc(100vh - var(--header) - 130px); } }
+
+/* ---------- Head ---------- */
+.site-shell #route-account .simple-hero { position: relative; box-sizing: border-box; min-height: var(--a-rule-y); max-width: none; margin: 0; padding: 34px var(--gutter) 0; }
+#route-account .simple-hero .forecast-kicker { display: none; }
+#route-account .simple-hero .back-link { display: flex; width: max-content; height: 20px; align-items: center; margin: 0; }
+#route-account .simple-hero h1 { max-width: 13.4em; margin: 30px 0 0; font: 800 var(--c-fs-h1)/normal var(--display); letter-spacing: 0; color: var(--ink); }
+#route-account .simple-hero h1 em { font: inherit; font-style: normal; color: inherit; }
+#route-account .simple-hero h1 + p { max-width: 540px; margin: 18px 0 0; font: 400 var(--c-fs-lead)/1.18 var(--body); color: var(--muted); }
+
+/* ---------- Columns ---------- */
+.site-shell #route-account .account-layout { display: grid; grid-template-columns: 1fr; gap: 36px 48px; max-width: none; margin: 0; padding: 0 var(--gutter) var(--sec-gap); }
+#route-account .account-card { min-width: 0; padding: 26px 0 0; border: 0; border-top: 1px solid rgba(222, 184, 88, .3); border-radius: 0; background: none; box-shadow: none; }
+#route-account .account-card .subtle-tag { display: block; font: italic 500 18px/24px var(--accent); letter-spacing: 0; text-transform: none; color: var(--gold); }
+#route-account .account-card h2 { margin: 12px 0 0; font: 800 var(--a-fs-title)/1.25 var(--display); letter-spacing: 0; color: var(--ink); }
+#route-account .account-card h2 + p { max-width: 480px; margin: 14px 0 0; font: 400 var(--a-fs-p)/1.17 var(--body); color: var(--muted); }
+#route-account .account-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+#route-account .account-actions .button { min-width: 306px; width: auto; }
+#route-account .birth-card { grid-column: 1 / -1; }
+
+@media (min-width: 1024px) {
+  #route-account .simple-hero h1 { margin-top: 42px; }
+  #route-account .simple-hero h1 + p { position: absolute; right: var(--gutter); top: var(--c-lead-y); margin: 0; }
+  .site-shell #route-account .account-layout { grid-template-columns: 1fr 1fr; }
+}

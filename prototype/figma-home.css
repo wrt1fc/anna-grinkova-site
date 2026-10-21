@@ -219,7 +219,8 @@
   .mobile-nav { height: 74px; }
 }
 @media (min-width: 768px) {
-  .site-shell .site-footer.section-wrap { display: grid; grid-template-columns: 36% minmax(0, 1fr); align-content: center; gap: 0; height: 130px; margin: var(--sec-gap) 0 0; padding: 0 var(--gutter); background: #0b0807; border: 0; box-sizing: border-box; }
+  .site-shell .site-footer.section-wrap { display: grid; grid-template-columns: 42% minmax(0, 1fr); align-content: center; gap: 0; height: 130px; margin: 0; padding: 0 var(--hdr-px); background: #0b0807; border: 0; box-sizing: border-box; }
+  .site-shell:has(#route-home:not([hidden])) .site-footer.section-wrap { margin-top: var(--sec-gap); }
   .site-footer .footer-brand { font: 700 16px/24px var(--display); color: var(--ink); }
   .site-footer > div:first-child { grid-column: 1; grid-row: 1; }
   .site-footer > div:first-child p { margin: 4px 0 0; font: 400 13px/16px var(--body); }

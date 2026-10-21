@@ -1,51 +1,86 @@
-// Builds prototype/responsive-tokens.css from the sizes measured in the Figma page "07 · Адаптив".
+// Builds prototype/responsive-tokens.css from the sizes measured in the Figma page "07 · Адаптив" (and the "Mobile" frames at 390).
 // Every token is a ramp: its value at the widths of the frames is exactly the Figma value, between two frames it changes
 // linearly with the window width, below the first frame and above the last one it stays constant.
+// A token lists only the widths where Figma has a value: { 768: 40, 1024: 48, ... }.
 // Run: node scripts/build-responsive-tokens.mjs   (edit the table below after the design changes, then run again)
 import { writeFileSync } from 'node:fs';
 
-// Window widths that have a frame in Figma (a phone is drawn at 390 in the "Mobile" tab, the rest are in "07 · Адаптив").
-const W = [390, 768, 1024, 1280, 1366, 1536, 1920, 2560];
+// A: the home page (390 is the old phone frame). B: the inner pages (360 and 430 are their phone frames).
+const A = (...values) => Object.fromEntries([390, 768, 1024, 1280, 1366, 1536, 1920, 2560].map((w, i) => [w, values[i]]).filter(([, v]) => v != null));
+const B = (...values) => Object.fromEntries([360, 430, 768, 1024, 1280, 1366, 1536, 1920, 2560].map((w, i) => [w, values[i]]).filter(([, v]) => v != null));
 
-// name: value at each of W; null = this width has no value (the token is not used there, the ramp skips it).
 const TOKENS = {
-  // page frame
-  gutter:        [20, 40, 48, 64, 72, 96, 160, 400],
-  header:        [70, 76, 80, 84, 84, 90, 94, 94],
-  'hdr-px':      [20, 28, 32, 44, 48, 54, 67, 88],
-  'nav-gap':     [null, null, 20, 26, 27, 31, 38, 40],
-  'nav-fs':      [null, null, 13, 14, 14, 14, 14, 14],
-  // hero
-  'hero-h':      [null, null, 688, 636, 684, 774, 986, 1346],
-  'hero-pt':     [null, null, 158, 118, 132, 160, 238, 370],
-  'fs-kicker':   [17, 20, 18, 19, 20, 21, 24, 24],
-  'fs-h1':       [38, 46, 40, 46, 50, 58, 68, 84],
-  'fs-lead':     [16, 18, 16, 17, 18, 19, 22, 24],
-  // sections of the home page
-  'sec-gap':     [55, 72, 80, 88, 96, 104, 120, 140],
-  'fs-h2':       [32, 34, 36.9, 46, 49.2, 55.3, 56, 56],
-  'fs-draw':     [28, 42, 28.4, 35.3, 37.4, 41.1, 42, 42],
-  'fs-week-n':   [130, 150, 150, 178, 190, 213, 240, 240],
-  'fs-week-w':   [25, 33, 33, 39, 42, 47, 53, 53],
-  'fs-week-t':   [28, 30, 30, 34.6, 36.9, 41.5, 46, 46],
-  'fs-invite':   [21, 22, 22, 25, 26.6, 30, 30, 30],
-  'fs-name':     [30, 44, 47.1, 58.9, 62.8, 70.7, 80, 80],
-  'h2-block':    [69, 123, 124, 137, 142, 152, 157, 160],
-  'q-h':         [96, 120, 92, 92, 92, 100, 120, 120],
-  'draw-h':      [692, 903, 380, 435, 462, 508, 605, 665],
-  'week-h':      [348, 427, 269, 286, 299, 322, 367, 383],
-  'about-gap':   [0, 0, 23, 23, 29, 33, 41, 55],
-  'about-cpt':   [0, 0, 25, 33, 35, 39, 47, 53],
-  // hero when it is stacked (portrait above the text): portrait height and the space under it
-  'hero-ph':     [440, 522, null, null, null, null, null, null],
-  'hero-cpt':    [31, 10, null, null, null, null, null, null],
+  // ---- page frame (home frames; the inner pages use the same gutter and header) ----
+  gutter:        { 360: 16, 390: 20, 430: 20, 768: 40, 1024: 48, 1280: 64, 1366: 72, 1536: 96, 1920: 160, 2560: 400 },
+  header:        { 360: 64, 390: 70, 430: 70, 768: 76, 1024: 80, 1280: 84, 1366: 84, 1536: 90, 1920: 94, 2560: 94 },
+  'hdr-px':      { 360: 16, 390: 20, 430: 20, 768: 28, 1024: 32, 1280: 44, 1366: 48, 1536: 54, 1920: 67, 2560: 88 },
+  'nav-gap':     A(null, null, 20, 26, 27, 31, 38, 40),
+  'nav-fs':      A(null, null, 13, 14, 14, 14, 14, 14),
+  // ---- home: hero ----
+  'hero-h':      A(null, null, 688, 636, 684, 774, 986, 1346),
+  'hero-pt':     A(null, null, 158, 118, 132, 160, 238, 370),
+  'hero-ph':     A(440, 522),
+  'hero-cpt':    A(31, 10),
+  'fs-kicker':   A(17, 20, 18, 19, 20, 21, 24, 24),
+  'fs-h1':       A(38, 46, 40, 46, 50, 58, 68, 84),
+  'fs-lead':     A(16, 18, 16, 17, 18, 19, 22, 24),
+  // ---- home: sections ----
+  'sec-gap':     A(55, 72, 80, 88, 96, 104, 120, 140),
+  'fs-h2':       A(32, 34, 36.9, 46, 49.2, 55.3, 56, 56),
+  'fs-draw':     A(28, 42, 28.4, 35.3, 37.4, 41.1, 42, 42),
+  'h2-block':    A(69, 123, 124, 137, 142, 152, 157, 160),
+  'q-h':         A(96, 120, 92, 92, 92, 100, 120, 120),
+  'draw-h':      A(692, 903, 380, 435, 462, 508, 605, 665),
+  'fs-week-n':   A(130, 150, 150, 178, 190, 213, 240, 240),
+  'fs-week-w':   A(25, 33, 33, 39, 42, 47, 53, 53),
+  'fs-week-t':   A(28, 30, 30, 34.6, 36.9, 41.5, 46, 46),
+  'week-h':      A(348, 427, 269, 286, 299, 322, 367, 383),
+  'fs-invite':   A(21, 22, 22, 25, 26.6, 30, 30, 30),
+  'fs-name':     A(30, 44, 47.1, 58.9, 62.8, 70.7, 80, 80),
+  'about-gap':   A(0, 0, 23, 23, 29, 33, 41, 55),
+  'about-cpt':   A(0, 0, 25, 33, 35, 39, 47, 53),
+  // ---- day page ----
+  'd-atm-h':     B(792, 792, 792, 792, 978, 1043, 1173, 1467, 1650),
+  'd-unl-h':     B(251, 266, 302, 228, 251, 269, 293, 338, 379),
+  'w-hero-h':    B(667, 638, 666, 768, 720, 768, 864, 1080, 1440),
+  'w-band-h':    B(604, 604, 588, 446, 486, 518, 566, 641, 583),
+  'w-unl-h':     B(304, 285, 302, 228, 251, 269, 293, 364, 407),
+  'w-fs7':       B(187, 187, 187, 187, 231, 247, 277, 340, 340),
+  'w-7-y':       B(342, 302, 315, 241, 191, 206, 235, 306, 486),
+  'c-fs-h1':     B(33, 37, 44, 44, 51, 55, 64, 75, 92),
+  'c-fs-lead':   B(15, 16, 18, 16, 17, 18, 19, 22, 24),
+  'c-lead-y':    B(220, 220, 220, 95, 104, 109, 121, 135, 272),
+  'c-fs-greet':  B(15, 16, 18, 16, 17, 17, 18, 18, 18),
+  'c-pad':       B(16, 16, 24, 28, 29, 31, 34, 34, 34),
+  'a-fs-title':  B(26, 26, 28, 28, 32, 35, 41, 48, 48),
+  'a-fs-p':      B(15, 16, 18, 16, 17, 18, 18, 18, 18),
+  'a-rule-y':    B(231, 241, 239, 239, 251, 259, 275, 295, 324),
+  'r-card-w':    B(56, 68, 120, 76, 96, 103, 114, 120, 120),
+  'r-q-h':       B(110, 110, 170, 110, 133, 141, 155, 170, 170),
+  'd-fs-kick':   B(17, 18, 20, 18, 19, 20, 21, 22, 22),
+  'd-fs-h1':     B(38, 43, 50, 50, 58, 63, 73, 85, 105),
+  'd-fs-lead':   B(15, 16, 18, 16, 17, 18, 19, 22, 24),
+  'd-kick-gap':  B(64, 64, 64, 102, 91, 101, 119, 161, 233),
+  'd-hero-h':    B(759, 807, 942, 768, 720, 768, 864, 1080, 1440),
+  'd-card-w':    B(158, 188, 257, 274, 253, 272, 308, 359, 359),
+  'd-card-y':    B(350, 340, 353, 121, 111, 120, 137, 203, 383),
+  'd-card-cx':   B(180, 215, 384, 791, 985, 1050, 1171, 1440, 1808),
+  'd-band-h':    B(616, 588, 587, 394, 424, 449, 483, 542, 574),
+  'd-band-pt':   B(38, 45, 58, 64, 70, 77, 83, 96, 112),
+  'd-fs-h2':     B(30, 32, 38, 38, 44, 48, 55, 64, 64),
+  'd-fs-body':   B(16, 17, 19, 17, 18, 19, 20, 21, 21),
+  'd-fs-quote':  B(22, 22, 24, 24, 28, 30, 35, 40, 40),
+  'd-fs-side':   B(19, 20, 22, 20, 21, 22, 23, 26, 26),
+  'd-fs-unlock': B(28, 28, 32, 32, 37, 40, 46, 54, 56),
+  'd-fs-unl-p':  B(15, 16, 18, 16, 17, 18, 19, 22, 24),
+  'd-unl-pt':    B(34, 39, 50, 56, 62, 67, 73, 84, 98),
 };
 
-const round = (n) => Math.round(n * 1000) / 1000;
+const round = (n) => Math.round(n * 10000) / 10000;
 const lines = ['/* Generated by scripts/build-responsive-tokens.mjs from the Figma page "07 · Адаптив". Do not edit by hand. */', ''];
 
-function ramp(name, values) {
-  const points = W.map((w, i) => [w, values[i]]).filter(([, v]) => v != null);
+function ramp(name, anchors) {
+  const points = Object.entries(anchors).map(([w, v]) => [Number(w), v]).sort((a, b) => a[0] - b[0]);
   const first = points[0], last = points.at(-1);
   const out = [`:root { --${name}: ${first[1]}px; }`];
   for (let i = 0; i < points.length - 1; i++) {
@@ -58,7 +93,7 @@ function ramp(name, values) {
   return out.join('\n');
 }
 
-for (const [name, values] of Object.entries(TOKENS)) lines.push(ramp(name, values), '');
+for (const [name, anchors] of Object.entries(TOKENS)) lines.push(ramp(name, anchors), '');
 // Above the widest frame the page stays 1760 px wide and is centred.
 lines.push('@media (min-width: 2560px) { :root { --gutter: calc((100vw - 1760px) / 2); } }', '');
 // The width of the content between the gutters, used by sections that scale with it.

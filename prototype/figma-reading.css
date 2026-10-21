@@ -1,0 +1,54 @@
+/* Reading by request ("Расклад по запросу"). Anchors: the Figma frames "Адаптив / … · Расклад по запросу" at 360 … 2560 px.
+   From 1024 px the question form is on the left (46 %) and the deck on the right (46 %); below 1024 px the deck comes first.
+   Sizes: ramps with the prefixes r-, c- and d- (responsive-tokens.css). */
+
+/* ---------- Head: back link, kicker, heading, lead ---------- */
+.site-shell #route-reading .reading-hero { position: relative; box-sizing: border-box; max-width: none; margin: 0; padding: 34px var(--gutter) 0; }
+#route-reading .reading-hero .back-link { display: flex; width: max-content; height: 20px; align-items: center; margin: 0; }
+#route-reading .reading-hero .forecast-kicker { margin: 42px 0 0; height: 44px; font: italic 500 var(--d-fs-kick)/1.25 var(--accent); color: var(--gold); }
+#route-reading .reading-hero h1 { max-width: 13.4em; margin: 0; font: 800 var(--c-fs-h1)/normal var(--display); letter-spacing: 0; color: var(--ink); }
+#route-reading .reading-hero h1 em { font: inherit; font-style: normal; color: inherit; }
+#route-reading .reading-hero .rd-lead { max-width: 540px; margin: 18px 0 0; font: 400 var(--c-fs-lead)/1.18 var(--body); color: var(--muted); }
+
+/* ---------- Ask: deck and form ---------- */
+.site-shell #route-reading .rd-ask { display: flex; flex-direction: column; gap: 0; max-width: none; margin: 0; padding: 32px var(--gutter) var(--sec-gap); }
+#route-reading .rd-deck { order: 0; }
+#route-reading .rd-heading { margin: 0 0 14px; font: italic 500 17px/23px var(--accent); letter-spacing: 0; color: var(--gold); }
+#route-reading .rd-cards { display: flex; gap: 12px; padding: 14px 0 0; }
+#route-reading .rd-card { display: grid; justify-items: center; align-content: start; gap: 14px; flex: none; width: var(--r-card-w); padding: 0; border: 0; background: none; }
+#route-reading .rd-card-face { width: 100%; height: auto; aspect-ratio: 120 / 185; border-radius: 8px; }
+#route-reading .rd-card-num { font: 700 22px/28px var(--display); }
+#route-reading .rd-card[aria-pressed="true"] .rd-card-face { transform: translateY(-12px); box-shadow: inset 0 0 0 2px var(--gold-light); }
+#route-reading .rd-deck-note { max-width: none; margin: 8px 0 0; font: 400 13px/15px var(--body); color: var(--gold-light); }
+#route-reading .rd-form { order: 1; margin-top: 30px; }
+#route-reading .rd-label { display: block; margin: 0 0 7px; font: 400 13px/15px var(--body); color: var(--gold-light); }
+#route-reading .rd-field { position: relative; max-width: none; }
+#route-reading #rd-question { display: block; width: 100%; box-sizing: border-box; height: var(--r-q-h); min-height: 0; resize: none; padding: 16px 16px 30px; border: 1px solid #856135; border-radius: 5px; background: #140d0a; color: var(--ink); font: 400 16px/1.2 var(--body); }
+#route-reading #rd-question::placeholder { color: #a99685; }
+#route-reading .rd-count { position: absolute; right: 16px; bottom: 8px; font: 400 12px/14px var(--body); color: var(--muted); }
+#route-reading .rd-numbers { margin-top: 28px; }
+#route-reading .rd-numbers-row { display: flex; gap: 10px; margin-top: 11px; }
+#route-reading .rd-num { width: 56px; height: 56px; padding: 0; font: 700 20px/25px var(--display); }
+#route-reading .rd-submit { margin-top: 28px; }
+#route-reading .rd-guest { margin-top: 30px; max-width: 520px; }
+
+@media (min-width: 1024px) {
+  .site-shell #route-reading .reading-hero .rd-lead { position: absolute; right: var(--gutter); top: calc(var(--c-lead-y) + 44px); margin: 0; }
+  .site-shell #route-reading .rd-ask { display: grid; grid-template-columns: 46% 46%; column-gap: 8%; align-items: start; padding-top: 56px; }
+  #route-reading .rd-form, #route-reading .rd-guest { grid-column: 1; grid-row: 1; margin-top: 0; }
+  #route-reading .rd-deck { grid-column: 2; grid-row: 1; }
+  #route-reading .rd-heading { display: none; }
+  #route-reading .rd-cards { padding-top: 12px; }
+}
+
+#route-reading .rd-numbers { margin-bottom: 0; }
+#route-reading .rd-submit { margin-top: 28px; }
+@media (min-width: 768px) { #route-reading { min-height: calc(100vh - var(--header) - 130px); } }
+#route-reading .reading-hero .forecast-kicker { margin-top: 30px; }
+.site-shell #route-reading .rd-ask { align-items: stretch; }
+#route-reading .rd-deck, #route-reading .rd-form { width: 100%; box-sizing: border-box; }
+@media (min-width: 1024px) {
+  #route-reading .reading-hero .forecast-kicker { margin-top: 42px; }
+  .site-shell #route-reading .rd-ask { align-items: start; }
+}
+#route-reading .rd-form, #route-reading .rd-guest { max-width: none; }

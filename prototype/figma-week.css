@@ -1,0 +1,17 @@
+/* Week page ("Прогноз недели"): the same page as the day page (figma-day.css) with the big 7 instead of the card.
+   Frames: "Адаптив / … · Прогноз недели" at 360 … 2560 px. The 7, "дней" and the seven ticks are drawn in units of the size of the 7
+   (--w-fs7), centred on the same axis as the card of the day page. */
+
+#route-week { --d-hero-h: var(--w-hero-h); --d-band-h: var(--w-band-h); --d-unl-h: var(--w-unl-h); }
+#route-week .forecast-hero-copy > p:not(.forecast-kicker) { max-width: 520px; }
+
+#route-week .forecast-visual.weekly-visual { position: absolute; left: calc(var(--d-card-cx) - (var(--w-fs7) * 1.19 + 48px) / 2); top: var(--w-7-y); width: calc(var(--w-fs7) * 1.19 + 48px); height: calc(var(--w-fs7) * 1.25); margin: 0; padding: 0; overflow: visible; }
+#route-week .weekly-visual::before, #route-week .weekly-visual::after { display: none; }
+#route-week .week-visual-inner { position: relative; inset: auto; width: 100%; height: 100%; padding: 0; transform: none; }
+#route-week .week-visual-title { position: static; display: block; margin: 0; transform: none; animation: none; }
+#route-week .week-visual-number { position: absolute; left: 40px; top: 0; margin: 0; font: 800 var(--w-fs7)/.9 var(--display); letter-spacing: 0; color: var(--gold-light); text-shadow: none; }
+#route-week .week-visual-word { position: absolute; left: calc(40px + var(--w-fs7) * .632); top: calc(var(--w-fs7) * .588); margin: 0; font: italic 500 calc(var(--w-fs7) * .22)/1.3 var(--accent); color: var(--gold); }
+#route-week .week-visual-days { position: absolute; left: 0; right: auto; top: calc(var(--w-fs7) * .945); bottom: auto; display: flex; gap: 8px; width: 100%; font-size: 13px; }
+#route-week .week-visual-days span { flex: 0 0 calc(var(--w-fs7) * .1706); box-sizing: border-box; padding-top: 10px; border-top: 1px solid rgba(222, 184, 88, .45); text-align: center; font: 400 13px/15px var(--body); letter-spacing: 0; color: var(--muted); }
+#route-week .week-visual-days span.is-today { border-top: 4px solid var(--gold-light); margin-top: -1px; padding-top: 7px; font-weight: 700; color: var(--gold-light); }
+#route-week .unlock-section .button { min-width: 0; padding-right: 14px; }
