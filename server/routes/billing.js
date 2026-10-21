@@ -35,6 +35,7 @@ export function createBillingRoutes({ store, billing, trustProxy, metrics, proda
     const outcome = await prodamus.handle(await readRaw(req), req.headers.sign);
     metrics.count(`billing_prodamus_${outcome}`);
     if (outcome === 'bad_signature') return json(res, 403, { error: 'forbidden' });
+    if (outcome === 'bad_request') return json(res, 400, { error: 'invalid_notification' });
     if (outcome === 'unknown_user' || outcome === 'unknown_amount') console.error(`Prodamus payment not applied: ${outcome}`);
     return json(res, 200, { ok: true });
   }

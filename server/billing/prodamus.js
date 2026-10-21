@@ -6,34 +6,63 @@ const DAY_MS = 86_400_000;
 export const PRODAMUS_PLAN = catalog.plan;
 export const PRODAMUS_PRODUCTS = catalog.products.map((product) => ({ ...product, amountKop: Math.round(product.priceRub * 100) }));
 
-// Form fields like products[0][name] become nested objects/arrays.
+// Limits on what an unsigned request may make us build before its signature is checked.
+const MAX_FIELDS = 300;
+const MAX_DEPTH = 5;
+const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+const BRACKETED = /^([^[]+)((?:\[[^\]]+\])+)$/;
+
+// Form fields like products[0][name] become nested objects; numbered levels become lists, as Prodamus builds them for
+// its signature. Objects have no prototype and keys like __proto__ are refused: the body is parsed before the signature
+// is checked, so anyone could send it. Returns null for a body that does not look like a Prodamus form.
 export function parseForm(raw) {
-  const root = {};
-  for (const [key, value] of new URLSearchParams(raw)) {
-    const path = key.split(/\]\[|\[|\]/).filter((part) => part !== '');
+  const fields = [...new URLSearchParams(raw)];
+  if (fields.length > MAX_FIELDS) return null;
+  const root = Object.create(null);
+  for (const [key, value] of fields) {
+    const match = BRACKETED.exec(key);
+    const path = match ? [match[1], ...[...match[2].matchAll(/\[([^\]]+)\]/g)].map((part) => part[1])] : [key];
+    if (path.length > MAX_DEPTH || path.some((part) => FORBIDDEN_KEYS.has(part))) return null;
     let node = root;
-    path.forEach((part, index) => {
-      if (index === path.length - 1) { node[part] = value; return; }
-      node[part] ??= {};
+    for (const [index, part] of path.entries()) {
+      if (index === path.length - 1) { node[part] = value; break; }
+      if (typeof node[part] !== 'object') node[part] = Object.create(null);
       node = node[part];
-    });
+    }
   }
-  return root;
+  return toLists(root);
 }
 
-// Prodamus signs the payload as JSON with sorted keys, every scalar turned into a string and "/" escaped.
+function toLists(node) {
+  if (typeof node !== 'object') return node;
+  const keys = Object.keys(node);
+  if (keys.length && keys.every((key) => /^\d{1,3}$/.test(key))) {
+    // products[1] without products[0] still makes a list of two, the missing place empty, as on Prodamus' side.
+    return Array.from({ length: Math.max(...keys.map(Number)) + 1 }, (_, index) => (String(index) in node ? toLists(node[index]) : {}));
+  }
+  const result = Object.create(null);
+  for (const key of keys) result[key] = toLists(node[key]);
+  return result;
+}
+
+// Prodamus signs the payload as JSON with sorted keys and every scalar turned into a string.
 function canonical(value) {
   if (Array.isArray(value)) return value.map(canonical);
   if (value && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonical(value[key])]));
   return String(value ?? '');
 }
-export function signPayload(payload, secretKey) {
-  const text = JSON.stringify(canonical(payload)).replaceAll('/', '\/');
-  return createHmac('sha256', secretKey).update(text, 'utf8').digest('hex');
+export function signPayload(payload, secretKey, { escapeSlashes = false } = {}) {
+  const json = JSON.stringify(canonical(payload));
+  return createHmac('sha256', secretKey).update(escapeSlashes ? json.replaceAll('/', '\\/') : json, 'utf8').digest('hex');
 }
 function sameSign(expected, received) {
   const a = Buffer.from(expected), b = Buffer.from(String(received ?? '').toLowerCase());
   return a.length === b.length && timingSafeEqual(a, b);
+}
+// PHP's json_encode writes "/" as "\/" unless told otherwise; both forms are keyed with our secret, so accepting either
+// does not let anyone without the key through.
+function validSign(payload, secretKey, received) {
+  return sameSign(signPayload(payload, secretKey), received) || sameSign(signPayload(payload, secretKey, { escapeSlashes: true }), received);
 }
 
 // Payment link with the buyer's email filled in, so the notification names the account.
@@ -48,10 +77,11 @@ export function payLink(product, email) {
 export function createProdamus({ store, secretKey, now = Date.now }) {
   if (!secretKey) return null;
 
-  // Returns the outcome: paid, duplicate, ignored, unknown_amount, unknown_user or bad_signature.
+  // Returns the outcome: paid, duplicate, ignored, unknown_amount, unknown_user, bad_request or bad_signature.
   async function handle(rawBody, signHeader) {
     const payload = parseForm(rawBody);
-    if (!sameSign(signPayload(payload, secretKey), signHeader)) return 'bad_signature';
+    if (!payload) return 'bad_request';
+    if (!validSign(payload, secretKey, signHeader)) return 'bad_signature';
     if (payload.payment_status !== 'success') return 'ignored';
     const paymentId = String(payload.order_id ?? payload.payment_id ?? '');
     const product = PRODAMUS_PRODUCTS.find((item) => Math.round(Number(payload.sum) * 100) === item.amountKop);

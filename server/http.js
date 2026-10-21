@@ -66,7 +66,8 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
   mailDailyLimit = 0, trafficLimiter = createTrafficLimiter(), chatLimiter = createTrafficLimiter({ perIpLimit: 6, globalLimit: 300 }),
   chatGate = createConcurrencyGate(2), loginGuard = createLoginGuard(), trustProxy = false, forecastWriter = null, chatWriter = null,
   requirePrivacyConsent = false, searchVerification = {}, sotisVerifier = null, metrics = NULL_METRICS, knowledge = null, paymentProvider = null, paymentProviders = null, prodamusKey = null, publicUrl = 'http://localhost:3000',
-  pageViewLimiter = createTrafficLimiter({ perIpLimit: 30, globalLimit: 3000 }), streamKeepAliveMs = undefined }) {
+  pageViewLimiter = createTrafficLimiter({ perIpLimit: 30, globalLimit: 3000 }), streamKeepAliveMs = undefined,
+  webhookLimiter = createTrafficLimiter({ perIpLimit: 120, globalLimit: 1200 }) }) {
   if (!codeSecret || String(codeSecret).length < 32) throw new Error('AUTH_CODE_SECRET must have at least 32 characters');
   if (!Number.isSafeInteger(mailDailyLimit) || mailDailyLimit < 0) throw new Error('MAIL_DAILY_LIMIT must be a non-negative integer');
   const rootPath = fileURLToPath(root);
@@ -142,10 +143,11 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
         try { healthy = await store.health(); } catch (error) { console.error('Health check: database unavailable:', error.message); }
         return json(res, healthy ? 200 : 503, { status: healthy ? 'ok' : 'unavailable' });
       }
-      // Payment notifications have their own checks (provider IPs or signatures) and must not lose to visitor traffic.
+      // Payment notifications have their own checks (provider IPs or signatures) and must not lose to visitor traffic,
+      // so they get a separate, larger budget: enough for a provider's bursts, not for a flood of forged requests.
       const isWebhook = path.startsWith('/api/billing/webhook/');
       if (path.startsWith('/api/')) {
-        const traffic = isWebhook ? { allowed: true } : trafficLimiter.check(clientAddress(req, trustProxy));
+        const traffic = (isWebhook ? webhookLimiter : trafficLimiter).check(clientAddress(req, trustProxy));
         if (!traffic.allowed) return json(res, 429, { error: 'rate_limited', message: 'Слишком много запросов. Попробуйте позже.' }, { 'Retry-After': String(traffic.retryAfter) });
         if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) && req.headers.origin) {
           let originHost = null;
