@@ -622,4 +622,6 @@
 
 @media (min-width: 2560px) { :root { --gutter: calc((100vw - 1760px) / 2); } }
 
+@media (min-width: 2560px) { :root { --d-card-cx: calc(1808px + (100vw - 2560px) / 2); } }
+
 :root { --content: calc(100vw - 2 * var(--gutter)); }

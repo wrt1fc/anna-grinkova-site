@@ -96,6 +96,8 @@ function ramp(name, anchors) {
 for (const [name, anchors] of Object.entries(TOKENS)) lines.push(ramp(name, anchors), '');
 // Above the widest frame the page stays 1760 px wide and is centred.
 lines.push('@media (min-width: 2560px) { :root { --gutter: calc((100vw - 1760px) / 2); } }', '');
+// The card of the day page and the 7 of the week page stay on the right of the centred content.
+lines.push('@media (min-width: 2560px) { :root { --d-card-cx: calc(1808px + (100vw - 2560px) / 2); } }', '');
 // The width of the content between the gutters, used by sections that scale with it.
 lines.push(':root { --content: calc(100vw - 2 * var(--gutter)); }', '');
 writeFileSync(new URL('../prototype/responsive-tokens.css', import.meta.url), lines.join('\n'));

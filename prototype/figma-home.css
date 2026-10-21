@@ -166,7 +166,7 @@
 .about-seal::before { display: none; }
 .about-seal-inner { display: block; position: absolute; left: 1.2cqw; top: 1.2cqw; width: 15.9cqw; height: 15.9cqw; }
 .about-seal-mark { position: absolute; left: 6.2cqw; top: 6.2cqw; width: 5.1cqw; height: 5.1cqw; object-fit: contain; }
-.about-portrait figcaption { position: absolute; left: 32cqw; top: 100.5cqw; width: auto; margin: 0; text-align: left; white-space: nowrap; font: italic 500 16px/21px var(--accent); color: var(--gold-light); }
+.about-portrait figcaption { position: absolute; left: 0; top: 125.7cqw; width: 100%; margin: 0; text-align: center; white-space: normal; font: italic 500 16px/21px var(--accent); color: var(--gold-light); }
 .about-star { display: block; position: absolute; background-repeat: no-repeat; background-size: contain; }
 .about-star-16 { left: 88cqw; top: 15cqw; width: 2.4cqw; height: 2.4cqw; background-image: url('./assets/about/star-16.svg'); }
 .about-star-10 { left: 94cqw; top: 68cqw; width: 1.5cqw; height: 1.5cqw; background-image: url('./assets/about/star-10.svg'); }
@@ -202,6 +202,7 @@
   .about-index span { grid-column: 2; margin: 0; font-size: 15px; }
   .about-index a::after { top: 50%; margin-top: -9px; }
   .about-copy .inline-action { display: inline-block; margin-top: 32px; }
+  .about-portrait figcaption { left: 32cqw; top: 100.5cqw; width: auto; text-align: left; white-space: nowrap; }
   .about-portrait { grid-column: 2; grid-row: 1; justify-self: end; width: 98.9%; max-width: none; aspect-ratio: 1; margin: 0 0 30px; overflow: visible; }
 }
 

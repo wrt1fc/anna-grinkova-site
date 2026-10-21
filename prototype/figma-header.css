@@ -4,7 +4,7 @@
    - below 768 px: logo and a user icon, the pages are in the bottom bar.
    Side padding, link size and link gap come from the ramps in responsive-tokens.css. */
 
-.site-shell .site-header { position: sticky; top: 0; display: flex; align-items: center; gap: 0; height: var(--header); padding: 0 var(--hdr-px); box-sizing: border-box; }
+.site-shell .site-header { position: sticky; top: 0; z-index: 20; background: #130d0b; border-bottom: 1px solid rgba(222, 184, 88, .22); display: flex; align-items: center; gap: 0; height: var(--header); padding: 0 var(--hdr-px); box-sizing: border-box; }
 .site-header .brand { min-width: 0; gap: 12px; }
 .site-header .brand-symbol { width: 40px; height: 40px; }
 .site-header .brand-name { font: 700 16px/1.25 var(--display); letter-spacing: 0; }
