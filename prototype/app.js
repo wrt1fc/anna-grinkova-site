@@ -524,3 +524,16 @@ document.getElementById('birth-form').addEventListener('submit', async (event) =
 window.addEventListener('popstate', showRoute);
 window.addEventListener('hashchange', showRoute);
 showRoute();
+
+// Menu button of the tablet header: opens and closes the list of pages.
+(() => {
+  const toggle = document.querySelector('.menu-toggle');
+  const menu = document.getElementById('site-menu');
+  if (!toggle || !menu) return;
+  const setOpen = (open) => { menu.hidden = !open; toggle.setAttribute('aria-expanded', String(open)); };
+  toggle.addEventListener('click', (event) => { event.stopPropagation(); setOpen(menu.hidden); });
+  menu.addEventListener('click', (event) => { if (event.target.closest('a')) setOpen(false); });
+  document.addEventListener('click', (event) => { if (!menu.hidden && !menu.contains(event.target)) setOpen(false); });
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !menu.hidden) { setOpen(false); toggle.focus(); } });
+  window.addEventListener('anna-route', () => setOpen(false));
+})();

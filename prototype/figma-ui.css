@@ -1,0 +1,17 @@
+/* Shared components drawn in Figma ("03 · UI-kit"). Loaded before the page files. */
+
+/* Button / Primary: flat gold, bronze edge, 8 px radius, 58 px high, the arrow is a plain 16.8 px icon in a 33.6 px box on the right */
+.button-gold {
+  display: inline-flex; align-items: center; justify-content: center; gap: 14px; position: relative;
+  height: 58px; min-height: 58px; min-width: 250px; padding: 0 14px 0 48px;
+  border: 1px solid #8b561e; border-radius: 8px; background: #deb858; background-image: none; box-shadow: none;
+  color: #211612; font: 700 15px/1.2 var(--body); letter-spacing: 0; text-align: center; white-space: nowrap;
+}
+.button-gold > span[aria-hidden="true"] {
+  position: static; transform: none; flex: none; display: grid; place-items: center; width: 33.6px; height: 33.6px;
+  margin: 0; border: 0; border-radius: 0; background: none; box-shadow: none; color: #211612; font-size: 0;
+}
+.button-gold > span[aria-hidden="true"]::before { width: 16.8px; height: 16.8px; border: 0; box-shadow: none; }
+.button-gold:hover { background: #e8c569; border-color: #8b561e; box-shadow: none; }
+.button-gold:active { background: #d3a95a; box-shadow: none; }
+.button-gold > span[aria-hidden="true"]::before { -webkit-mask: url('./assets/icon-arrow-btn.svg') center / contain no-repeat; mask: url('./assets/icon-arrow-btn.svg') center / contain no-repeat; background: currentColor; }

@@ -1,0 +1,38 @@
+/* Header and menus from the Figma frames of "07 · Адаптив" and "Mobile":
+   - from 1024 px: logo on the left, the five links centred, "Личный кабинет" on the right;
+   - 768–1023 px: logo, "Личный кабинет" and a menu button that opens the list of pages;
+   - below 768 px: logo and a user icon, the pages are in the bottom bar.
+   Side padding, link size and link gap come from the ramps in responsive-tokens.css. */
+
+.site-shell .site-header { position: sticky; top: 0; display: flex; align-items: center; gap: 0; height: var(--header); padding: 0 var(--hdr-px); box-sizing: border-box; }
+.site-header .brand { min-width: 0; gap: 12px; }
+.site-header .brand-symbol { width: 40px; height: 40px; }
+.site-header .brand-name { font: 700 16px/1.25 var(--display); letter-spacing: 0; }
+.site-header .desktop-nav { display: none; }
+.site-header .header-entry { order: 2; display: inline-flex; margin-left: auto; height: 58px; min-width: 195px; box-sizing: border-box; }
+.menu-toggle { order: 3; display: none; width: 28px; height: 28px; margin-left: 24px; padding: 0; border: 0; background: none; color: var(--gold-light); align-items: center; justify-content: center; }
+.menu-toggle:focus-visible { outline: 2px solid var(--gold-light); outline-offset: 6px; }
+
+/* The list of pages opened by the menu button (tablet) */
+.site-menu { position: fixed; z-index: 30; top: var(--header); right: var(--hdr-px); display: none; min-width: 240px; padding: 8px 0; border: 1px solid #6e4929; border-radius: 8px; background: #130d0b; box-shadow: 0 18px 40px rgba(0, 0, 0, .45); }
+.site-menu:not([hidden]) { display: grid; }
+.site-menu a { padding: 13px 20px; font: 400 16px/1.3 var(--body); color: var(--ink); }
+.site-menu a:hover, .site-menu a[aria-current="page"] { color: var(--gold-light); }
+
+@media (max-width: 767.98px) {
+  .site-header .header-entry { display: inline-flex; min-width: 0; width: 41px; height: 41px; padding: 0; justify-content: center; border-radius: 50%; }
+  .site-header .header-entry > span:not(.ui-icon) { display: none; }
+  .site-menu { display: none !important; }
+}
+@media (min-width: 768px) {
+  .mobile-nav { display: none !important; }
+  body { padding-bottom: 0; }
+}
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  .menu-toggle { display: inline-flex; }
+}
+@media (min-width: 1024px) {
+  .menu-toggle, .site-menu { display: none !important; }
+  .site-header .desktop-nav { display: flex; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); gap: var(--nav-gap); }
+  .site-header .desktop-nav a { padding: 12px 0; font-size: var(--nav-fs); white-space: nowrap; }
+}
