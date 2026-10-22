@@ -106,6 +106,8 @@ function renderDailyForecast(data) {
   document.querySelector('.daily-visual .mini-card').style.setProperty('--tarot-art', tarotArt(data.tarot.number));
   document.getElementById('route-day').style.setProperty('--tarot-art', tarotArt(data.tarot.number));
   document.getElementById('day-card-footer').textContent = `${numeral} · карта дня`;
+  document.getElementById('day-plate-num').textContent = `${numeral}  ·  КАРТА ДНЯ`;
+  document.getElementById('day-plate-name').textContent = data.tarot.name;
   document.getElementById('day-card-label').textContent = `Карта «${data.tarot.name}»`;
   document.getElementById('day-date-label').textContent = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' })
     .format(new Date(`${data.date}T12:00:00+03:00`));

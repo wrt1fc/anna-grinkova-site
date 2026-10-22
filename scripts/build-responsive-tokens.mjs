@@ -41,10 +41,10 @@ const TOKENS = {
   'about-cpt':   A(0, 0, 25, 33, 35, 39, 47, 53),
   // ---- day page ----
   'd-atm-h':     B(792, 792, 792, 792, 978, 1043, 1173, 1467, 1650),
-  'd-unl-h':     B(251, 266, 302, 228, 251, 269, 293, 338, 379),
+  'd-unl-h':     B(282, 297, 334, 228, 251, 269, 293, 338, 379),
   'w-hero-h':    B(667, 638, 666, 768, 720, 768, 864, 1080, 1440),
   'w-band-h':    B(604, 604, 588, 446, 486, 518, 566, 641, 583),
-  'w-unl-h':     B(304, 285, 302, 228, 251, 269, 293, 364, 407),
+  'w-unl-h':     B(335, 316, 334, 228, 251, 269, 293, 364, 407),
   'w-fs7':       B(187, 187, 187, 187, 231, 247, 277, 340, 340),
   'w-7-y':       B(342, 302, 315, 241, 191, 206, 235, 306, 486),
   'c-fs-h1':     B(33, 37, 44, 44, 51, 55, 64, 75, 92),
@@ -60,11 +60,15 @@ const TOKENS = {
   'd-fs-kick':   B(17, 18, 20, 18, 19, 20, 21, 22, 22),
   'd-fs-h1':     B(38, 43, 50, 50, 58, 63, 73, 85, 105),
   'd-fs-lead':   B(15, 16, 18, 16, 17, 18, 19, 22, 24),
-  'd-kick-gap':  B(64, 64, 64, 102, 91, 101, 119, 161, 233),
-  'd-hero-h':    B(759, 807, 942, 768, 720, 768, 864, 1080, 1440),
+  'd-kick-gap':  B(64, 64, 64, 120, 98, 109, 129, 145, 129),
+  'w-kick-gap':  B(64, 64, 64, 102, 91, 101, 119, 161, 233),
+  'w-cx':        B(180, 215, 384, 791, 985, 1050, 1171, 1440, 1808),
+  'd-fs-name':   B(47, 47, 47, 47, 43, 47, 53, 62, 62),
+  'd-fs-ask':    B(13, 13, 14, 13, 13, 14, 14, 16, 16),
+  'd-hero-h':    B(759, 807, 942, 697, 668, 698, 760, 844, 844),
   'd-card-w':    B(158, 188, 257, 274, 253, 272, 308, 359, 359),
-  'd-card-y':    B(350, 340, 353, 121, 111, 120, 137, 203, 383),
-  'd-card-cx':   B(180, 215, 384, 791, 985, 1050, 1171, 1440, 1808),
+  'd-card-y':    B(350, 340, 353, 90, 90, 90, 90, 90, 90),
+  'd-card-cx':   B(180, 215, 384, 695, 951.5, 1014, 1134, 1416.5, 1808.5),
   'd-band-h':    B(616, 588, 587, 394, 424, 449, 483, 542, 574),
   'd-band-pt':   B(38, 45, 58, 64, 70, 77, 83, 96, 112),
   'd-fs-h2':     B(30, 32, 38, 38, 44, 48, 55, 64, 64),
@@ -73,7 +77,7 @@ const TOKENS = {
   'd-fs-side':   B(19, 20, 22, 20, 21, 22, 23, 26, 26),
   'd-fs-unlock': B(28, 28, 32, 32, 37, 40, 46, 54, 56),
   'd-fs-unl-p':  B(15, 16, 18, 16, 17, 18, 19, 22, 24),
-  'd-unl-pt':    B(34, 39, 50, 56, 62, 67, 73, 84, 98),
+  'd-unl-pt':    B(65, 70, 82, 56, 62, 67, 73, 84, 98),
 };
 
 const round = (n) => Math.round(n * 10000) / 10000;
@@ -97,7 +101,7 @@ for (const [name, anchors] of Object.entries(TOKENS)) lines.push(ramp(name, anch
 // Above the widest frame the page stays 1760 px wide and is centred.
 lines.push('@media (min-width: 2560px) { :root { --gutter: calc((100vw - 1760px) / 2); } }', '');
 // The card of the day page and the 7 of the week page stay on the right of the centred content.
-lines.push('@media (min-width: 2560px) { :root { --d-card-cx: calc(1808px + (100vw - 2560px) / 2); } }', '');
+lines.push('@media (min-width: 2560px) { :root { --d-card-cx: calc(1808.5px + (100vw - 2560px) / 2); --w-cx: calc(1808px + (100vw - 2560px) / 2); } }', '');
 // The width of the content between the gutters, used by sections that scale with it.
 lines.push(':root { --content: calc(100vw - 2 * var(--gutter)); }', '');
 writeFileSync(new URL('../prototype/responsive-tokens.css', import.meta.url), lines.join('\n'));

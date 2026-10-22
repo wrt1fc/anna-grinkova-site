@@ -2,7 +2,7 @@
    Frames: "Адаптив / … · Прогноз недели" at 360 … 2560 px. The 7, "дней" and the seven ticks are drawn in units of the size of the 7
    (--w-fs7), centred on the same axis as the card of the day page. */
 
-#route-week { --d-hero-h: var(--w-hero-h); --d-band-h: var(--w-band-h); --d-unl-h: var(--w-unl-h); }
+#route-week { --d-hero-h: var(--w-hero-h); --d-band-h: var(--w-band-h); --d-unl-h: var(--w-unl-h); --d-kick-gap: var(--w-kick-gap); --d-card-cx: var(--w-cx); }
 #route-week .forecast-hero-copy > p:not(.forecast-kicker) { max-width: 520px; }
 
 #route-week .forecast-visual.weekly-visual { position: absolute; left: calc(var(--d-card-cx) - (var(--w-fs7) * 1.19 + 48px) / 2); top: var(--w-7-y); width: calc(var(--w-fs7) * 1.19 + 48px); height: calc(var(--w-fs7) * 1.25); margin: 0; padding: 0; overflow: visible; }

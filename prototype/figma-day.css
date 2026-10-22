@@ -66,3 +66,25 @@
 /* resets of older rules */
 :is(#route-day, #route-week) .forecast-hero .back-link { display: flex; width: max-content; height: 20px; align-items: center; margin: 0; }
 :is(#route-day, #route-week) .reading-main h2 { max-width: none; }
+
+/* ---------- New in the day frames: the "read" button, the name strip next to the card, the link under the focus of the day ---------- */
+:is(#route-day, #route-week) .day-read-cta { display: none; }
+:is(#route-day, #route-week) .reading-side-ask { display: inline-flex; align-items: center; gap: 6px; margin: 10px 0 22px; font: 700 var(--d-fs-ask)/1.2 var(--body); color: var(--gold-light); text-decoration: underline; text-underline-position: from-font; }
+:is(#route-day, #route-week) .reading-side-ask > span { display: inline-block; text-decoration: none; }
+:is(#route-day, #route-week) .reading-side-ask + .reading-side-label { margin-top: 0; }
+#route-day .day-card-plate { display: none; }
+
+@media (min-width: 1024px) {
+  #route-day .day-read-cta { display: inline-flex; margin: 32px 0 0; min-width: 290px; }
+  #route-day .day-read-cta > span[aria-hidden="true"] { transform: none; }
+  #route-day .day-read-cta > span[aria-hidden="true"]::before { content: ''; width: 22px; height: 22px; background: currentColor; -webkit-mask: url('./assets/icon-arrow-down.svg') center / contain no-repeat; mask: url('./assets/icon-arrow-down.svg') center / contain no-repeat; }
+  /* the name strip: a vertical rule 34 px right of the card, the numeral and the name read from bottom to top */
+  #route-day .day-card-plate { display: block; position: absolute; left: calc(100% + 34px); top: 0; width: calc(var(--d-fs-name) * 1.4 + 150px); height: 100%; border-left: 1px solid rgba(222, 184, 88, .5); }
+  #route-day .day-card-plate > span { position: absolute; top: 0; writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; }
+  #route-day .day-card-plate-num { left: 22px; font: 400 13px/15px var(--body); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  #route-day .day-card-plate-name { left: 119px; font: italic 500 var(--d-fs-name)/1.2 var(--accent); letter-spacing: .08em; color: var(--gold-light); }
+}
+#route-day .reading-entry { display: flex; width: max-content; }
+@media (min-width: 1024px) { #route-day .day-read-cta { display: flex; width: max-content; } }
+:is(#route-day, #route-week) .reading-side p:has(+ .reading-side-ask) { margin-bottom: 0; }
+:is(#route-day, #route-week) .reading-side-ask { margin: 10px 0 28px; }

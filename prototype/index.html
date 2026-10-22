@@ -37,11 +37,11 @@
     <link rel="stylesheet" href="./forecast-blocks.css?v=12" />
     <link rel="stylesheet" href="./reading.css?v=5" />
     <link rel="stylesheet" href="./figma-ui.css?v=2" />
-    <link rel="stylesheet" href="./responsive-tokens.css?v=10" />
+    <link rel="stylesheet" href="./responsive-tokens.css?v=12" />
     <link rel="stylesheet" href="./figma-header.css?v=4" />
     <link rel="stylesheet" href="./figma-home.css?v=29" />
-    <link rel="stylesheet" href="./figma-day.css?v=5" />
-    <link rel="stylesheet" href="./figma-week.css?v=3" />
+    <link rel="stylesheet" href="./figma-day.css?v=9" />
+    <link rel="stylesheet" href="./figma-week.css?v=4" />
     <link rel="stylesheet" href="./figma-pages.css?v=3" />
     <link rel="stylesheet" href="./figma-chat.css?v=10" />
     <link rel="stylesheet" href="./figma-account.css?v=1" />
@@ -160,13 +160,13 @@
           <section class="forecast-hero forecast-hero-day section-wrap">
             <a class="back-link" href="/"><span aria-hidden="true">←</span> На главную</a>
             <div class="forecast-hero-grid">
-              <div class="forecast-hero-copy"><p class="forecast-kicker">Таро и астропсихология</p><h1>Карта <em>дня.</em></h1><p>Откройте карту и получите тему дня, вопрос к себе и шаг на сегодня. Бесплатно, без регистрации.</p><a class="reading-entry" href="/rasklad">Расклад по запросу <span aria-hidden="true">↗</span></a></div>
-              <div class="forecast-visual daily-visual"><div class="day-card-scene"><button class="mini-card" id="day-interactive-card" type="button" aria-label="Перевернуть карту дня" aria-describedby="day-card-hint" aria-pressed="false"><span class="mini-card-face mini-card-face-front"><span class="mini-card-title" id="day-card-title">Карта дня</span><span class="mini-card-footer" id="day-card-footer">12:00 МСК</span></span><span class="mini-card-face mini-card-face-back" aria-hidden="true"><span class="mini-card-back-orbit"><img src="./assets/institute-emblem-gold.svg" alt="" /></span><span class="mini-card-back-name">Анна Гринькова</span><span class="mini-card-back-caption">Карта дня</span></span></button></div><p class="day-card-hint" id="day-card-hint">Потяните карту или нажмите, чтобы перевернуть</p></div>
+              <div class="forecast-hero-copy"><p class="forecast-kicker">Таро и астропсихология</p><h1>Карта <em>дня.</em></h1><p>Откройте карту и получите тему дня, вопрос к себе и шаг на сегодня. Бесплатно, без регистрации.</p><a class="reading-entry" href="/rasklad">Расклад по запросу <span aria-hidden="true">↗</span></a><a class="button button-gold day-read-cta" href="#day-reading-title">Читать, о чём карта <span aria-hidden="true">↓</span></a></div>
+              <div class="forecast-visual daily-visual"><div class="day-card-scene"><button class="mini-card" id="day-interactive-card" type="button" aria-label="Перевернуть карту дня" aria-describedby="day-card-hint" aria-pressed="false"><span class="mini-card-face mini-card-face-front"><span class="mini-card-title" id="day-card-title">Карта дня</span><span class="mini-card-footer" id="day-card-footer">12:00 МСК</span></span><span class="mini-card-face mini-card-face-back" aria-hidden="true"><span class="mini-card-back-orbit"><img src="./assets/institute-emblem-gold.svg" alt="" /></span><span class="mini-card-back-name">Анна Гринькова</span><span class="mini-card-back-caption">Карта дня</span></span></button></div><div class="day-card-plate" aria-hidden="true"><span class="day-card-plate-num" id="day-plate-num">Карта дня</span><span class="day-card-plate-name" id="day-plate-name"></span></div><p class="day-card-hint" id="day-card-hint">Потяните карту или нажмите, чтобы перевернуть</p></div>
             </div>
           </section>
           <section class="reading-section section-wrap" aria-labelledby="day-reading-title">
             <div class="reading-meta"><span id="day-card-label">Карта дня</span><span id="day-date-label">Сегодня</span></div>
-            <div class="reading-layout"><div class="reading-main"><h2 id="day-reading-title">Прогноз на сегодня.</h2><p id="day-reading-body"></p><blockquote id="day-reading-question"></blockquote></div><aside class="reading-side"><span class="reading-side-label">Фокус дня</span><p id="day-reading-focus"></p><span class="reading-side-label">Действие</span><p id="day-reading-action"></p></aside></div>
+            <div class="reading-layout"><div class="reading-main"><h2 id="day-reading-title">Прогноз на сегодня.</h2><p id="day-reading-body"></p><blockquote id="day-reading-question"></blockquote></div><aside class="reading-side"><span class="reading-side-label">Фокус дня</span><p id="day-reading-focus"></p><a class="reading-side-ask" href="/chat">Спросить Анну, что это значит <span aria-hidden="true">↗</span></a><span class="reading-side-label">Действие</span><p id="day-reading-action"></p></aside></div>
             <p class="form-status" id="day-status" role="status">Загружаем прогноз…</p>
           </section>
           <section class="unlock-section section-wrap"><div class="unlock-text"><h2>Хотите точнее?</h2><p>Добавьте дату рождения, и прогноз учтёт вашу карту, а не только небо над всеми.</p></div><a class="button button-gold" href="/kabinet">Сделать прогноз личным <span aria-hidden="true">↗</span></a></section>
@@ -239,7 +239,7 @@
             <a class="back-link" href="/"><span aria-hidden="true">←</span> На главную</a>
             <div class="forecast-hero-grid"><div class="forecast-hero-copy"><p class="forecast-kicker">Таро и астропсихология</p><h1>Прогноз <em>недели.</em></h1><p>Главная тема недели, на что опереться и что можно отпустить. Читается за пару минут.</p></div><div class="forecast-visual weekly-visual" aria-hidden="true"><div class="week-visual-inner"><div class="week-visual-title"><span class="week-visual-number">7</span><span class="week-visual-word">дней</span></div><div class="week-visual-days"><span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span></div></div></div></div>
           </section>
-          <section class="reading-section section-wrap" aria-labelledby="week-reading-title"><div class="reading-meta"><span>Тема «Умеренность»</span><span>Прогноз недели</span></div><div class="reading-layout"><div class="reading-main"><h2 id="week-reading-title">Оставьте место между делами.</h2><p>Не заполняйте всю неделю заранее. Выберите главное и оставьте время на разговоры и задачи, которые появятся по ходу.</p><blockquote>Что стоит упростить, чтобы сохранить силы для главного?</blockquote></div><aside class="reading-side"><span class="reading-side-label">Тема недели</span><p>Равновесие</p><span class="reading-side-label">На что обратить внимание</span><p>Темп, обещания, личные границы.</p></aside></div></section>
+          <section class="reading-section section-wrap" aria-labelledby="week-reading-title"><div class="reading-meta"><span>Тема «Умеренность»</span><span>Прогноз недели</span></div><div class="reading-layout"><div class="reading-main"><h2 id="week-reading-title">Оставьте место между делами.</h2><p>Не заполняйте всю неделю заранее. Выберите главное и оставьте время на разговоры и задачи, которые появятся по ходу.</p><blockquote>Что стоит упростить, чтобы сохранить силы для главного?</blockquote></div><aside class="reading-side"><span class="reading-side-label">Тема недели</span><p>Равновесие</p><a class="reading-side-ask" href="/chat">Спросить Анну, что это значит <span aria-hidden="true">↗</span></a><span class="reading-side-label">На что обратить внимание</span><p>Темп, обещания, личные границы.</p></aside></div></section>
           <section class="unlock-section section-wrap"><div class="unlock-text"><h2>Персональный прогноз.</h2><p>Общий прогноз одинаков для всех. Личный строится по вашей карте: укажите дату, время и город рождения.</p></div><a class="button button-gold" href="/kabinet">Получить прогноз по моей дате рождения <span aria-hidden="true">↗</span></a></section>
         </div>
         <div class="route" id="route-chat" data-page="chat" hidden>
