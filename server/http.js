@@ -13,6 +13,7 @@ import { createConcurrencyGate, createHistorySigner } from './chat-safety.js';
 import { createChatRoutes } from './routes/chat.js';
 import { handleProfileRoutes } from './routes/profiles.js';
 import { createBillingRoutes } from './routes/billing.js';
+import { createNatalRoutes } from './routes/natal.js';
 import { createBilling } from './billing/service.js';
 import { createProdamus } from './billing/prodamus.js';
 import legal from '../config/legal.json' with { type: 'json' };
@@ -75,6 +76,7 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
   // Only the origin of PUBLIC_URL is used in pages; it is escaped so a misconfigured value cannot inject markup.
   const publicOrigin = new URL(publicUrl).origin.replace(/[<>"'&]/g, '');
   const billing = createBilling({ store, provider: paymentProvider, providers: paymentProviders, publicUrl });
+  const handleNatalRoutes = createNatalRoutes({ store, metrics });
   const handleBillingRoutes = createBillingRoutes({ store, billing, trustProxy, metrics, prodamus: createProdamus({ store, secretKey: prodamusKey, acceptTest: prodamusTest }) });
   const handleChatRoutes = createChatRoutes({ store, chatWriter, chatLimiter, chatGate, historySigner, metrics, knowledge, trustProxy,
     keepAliveMs: streamKeepAliveMs, readingKey: readingCardKey(codeSecret) });
@@ -160,6 +162,7 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
         const ctx = { req, res, path, user, json, readJson };
         if (await handleChatRoutes(ctx)) return;
         if (await handleBillingRoutes(ctx)) return;
+        if (await handleNatalRoutes(ctx)) return;
         if (path === '/api/cities' && req.method === 'GET') {
           return json(res, 200, { cities: searchCities(url.searchParams.get('q') || '') });
         }

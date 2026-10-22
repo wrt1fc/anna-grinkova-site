@@ -46,12 +46,16 @@
     <link rel="stylesheet" href="./figma-chat.css?v=10" />
     <link rel="stylesheet" href="./figma-account.css?v=1" />
     <link rel="stylesheet" href="./figma-reading.css?v=4" />
-    <script src="./birth-ui.js?v=1" defer></script>
-    <script src="./birth-time.js?v=1" defer></script>
+    <link rel="stylesheet" href="./natal.css?v=1" />
+    <script src="./birth-ui.js?v=2" defer></script>
+    <script src="./birth-time.js?v=2" defer></script>
+    <script src="./birth-init.js?v=1" defer></script>
     <script src="./app.js?v=24" defer></script>
     <script src="./home-draw.js?v=2" defer></script>
     <script src="./chat.js?v=12" defer></script>
     <script src="./reading.js?v=1" defer></script>
+    <script src="./natal-wheel.js?v=1" defer></script>
+    <script src="./natal.js?v=1" defer></script>
     <script src="./pwa.js?v=1" defer></script>
   </head>
   <body>
@@ -63,6 +67,7 @@
         </a>
         <nav class="desktop-nav" aria-label="Основная навигация">
           <a href="/" data-nav="home">Главная</a>
+          <a href="/natalnaya-karta" data-nav="natal">Натальная карта</a>
           <a href="/karta-dnya" data-nav="day">Прогноз на день</a>
           <a href="/prognoz-na-nedelyu" data-nav="week">Прогноз на неделю</a>
           <a href="/chat" data-nav="chat">Вопрос Анне</a>
@@ -73,7 +78,8 @@
       </header>
       <nav class="site-menu" id="site-menu" aria-label="Меню" hidden>
         <a href="/" data-nav="home">Главная</a>
-        <a href="/karta-dnya" data-nav="day">Прогноз на день</a>
+        <a href="/natalnaya-karta" data-nav="natal">Натальная карта</a>
+          <a href="/karta-dnya" data-nav="day">Прогноз на день</a>
         <a href="/prognoz-na-nedelyu" data-nav="week">Прогноз на неделю</a>
         <a href="/chat" data-nav="chat">Вопрос Анне</a>
         <a href="/#about" data-nav="about">Об Анне</a>
@@ -153,6 +159,61 @@
               <i class="about-star about-star-16" aria-hidden="true"></i><i class="about-star about-star-10" aria-hidden="true"></i><i class="about-star about-star-12" aria-hidden="true"></i>
               <figcaption>Институт прогрессивной психологии</figcaption>
             </figure>
+          </section>
+        </div>
+
+        <div class="route" id="route-natal" data-page="natal" hidden>
+          <section class="forecast-hero natal-hero section-wrap">
+            <a class="back-link" href="/"><span aria-hidden="true">←</span> На главную</a>
+            <div class="forecast-hero-copy">
+              <p class="forecast-kicker">Астропсихология</p>
+              <h1>Натальная <em>карта.</em></h1>
+              <p class="natal-lead">Укажите дату, время и город рождения. Мы рассчитаем карту и объясним главное простыми словами: что вас питает, как вы чувствуете, любите и действуете.</p>
+            </div>
+          </section>
+          <section class="natal-start section-wrap" id="natal-start" aria-label="Данные рождения">
+            <div class="natal-form-card">
+              <h2 class="natal-form-title">Ваши данные рождения</h2>
+              <div id="natal-form-slot"></div>
+              <p class="natal-privacy">Данные нужны только для расчёта: на этой странице мы их не сохраняем. Чтобы карта была под рукой, сохраните данные в личном кабинете.</p>
+            </div>
+            <div class="natal-wheel-stage" aria-hidden="true">
+              <div class="natal-wheel-empty" id="natal-wheel-empty"></div>
+            </div>
+          </section>
+          <section class="natal-result section-wrap" id="natal-result" aria-labelledby="natal-result-title" hidden>
+            <div class="natal-result-head">
+              <p class="forecast-kicker" id="natal-result-kicker">Ваша карта</p>
+              <h2 id="natal-result-title">Главное в вашей карте.</h2>
+              <ul class="natal-big-three" id="natal-big-three" aria-label="Главные положения"></ul>
+            </div>
+            <div class="natal-result-grid">
+              <div class="natal-wheel-box"><div id="natal-wheel" class="natal-wheel"></div></div>
+              <div class="natal-table-box">
+                <h3>Планеты и точки</h3>
+                <table class="natal-table" id="natal-table"><thead><tr><th scope="col">Планета</th><th scope="col">Знак</th><th scope="col">Дом</th></tr></thead><tbody></tbody></table>
+                <p class="natal-no-time" id="natal-no-time" hidden>Время рождения не указано, поэтому дома и асцендент не рассчитаны. С точным временем разбор станет полнее.</p>
+              </div>
+            </div>
+            <div class="natal-sections" id="natal-sections"></div>
+            <div class="natal-aspects" id="natal-aspects-box" hidden>
+              <h3>Аспекты</h3>
+              <p class="natal-aspects-lead" id="natal-aspects-lead"></p>
+              <ul id="natal-aspects"></ul>
+            </div>
+            <div class="natal-money" id="natal-money" hidden>
+              <h3>Деньги по методике Анны</h3>
+              <ul id="natal-money-list"></ul>
+              <p>Подробный разбор денежной темы с учётом всей карты можно получить в чате.</p>
+            </div>
+            <div class="natal-next">
+              <h3>Что дальше</h3>
+              <p id="natal-note"></p>
+              <div class="natal-next-actions">
+                <a class="button button-gold" href="/chat">Спросить о моей карте <span aria-hidden="true">↗</span></a>
+                <a class="text-link" href="/kabinet" id="natal-save-link">Сохранить данные в кабинете</a>
+              </div>
+            </div>
           </section>
         </div>
 
@@ -261,7 +322,7 @@
 
       <footer class="site-footer section-wrap"><div><span class="footer-brand">Анна Гринькова</span><p>Карта дня и прогноз на неделю.</p></div><div class="footer-links"><a href="/">Главная</a><a href="/karta-dnya">Карта дня</a><a href="/prognoz-na-nedelyu">Прогноз недели</a><a href="/chat">Вопрос Анне</a><a href="/kabinet">Кабинет</a><a href="https://www.instagram.com/anna__grinkova" target="_blank" rel="noopener noreferrer">Instagram<sup aria-hidden="true">*</sup></a></div><p class="footer-legal">* Принадлежит компании Meta, деятельность которой признана экстремистской и запрещена в РФ.</p></footer>
 
-      <nav class="mobile-nav" aria-label="Мобильная навигация"><a href="/" data-mobile-nav="home"><svg class="ui-icon" aria-hidden="true"><use href="./assets/icons.svg#home" /></svg><span>Главная</span></a><a href="/karta-dnya" data-mobile-nav="day"><svg class="ui-icon" aria-hidden="true"><use href="./assets/icons.svg#day" /></svg><span>День</span></a><a href="/prognoz-na-nedelyu" data-mobile-nav="week"><svg class="ui-icon" aria-hidden="true"><use href="./assets/icons.svg#week" /></svg><span>Неделя</span></a><a href="/chat" data-mobile-nav="chat"><svg class="ui-icon" aria-hidden="true"><use href="./assets/icons.svg#chat" /></svg><span>Вопрос</span></a><a href="/kabinet" data-mobile-nav="account"><svg class="ui-icon" aria-hidden="true"><use href="./assets/icons.svg#user" /></svg><span>Кабинет</span></a></nav>
+      <nav class="mobile-nav" aria-label="Мобильная навигация"><a href="/natalnaya-karta" data-mobile-nav="natal"><svg class="ui-icon" aria-hidden="true"><use href="./assets/icons.svg#natal" /></svg><span>Карта</span></a><a href="/karta-dnya" data-mobile-nav="day"><svg class="ui-icon" aria-hidden="true"><use href="./assets/icons.svg#day" /></svg><span>День</span></a><a href="/prognoz-na-nedelyu" data-mobile-nav="week"><svg class="ui-icon" aria-hidden="true"><use href="./assets/icons.svg#week" /></svg><span>Неделя</span></a><a href="/chat" data-mobile-nav="chat"><svg class="ui-icon" aria-hidden="true"><use href="./assets/icons.svg#chat" /></svg><span>Вопрос</span></a><a href="/kabinet" data-mobile-nav="account"><svg class="ui-icon" aria-hidden="true"><use href="./assets/icons.svg#user" /></svg><span>Кабинет</span></a></nav>
     </div>
 
     <div class="dialog-backdrop" id="signup-dialog" hidden><section class="signup-dialog" role="dialog" aria-modal="true" aria-labelledby="signup-title"><button class="dialog-close" type="button" data-close-signup aria-label="Закрыть окно">×</button><p class="dialog-overline">Личный кабинет</p><h2 id="signup-title">Войти в кабинет.</h2><p id="auth-description">Введите email и пароль.</p><form id="signup-form"><div class="auth-field" id="email-field"><label for="signup-email">Ваш email</label><input id="signup-email" name="email" type="email" autocomplete="email" placeholder="name@example.com" required /></div><div class="auth-field" id="password-field"><label for="signup-password">Пароль</label><div class="password-control"><input id="signup-password" name="password" type="password" autocomplete="current-password" maxlength="128" required /><button class="password-toggle" type="button" data-toggle-password="signup-password" aria-label="Показать пароль" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></div><ul class="password-rules" id="password-rules" aria-label="Требования к паролю" hidden><li data-password-rule="length">Не менее 8 символов</li><li data-password-rule="uppercase">Заглавная буква</li><li data-password-rule="digit">Цифра</li><li data-password-rule="special">Спецсимвол</li></ul></div><div class="auth-field" id="confirm-field" hidden><label for="signup-confirm">Подтвердите пароль</label><div class="password-control"><input id="signup-confirm" name="confirmPassword" type="password" autocomplete="new-password" minlength="8" maxlength="128" /><button class="password-toggle" type="button" data-toggle-password="signup-confirm" aria-label="Показать подтверждение пароля" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div><div class="auth-field" id="code-field" hidden><label for="signup-code">Код из письма</label><input id="signup-code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" /></div><button class="button button-gold" id="auth-submit" type="submit">Войти <span aria-hidden="true">↗</span></button></form><div class="auth-links"><button class="auth-switch" id="auth-switch" type="button">Создать аккаунт</button><button class="auth-switch" id="auth-forgot" type="button">Забыли пароль?</button><button class="auth-switch" id="auth-resend" type="button" hidden>Отправить код снова</button></div><p class="form-status" id="form-message" role="status"></p></section></div>

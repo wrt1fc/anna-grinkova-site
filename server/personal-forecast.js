@@ -1,5 +1,5 @@
 import { chartAt, natalTransitAspects } from './astro-personal.js';
-import { forecastForDate, tarotForDate } from './daily-forecast.js';
+import { forecastForDate, moonDayTexts, tarotForDate } from './daily-forecast.js';
 
 const PLANETS = { sun: 'Солнце', moon: 'Луна', mercury: 'Меркурий', venus: 'Венера', mars: 'Марс',
   jupiter: 'Юпитер', saturn: 'Сатурн', uranus: 'Уран', neptune: 'Нептун', pluto: 'Плутон' };
@@ -20,6 +20,7 @@ export function personalForecastForDate(day, profile, userId, generalForecast = 
     ['sun', 'moon', 'mercury', 'venus', 'mars'].includes(item.transit)).slice(0, 8);
   const card = tarotForDate(day, userId, position);
   const mainAspect = transitAspects[0];
+  const moonDay = moonDayTexts(transit.moon.sign);
   const aspectFact = mainAspect ? `В вашей карте рождения: текущая планета ${PLANETS[mainAspect.transit]}, натальная ${PLANETS[mainAspect.natal]}, аспект — ${ASPECTS[mainAspect.aspect]} (орб ${mainAspect.orb.toFixed(1)}°).`
     : 'В выбранном диапазоне точности основных дневных аспектов к вашей карте не найдено.';
   const moonChange = moonIngresses[0] ? `Луна перейдёт из знака ${moonIngresses[0].from} в ${moonIngresses[0].to} в ${new Intl.DateTimeFormat('ru-RU', { timeZone: 'Europe/Moscow', hour: '2-digit', minute: '2-digit' }).format(new Date(moonIngresses[0].at))} МСК.` : '';
@@ -32,10 +33,10 @@ export function personalForecastForDate(day, profile, userId, generalForecast = 
     tarot: { number: card.number, name: card.name, focus: card.focus, position, method: card.method },
     generation: { kind: 'rules' },
     reading: {
-      title: `${card.name}: ваш фокус дня`,
+      title: `${mainAspect ? `${PLANETS[mainAspect.transit]} — ${PLANETS[mainAspect.natal]}` : `Луна в знаке ${transit.moon.sign}`}: ваш фокус дня`,
       body: `На 12:00 МСК Солнце в знаке ${transit.sun.sign}, Луна в знаке ${transit.moon.sign}; фаза — ${general.astronomy.moonPhase}. ${aspectFact} ${moonChange ? `${moonChange} ` : ''}${exactFact ? `${exactFact} ` : ''}Это повод присмотреться к своему ритму и решениям сегодня. Карта «${card.name}» предлагает тему: ${card.focus}.`,
       focus: mainAspect ? `${PLANETS[mainAspect.transit]} — ${PLANETS[mainAspect.natal]}` : `Луна в знаке ${transit.moon.sign}`,
-      action: card.action, question: card.question,
+      theme: moonDay.focus, action: moonDay.action, question: moonDay.question,
     },
   };
 }

@@ -202,7 +202,7 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
         await store.appendChatMessages(user.id, chart.profileId, [{ role: 'user', content: message }, { role: 'assistant', content: answer }]);
       } catch (error) { console.error('Chat history not saved:', error.message); }
       const payload = { ...extra, answer, filtered, signature: historySigner.sign(answer),
-        context: { date: day, scope: context.scope, card: context.card.name, subject: chart.subject } };
+        context: { date: day, scope: context.scope, theme: context.reading?.theme ?? null, subject: chart.subject } };
       return streaming ? (send('done', payload), res.end()) : json(res, 200, payload);
     };
     try {

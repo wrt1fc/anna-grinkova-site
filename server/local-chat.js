@@ -13,19 +13,17 @@ export function chatForecastContext(forecast, subject = null) {
     scope: forecast.scope,
     // Who the question is about when a partner or family profile is selected; null means the account owner.
     subject,
-    card: { name: forecast.tarot.name, theme: forecast.tarot.focus,
-      position: forecast.tarot.position + 1 },
     sky: forecast.scope === 'personal'
       ? { sunSign: sky.transit.sun.sign, moonSign: sky.transit.moon.sign, moonPhase: sky.moonPhase }
       : { sunSign: sky.sun.sign, moonSign: sky.moon.sign, moonPhase: sky.moonPhase },
-    reading: { body: forecast.reading.body, action: forecast.reading.action,
+    reading: { body: forecast.reading.body, theme: forecast.reading.theme, action: forecast.reading.action,
       question: forecast.reading.question },
   };
 }
 
-// The day's card and reading go to the model only when the question is about the day; otherwise the model
-// kept steering every answer back to the card.
-const DAY_TOPIC = /(карт\p{L}*|сегодн\p{L}*|(?<!\p{L})(день|дня|дню|днём)(?!\p{L})|прогноз\p{L}*|расклад\p{L}*|аркан\p{L}*|луна\s+сейчас|завтра|недел\p{L}*|расч[её]т\p{L}*)/iu;
+// The reading of the day goes to the model only when the question is about the day; otherwise the model
+// kept steering every answer back to it.
+const DAY_TOPIC = /(сегодн\p{L}*|(?<!\p{L})(день|дня|дню|днём)(?!\p{L})|прогноз\p{L}*|луна\s+сейчас|завтра|недел\p{L}*)/iu;
 export function asksAboutDay(message) { return DAY_TOPIC.test(message); }
 export function forecastForQuestion(context, message) {
   return asksAboutDay(message) ? context : { date: context.date, scope: context.scope, subject: context.subject };

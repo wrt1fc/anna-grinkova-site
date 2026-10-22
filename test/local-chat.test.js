@@ -33,7 +33,7 @@ test('chat streams plain text built from calculated facts and the approved proje
   assert.equal(capture.payload.stream, true);
   assert.equal(capture.payload.format, undefined);
   const prompt = JSON.parse(capture.payload.prompt);
-  assert.equal(prompt.forecast.card.name, forecast.card.name);
+  assert.equal(prompt.forecast.reading.theme, forecast.reading.theme);
   assert.equal(prompt.visitorName, 'Мария');
   assert.deepEqual(prompt.materials, []);
   assert.ok(prompt.facts.some((fact) => fact.includes('Института прогрессивной психологии')));
@@ -97,7 +97,7 @@ test('the day card reaches the model only for questions about the day', async ()
   for (const q of ['Почему мы часто ссоримся?', 'Как понять, что отношения созависимые?', 'Что делать с бывшим?']) assert.equal(asksAboutDay(q), false, q);
   const trimmed = forecastForQuestion(forecast, 'Почему мы часто ссоримся?');
   assert.deepEqual(Object.keys(trimmed).sort(), ['date', 'scope', 'subject']);
-  assert.equal(forecastForQuestion(forecast, 'Что значит карта?').card.name, forecast.card.name);
+  assert.equal(forecastForQuestion(forecast, 'Какой прогноз на сегодня?').reading.theme, forecast.reading.theme);
 });
 
 test('the model address comes from OLLAMA_URL and must be http(s)', async () => {

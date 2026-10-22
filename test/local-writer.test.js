@@ -21,7 +21,7 @@ test('local writer adds a bounded interpretation without changing calculated fac
   assert.equal(request.options.temperature, 0);
   assert.ok(request.options.num_predict <= 256);
   assert.ok(request.options.num_ctx <= 1024);
-  assert.deepEqual(JSON.parse(request.prompt), { theme: forecast.tarot.focus, action: forecast.reading.action });
+  assert.deepEqual(JSON.parse(request.prompt), { theme: forecast.reading.theme, action: forecast.reading.action });
   assert.match(request.system, /устного эфира/);
   assert.deepEqual(result.astronomy, forecast.astronomy);
   assert.deepEqual(result.tarot, forecast.tarot);

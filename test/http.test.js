@@ -38,11 +38,11 @@ async function signIn(store, request, email = 'chat@example.com') {
 test('chat grounds guest and account replies in the right daily context', async () => {
   const seen = [];
   await fixture(async ({ store, sent, request }) => {
-    assert.equal((await request('/api/chat', 'POST', { message: 'Что означает моя карта?', draw: 2 })).response.status, 401);
-    const guest = await request('/api/chat', 'POST', { message: 'Что означает моя карта?', draw: 2 }, await signIn(store, request));
+    assert.equal((await request('/api/chat', 'POST', { message: 'Какой прогноз на сегодня?', draw: 2 })).response.status, 401);
+    const guest = await request('/api/chat', 'POST', { message: 'Какой прогноз на сегодня?', draw: 2 }, await signIn(store, request));
     assert.equal(guest.response.status, 200);
     assert.equal(guest.data.context.scope, 'general');
-    assert.equal(seen[0].forecast.card.position, 3);
+    assert.ok(seen[0].forecast.reading.theme.length > 0);
     assert.equal(seen[0].forecast.scope, 'general');
 
     const pending = await request('/api/auth/register', 'POST', signup);
@@ -200,7 +200,7 @@ test('five-card draw returns the chosen card consistently to guest and account',
     assert.equal(preview.data.tarot.name, general[draw].tarot.name);
   }
   assert.equal(general[2].tarot.position, 2);
-  assert.match(general[2].reading.body, new RegExp(general[2].tarot.name));
+  assert.match(general[2].reading.body, /Тема дня:/);
   const pending = await request('/api/auth/register', 'POST', signup);
   const verified = await request('/api/auth/register/verify', 'POST', { challenge: pending.data.challenge, code: sent.at(-1).code });
   const cookie = verified.response.headers.get('set-cookie').split(';')[0];
@@ -630,6 +630,6 @@ test('a long reading stream stays alive with keepalive lines and still ends with
     assert.equal((text.match(/event: delta/g) ?? []).length, 0);
   }, { streamKeepAliveMs: 20, chatWriter: { async answer({ forecast }) {
     await new Promise((resolve) => setTimeout(resolve, 120));
-    return { answer: `Карта «${forecast.card.name}» в связи с вашим вопросом может подсказать, на что опереться.\n\nВозможно, стоит не спешить.\n\nКакой шаг вы готовы сделать сегодня?` };
+    return { answer: `Эта тема в связи с вашим вопросом может подсказать, на что опереться.\n\nВозможно, стоит не спешить.\n\nКакой шаг вы готовы сделать сегодня?` };
   } } });
 });

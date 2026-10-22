@@ -207,9 +207,9 @@ drawReset.addEventListener('click', () => resetDraw(true));
 
 
 // Each section has its own address, so search engines can index it (config/seo.json on the server).
-const ROUTE_PATHS = { home: '/', day: '/karta-dnya', reading: '/rasklad', week: '/prognoz-na-nedelyu', chat: '/chat', account: '/kabinet' };
+const ROUTE_PATHS = { home: '/', natal: '/natalnaya-karta', day: '/karta-dnya', reading: '/rasklad', week: '/prognoz-na-nedelyu', chat: '/chat', account: '/kabinet' };
 const PAGE_BY_PATH = Object.fromEntries(Object.entries(ROUTE_PATHS).map(([page, path]) => [path, page]));
-const PAGE_TITLES = { home: 'Анна Гринькова — астропсихолог: карта дня и прогноз', day: 'Карта дня таро онлайн бесплатно — Анна Гринькова',
+const PAGE_TITLES = { natal: 'Натальная карта онлайн бесплатно — Анна Гринькова', home: 'Анна Гринькова — астропсихолог: карта дня и прогноз', day: 'Карта дня таро онлайн бесплатно — Анна Гринькова',
   week: 'Астрологический прогноз на неделю — Анна Гринькова', chat: 'Чат с Анной Гриньковой — астрология и психология',
   reading: 'Расклад таро онлайн по вопросу — Анна Гринькова', account: 'Личный кабинет — Анна Гринькова' };
 

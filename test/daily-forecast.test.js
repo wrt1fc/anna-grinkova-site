@@ -19,7 +19,8 @@ test('day forecast has traceable astronomy and a stable tarot card', () => {
     assert.ok(body.sign.length > 0);
   }
   assert.ok(first.tarot.name.length > 0);
-  assert.ok(first.reading.title.includes(first.tarot.name));
+  assert.ok(first.reading.title.startsWith('Луна в '));
+  assert.ok(first.reading.theme.length > 0);
   assert.ok(first.reading.body.includes(first.astronomy.moon.sign));
   assert.ok(first.reading.action.length > 0);
   assert.ok(first.reading.question.length > 0);

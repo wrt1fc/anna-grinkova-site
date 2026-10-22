@@ -33,7 +33,7 @@ export function createLocalForecastWriter({ model, fetchImpl = fetch }) {
           format: OUTPUT_SCHEMA,
           options: { temperature: 0, num_predict: 190, num_ctx: 1024 },
           system: forecastStyle.systemInstructions.join(' '),
-          prompt: JSON.stringify({ theme: forecast.tarot.focus, action: forecast.reading.action }),
+          prompt: JSON.stringify({ theme: forecast.reading.theme ?? forecast.tarot.focus, action: forecast.reading.action }),
         }),
         // Stays below Nginx proxy_read_timeout (60 s) so a slow model falls back instead of a 504.
         signal: AbortSignal.timeout(45_000),
