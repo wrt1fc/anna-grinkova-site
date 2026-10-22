@@ -13,6 +13,7 @@ import { createYooKassa } from './billing/yookassa.js';
 import { createTestProvider } from './billing/test-provider.js';
 import { createRobokassa } from './billing/robokassa.js';
 import { createSotisVerifier } from './sotis.js';
+import { createTelegramBot } from './telegram/bot.js';
 
 // Local data files (PGlite for development) must not be readable by other users on POSIX hosts.
 if (process.platform !== 'win32') process.umask(0o077);
@@ -64,9 +65,14 @@ const intlProvider = process.env.BILLING_INTL_PROVIDER === 'robokassa'
 if (process.env.BILLING_INTL_PROVIDER && !intlProvider) throw new Error('Foreign payment provider is set but its keys are missing');
 // Test payments report "paid" without money, so test mode must never run in production.
 if (process.env.ROBOKASSA_TEST === '1' && process.env.NODE_ENV === 'production') throw new Error('ROBOKASSA_TEST=1 is not allowed in production');
+// Telegram bot and Mini App: off until the token from @BotFather is set. The webhook secret protects the update address.
+const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN || null;
+if (telegramBotToken && !process.env.TELEGRAM_WEBHOOK_SECRET) throw new Error('TELEGRAM_WEBHOOK_SECRET is required when TELEGRAM_BOT_TOKEN is set');
+const telegramBot = createTelegramBot({ token: telegramBotToken, publicUrl: process.env.PUBLIC_URL || `http://${host}:${port}` });
 const server = createServer({ store, mailer, codeSecret, trafficLimiter,
   mailDailyLimit: Number(process.env.MAIL_DAILY_LIMIT ?? 0), forecastWriter, chatWriter, sotisVerifier,
   chatGate: createConcurrencyGate(Number(process.env.CHAT_MAX_CONCURRENT ?? 2)), metrics: createMetrics(store), knowledge, paymentProviders: { ru: paymentProvider, intl: intlProvider }, prodamusKey: process.env.PRODAMUS_SECRET_KEY || null, prodamusTest: process.env.PRODAMUS_TEST === '1',
+  telegramBot, telegramBotToken, telegramWebhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET || null,
   publicUrl: process.env.PUBLIC_URL || `http://${host}:${port}`, requirePrivacyConsent: process.env.REQUIRE_PRIVACY_CONSENT === '1',
   searchVerification: { yandex: process.env.YANDEX_VERIFICATION, google: process.env.GOOGLE_SITE_VERIFICATION },
   secureCookies: process.env.NODE_ENV === 'production', trustProxy: process.env.TRUST_PROXY === '1' });
