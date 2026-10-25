@@ -65,6 +65,9 @@ window.initBirthTime = function initBirthTime(form, suffix = '') {
   }
 
   function addTimeChoices(list, count, kind) {
+    // The natal form is cloned from an already initialized account form.
+    // cloneNode copies its buttons without click listeners: replace them before binding this form's choices.
+    list.replaceChildren();
     for (let index = 0; index < count; index += 1) {
       const value = String(index).padStart(2, '0');
       const option = document.createElement('button');
