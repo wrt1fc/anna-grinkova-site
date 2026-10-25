@@ -29,7 +29,7 @@ export function createUnisenderGoMailer({ apiKey, fromEmail, fetchImpl = fetch }
         body: JSON.stringify({ message: {
           recipients: [{ email: to }], subject, body: { plaintext: text },
           from_email: fromEmail, from_name: FROM_NAME,
-          skip_unsubscribe: 1, global_language: 'ru',
+          global_language: 'ru',
         } }),
         signal: AbortSignal.timeout(TIMEOUT_MS),
       });

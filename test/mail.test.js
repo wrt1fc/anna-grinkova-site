@@ -23,4 +23,5 @@ test('Unisender Go adapter sends a transactional code with server-side credentia
   assert.equal(body.message.recipients[0].email, 'anna@example.com');
   assert.match(body.message.body.plaintext, /123456/);
   assert.equal(body.message.from_email, 'no-reply@example.com');
+  assert.equal(Object.hasOwn(body.message, 'skip_unsubscribe'), false);
 });
