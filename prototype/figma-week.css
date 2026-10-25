@@ -5,7 +5,7 @@
 #route-week { --d-card-cx: var(--w-cx); }
 #route-week .forecast-hero-copy > p:not(.forecast-kicker) { max-width: 520px; }
 
-#route-week .forecast-visual.weekly-visual { position: absolute; left: calc(var(--d-card-cx) - (var(--w-fs7) * 1.19 + 48px) / 2); top: var(--w-7-y); width: calc(var(--w-fs7) * 1.19 + 48px); height: calc(var(--w-fs7) * 1.25); margin: 0; padding: 0; overflow: visible; }
+#route-week .forecast-visual.weekly-visual { position: absolute; left: calc(var(--d-card-cx) - (var(--w-fs7) * 1.19 + 48px) / 2); top: max(72px, calc((100% - var(--w-fs7) * 1.25) / 2)); width: calc(var(--w-fs7) * 1.19 + 48px); height: calc(var(--w-fs7) * 1.25); margin: 0; padding: 0; overflow: visible; }
 #route-week .weekly-visual::before, #route-week .weekly-visual::after { display: none; }
 #route-week .week-visual-inner { position: relative; inset: auto; width: 100%; height: 100%; padding: 0; transform: none; }
 #route-week .week-visual-title { position: static; display: block; margin: 0; transform: none; animation: none; }
