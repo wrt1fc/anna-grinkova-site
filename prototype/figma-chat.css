@@ -80,6 +80,7 @@
 #route-chat .chat-locked[hidden], #route-chat #chat-form[hidden] { display: none; }
 #route-chat #chat-form:not([hidden]) { margin: 0 var(--c-pad); }
 #route-chat .chat-disclaimer { padding-top: 12px; }
+#route-chat .chat-greeting { margin-bottom: 24px !important; }
 @media (max-width: 767.98px) { #route-chat .chat-locked { flex-wrap: wrap; } }
 
 /* Below 981 px the older rules turned the panel into a full-screen app; the Figma frames keep the page: head, panel, starting questions */

@@ -58,6 +58,26 @@ export function systemFor(mode) {
   return (mode === TAROT_MODE ? [...chatContext.systemInstructions, ...tarotReading.systemInstructions] : chatContext.systemInstructions).join(' ');
 }
 
+function questionGuidance(message, chart, mode) {
+  if (mode === TAROT_MODE || !/отношени|любов|любви|партн[её]р|замуж|брак/iu.test(message)) return '';
+  const direct = '\nДля текущего вопроса: отвечайте об отношениях, без вступления «Смотрите» и без отказа «я не могу предсказывать». Не обсуждайте прежнюю карту дня и не отправляйте на консультацию вместо ответа.';
+  if (chart?.missing) return direct + ' Личных данных пока нет: коротко попросите добавить дату, время и город рождения в кабинете. Не перечисляйте планеты. Затем задайте один простой вопрос: человек сейчас в паре или хочет встретить партнёра?';
+  if (chart) return direct + ' Выберите не больше двух показателей из chart. Объясните, что они могут означать в обычной жизни, и предложите один понятный шаг. Без списка планет и без обещаний исхода.';
+  return direct + ' Если вопрос о Луне и любви без слов «сегодня» или «транзит», объясните смысл натальной Луны: потребность в заботе, близости и безопасности. Не приписывайте ежедневные перемены настроения движению Луны. Без личной карты не называйте положения и аспекты человека.';
+}
+
+// A complete new question about relationships should not inherit the preceding day-card exercise.
+// Explicit follow-ups ("Что это значит для отношений?") still need that history.
+export function historyForQuestion(history, message) {
+  if (!/отношени|любов|любви|партн[её]р|замуж|брак/iu.test(message) || asksAboutDay(message)
+    || /(?<!\p{L})(это|этой|этого|этот|тогда)(?!\p{L})/iu.test(message)) return history;
+  let dayTurn = false;
+  return history.filter(item => {
+    if (item.role === 'user') dayTurn = asksAboutDay(item.content);
+    return !dayTurn;
+  });
+}
+
 // Ollama streams one JSON object per line.
 async function* ndjson(body) {
   const decoder = new TextDecoder();
@@ -117,6 +137,11 @@ export function createLocalChat({ model, fetchImpl = fetch }) {
     async answer({ message, history, forecast, visitorName = null, signal, length = DEFAULT_ANSWER_LENGTH, materials = [], chart = null, mode = null, onDelta = null, temperature = 0.25, qualityRetry = false }) {
       const size = answerSize(mode, length);
       if (!size) throw new Error('Unknown answer length');
+      if (mode !== TAROT_MODE && chart?.missing && /отношени|любов|любви|партн[её]р|замуж|брак/iu.test(message)) {
+        const answer = 'Чтобы разобрать ваши отношения по натальной карте, добавьте дату, время и город рождения в кабинете. А пока расскажите: вы сейчас в паре или хотите встретить партнёра?';
+        onDelta?.(answer, answer);
+        return { answer, model: null, length, truncated: false, contextVersion: chatContext.version };
+      }
       const timeout = AbortSignal.timeout(MODEL_TIMEOUT_MS);
       const response = await fetchImpl(ENDPOINT, {
         method: 'POST',
@@ -127,10 +152,10 @@ export function createLocalChat({ model, fetchImpl = fetch }) {
           think: false,
           // Fixed context size: Ollama reloads the model whenever num_ctx changes between requests.
           options: { temperature, num_predict: size.numPredict, num_ctx: 8192 },
-          system: systemFor(mode) + (qualityRetry
+          system: systemFor(mode) + questionGuidance(message, chart, mode) + (qualityRetry
             ? '\nПовторная проверка ответа: не повторяйте предложения. Положения планет в поле chart — уже рассчитанные факты; не исправляйте их и не добавляйте другие положения. Возьмите одно положение из chart и объясните его простыми словами, затем предложите один небольшой практический шаг.'
             : ''),
-          prompt: chatPrompt({ message, history, forecast, visitorName, length, materials, chart, mode }),
+          prompt: chatPrompt({ message, history: mode === TAROT_MODE ? history : historyForQuestion(history, message), forecast, visitorName, length, materials, chart, mode }),
         }),
         // Also stops generation when the visitor presses Stop or leaves the page.
         signal: signal ? AbortSignal.any([signal, timeout]) : timeout,

@@ -77,6 +77,9 @@ test('chart questions are recognised and pick sections', () => {
   assert.ok(asksAboutChart('Что значит Венера в 7 доме?'));
   assert.ok(asksAboutChart('Какие у меня дирекции в этом году?'));
   assert.ok(asksAboutChart('Расскажите про мою натальную карту'));
+  assert.ok(asksAboutChart('как у меня будут обстоять дела с отношениями?'));
+  assert.ok(asksAboutChart('Что меня ждёт в любви?'));
+  assert.equal(asksAboutChart('Почему люди ссорятся в отношениях?'), false);
   assert.equal(asksAboutChart('Как перестать быть удобной?'), false);
   assert.deepEqual(chartSectionsFor('Какие дирекции в этом году?'), ['natal', 'transits', 'directions']);
   assert.deepEqual(chartSectionsFor('Что значит Луна в Раке?'), ['natal']);

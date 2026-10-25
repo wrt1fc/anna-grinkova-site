@@ -15,6 +15,24 @@ function ollamaStream(chunks, { doneReason = 'stop', done = true } = {}) {
 
 const forecast = chatForecastContext(forecastForDate('2026-10-07'));
 
+test('a fresh relationship question drops only day history, while a follow-up keeps it', async () => {
+  const {historyForQuestion}=await import('../server/local-chat.js');
+  const history=[{role:'user',content:'Что означает моя карта дня?'},{role:'assistant',content:'Карта предлагает остановиться.'},{role:'user',content:'Мы давно вместе.'},{role:'assistant',content:'Важно слышать друг друга.'}];
+  assert.deepEqual(historyForQuestion(history,'как у меня будут обстоять дела с отношениями?'),history.slice(2));
+  assert.deepEqual(historyForQuestion(history,'Что это значит для отношений?'),history);
+  assert.deepEqual(historyForQuestion(history,'А какой прогноз на сегодня?'),history);
+});
+
+test('missing natal data produces a useful relationship clarification without invented planets', async () => {
+  const deltas=[];
+  const chat=createLocalChat({model:'test-model',fetchImpl:async()=>{throw Error('must not invent a chart')}});
+  const reply=await chat.answer({message:'Как у меня будут обстоять дела с отношениями?',history:[],forecast,chart:{missing:'Нет данных рождения'},onDelta:d=>deltas.push(d)});
+  assert.match(reply.answer,/дату, время и город рождения/);
+  assert.match(reply.answer,/сейчас в паре/);
+  assert.doesNotMatch(reply.answer,/карт[ае] дня|Венер|Сатурн|не могу предсказывать/iu);
+  assert.deepEqual(deltas,[reply.answer]);
+});
+
 test('a repeated long sentence split across chunks never reaches the visitor or final answer', async () => {
   const sentence = 'Сатурн в Скорпионе в восьмом доме связан со страхом не выдержать давления.';
   const next = '\n\nПопробуйте выбрать одну небольшую задачу на сегодня.';

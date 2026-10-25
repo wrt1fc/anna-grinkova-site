@@ -35,6 +35,25 @@ async function signIn(store, request, email = 'chat@example.com') {
   return login.response.headers.get('set-cookie').split(';')[0];
 }
 
+test('a personal relationship question uses natal data instead of the earlier day card', async () => {
+  const seen=[];
+  await fixture(async ({store,request})=>{
+    const cookie=await signIn(store,request);
+    const first=await request('/api/chat','POST',{message:'как у меня будут обстоять дела с отношениями?'},cookie);
+    assert.equal(first.response.status,200);
+    assert.equal(first.data.context.basis,'birth-data-missing');
+    assert.ok(seen[0].chart.missing);
+    assert.equal(seen[0].forecast.reading,undefined);
+    await request('/api/profile','PUT',{birthDate:'1990-03-10',birthTime:'10:45',birthCityId:524901},cookie);
+    const second=await request('/api/chat','POST',{message:'Что меня ждёт в любви?'},cookie);
+    assert.equal(second.data.context.basis,'natal');
+    assert.ok(seen[1].chart.planets.some(line=>line.startsWith('Венера ')));
+    assert.equal(seen[1].forecast.reading,undefined);
+    const general=await request('/api/chat','POST',{message:'Почему люди ссорятся?'},cookie);
+    assert.equal(general.data.context.basis,'general');
+  },{chatWriter:{async answer(input){seen.push(input);return {answer:'В отношениях полезно спокойно обсудить, чего каждому из вас сейчас не хватает.'}}}});
+});
+
 test('chat grounds guest and account replies in the right daily context', async () => {
   const seen = [];
   await fixture(async ({ store, sent, request }) => {
@@ -42,6 +61,7 @@ test('chat grounds guest and account replies in the right daily context', async 
     const guest = await request('/api/chat', 'POST', { message: 'Какой прогноз на сегодня?', draw: 2 }, await signIn(store, request));
     assert.equal(guest.response.status, 200);
     assert.equal(guest.data.context.scope, 'general');
+    assert.equal(guest.data.context.basis, 'day');
     assert.ok(seen[0].forecast.reading.theme.length > 0);
     assert.equal(seen[0].forecast.scope, 'general');
 
@@ -57,6 +77,7 @@ test('chat grounds guest and account replies in the right daily context', async 
     ] }, cookie);
     assert.equal(personal.response.status, 200);
     assert.equal(personal.data.context.scope, 'personal');
+    assert.equal(personal.data.context.basis, 'day');
     assert.equal(seen[1].forecast.scope, 'personal');
     assert.equal(seen[1].visitorName, 'Мария');
     assert.equal(JSON.stringify(seen[1].forecast).includes('birthDate'), false);

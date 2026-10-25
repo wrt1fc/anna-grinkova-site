@@ -1,7 +1,7 @@
 import { forecastForDate, moscowDate, tarotForReading } from '../daily-forecast.js';
 import { personalForecastForDate } from '../personal-forecast.js';
 import { ANSWER_LENGTHS, DEFAULT_ANSWER_LENGTH, MAX_ANSWER_CHARS, TAROT_MODE, TAROT_QUESTION_MAX_CHARS, TAROT_QUESTION_MIN_CHARS,
-  chatForecastContext, forecastForQuestion, tarotReadingContext } from '../local-chat.js';
+  chatForecastContext, forecastForQuestion, tarotReadingContext, asksAboutDay } from '../local-chat.js';
 import { SAFE_FALLBACK_ANSWER, unsafeChatAnswer } from '../chat-safety.js';
 import { planFor } from '../plans.js';
 import { CRISIS_ANSWER, isCrisisMessage } from '../crisis.js';
@@ -202,7 +202,7 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
         await store.appendChatMessages(user.id, chart.profileId, [{ role: 'user', content: message }, { role: 'assistant', content: answer }]);
       } catch (error) { console.error('Chat history not saved:', error.message); }
       const payload = { ...extra, answer, filtered, signature: historySigner.sign(answer),
-        context: { date: day, scope: context.scope, theme: context.reading?.theme ?? null, subject: chart.subject } };
+        context: { date: day, scope: context.scope, basis: astro.chart?.missing ? 'birth-data-missing' : astro.chart ? 'natal' : asksAboutDay(message) ? 'day' : 'general', subject: chart.subject } };
       return streaming ? (send('done', payload), res.end()) : json(res, 200, payload);
     };
     try {

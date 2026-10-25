@@ -205,7 +205,11 @@ export function chartForPrompt(natal, instant = new Date(), { include = ['natal'
 }
 
 const CHART_TOPIC = /натал|карт[аеуы] рождени|гороскоп|асцендент|\bасц|\bmc\b|середин[аеу] неба|дом[аеу]?\b|\d+\s*дом|куспид|аспект|ретроград|транзит|дирекци|прогресси|солнечн(ая|ой) дуг|узл|лилит|(солнц|лун|меркури|венер|марс|юпитер|сатурн|уран|нептун|плутон)\S* в /i;
-export function asksAboutChart(message) { return CHART_TOPIC.test(message); }
+const RELATIONSHIP_TOPIC = /отношени|любов|любви|партн[её]р|замуж|брак/iu;
+const PERSONAL_TOPIC = /у меня|меня жд|мне |мо[йяёи]|со мной|будут обстоять/iu;
+export function asksAboutChart(message) {
+  return CHART_TOPIC.test(message) || (RELATIONSHIP_TOPIC.test(message) && PERSONAL_TOPIC.test(message));
+}
 export function chartSectionsFor(message) {
   const include = ['natal'];
   if (/транзит|сейчас|в этом году|период|ближайш/i.test(message)) include.push('transits');

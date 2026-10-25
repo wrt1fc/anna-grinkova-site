@@ -91,8 +91,9 @@ function chatMessage(role, content, context = null) {
 }
 
 function contextLabel(context) {
-  const scope = `${context.scope === 'personal' ? 'Личный' : 'Общий'} расчёт · ${context.card}`;
-  return context.subject ? `${context.subject.label} · ${scope}` : scope;
+  const labels = { natal: 'По натальной карте', day: context.scope === 'personal' ? 'Личный прогноз на день' : 'Общий прогноз на день', general: 'Общий ответ', 'birth-data-missing': 'Без данных рождения' };
+  const label = labels[context.basis] || 'Общий ответ';
+  return context.subject?.label ? `${context.subject.label} · ${label}` : label;
 }
 
 function addAnswerActions(article, content, context) {
@@ -164,7 +165,7 @@ async function sendChat(message, existingUserMessage = false) {
   chatAbort = controller;
   chatStop.hidden = false;
   chatStatus.textContent = '';
-  chatSlowTimer = window.setTimeout(() => { if (request === chatRequest) chatStatus.textContent = 'Модель отвечает дольше обычного…'; }, 2500);
+  chatSlowTimer = window.setTimeout(() => { if (request === chatRequest) chatStatus.textContent = 'Ответ занимает чуть больше времени…'; }, 2500);
   updateChatSend();
   let answer = null;
   try {
