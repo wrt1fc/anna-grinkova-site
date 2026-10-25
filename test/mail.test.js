@@ -2,6 +2,14 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createUnisenderGoMailer } from '../server/mail.js';
 
+test('mail failure includes only the provider numeric reason, not its sensitive body', async () => {
+  const mailer = createUnisenderGoMailer({ apiKey: 'private-key', fromEmail: 'no-reply@example.com', fetchImpl: async () => ({
+    ok: false, status: 400, json: async () => ({ code: 229, message: 'recipient@example.com private-key 123456' }),
+  }) });
+  await assert.rejects(mailer.sendCode({ to: 'anna@example.com', purpose: 'registration', code: '123456' }),
+    { message: 'Mail API HTTP 400 (code 229)' });
+});
+
 test('Unisender Go adapter sends a transactional code with server-side credentials', async () => {
   let called;
   const mailer = createUnisenderGoMailer({ apiKey: 'private-key', fromEmail: 'no-reply@example.com', fetchImpl: async (url, options) => {
