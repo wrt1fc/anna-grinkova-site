@@ -33,7 +33,7 @@ test('chat streams plain text built from calculated facts and the approved proje
   assert.equal(capture.payload.stream, true);
   assert.equal(capture.payload.format, undefined);
   const prompt = JSON.parse(capture.payload.prompt);
-  assert.equal(prompt.forecast.reading.theme, forecast.reading.theme);
+  assert.equal(prompt.forecast.card.name, forecast.card.name);
   assert.equal(prompt.visitorName, 'Мария');
   assert.deepEqual(prompt.materials, []);
   assert.ok(prompt.facts.some((fact) => fact.includes('Института прогрессивной психологии')));
@@ -97,7 +97,7 @@ test('the day card reaches the model only for questions about the day', async ()
   for (const q of ['Почему мы часто ссоримся?', 'Как понять, что отношения созависимые?', 'Что делать с бывшим?']) assert.equal(asksAboutDay(q), false, q);
   const trimmed = forecastForQuestion(forecast, 'Почему мы часто ссоримся?');
   assert.deepEqual(Object.keys(trimmed).sort(), ['date', 'scope', 'subject']);
-  assert.equal(forecastForQuestion(forecast, 'Какой прогноз на сегодня?').reading.theme, forecast.reading.theme);
+  assert.equal(forecastForQuestion(forecast, 'Что значит карта?').card.name, forecast.card.name);
 });
 
 test('the model address comes from OLLAMA_URL and must be http(s)', async () => {
@@ -119,7 +119,7 @@ test('a card reading adds its own rules and mode, and ordinary chat keeps the tr
   assert.equal(prompt.question, 'Что со мной будет в работе?');
   assert.equal(prompt.forecast.card.position, 3);
   assert.equal(JSON.stringify(prompt).includes('sky'), false);
-  assert.match(tarotCapture.payload.system, /Расклад по запросу/);
+  assert.match(tarotCapture.payload.system, /Метафорическая карта/);
   assert.match(tarotCapture.payload.system, /Не обещайте исход/);
   assert.match(tarotCapture.payload.system, /не выдавайте себя за Анну/i);
 
@@ -127,7 +127,7 @@ test('a card reading adds its own rules and mode, and ordinary chat keeps the tr
   await chatReturning(['Карта поднимает тему выбора. Сначала проверьте факты.'], {}, chatCapture)
     .answer({ message: 'Что значит карта?', history: [], forecast });
   assert.equal('mode' in JSON.parse(chatCapture.payload.prompt), false);
-  assert.equal(/Расклад по запросу/.test(chatCapture.payload.system), false);
+  assert.equal(/Метафорическая карта/.test(chatCapture.payload.system), false);
 });
 
 test('a reading has its own answer size, ordinary chat keeps the length of its mode', async () => {

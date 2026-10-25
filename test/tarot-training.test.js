@@ -9,10 +9,10 @@ import { pairsFromBank, tarotReadingProblems } from '../training/tarot-lib.js';
 import { cardProblems } from '../training/cards.js';
 import { tarotCardByNumber } from '../server/daily-forecast.js';
 
-const GOOD = 'Карта «Суд» в связи с вашим вопросом может говорить о моменте, когда прошлый опыт просит подвести итог. Скорее всего, стоит присмотреться к тому, что вы уже понимаете, но откладываете.\n\n'
+const GOOD = 'Карта «Часы» в связи с вашим вопросом может говорить о моменте, когда прошлый опыт просит подвести итог. Скорее всего, стоит присмотреться к тому, что вы уже понимаете, но откладываете.\n\n'
   + 'Возможная линия — пересмотреть, чем вы заняты, не как оценку себя, а как честный взгляд на привычное.\n\n'
   + 'Шаг на сегодня: назвать вслух одно решение, которое вы давно откладываете.';
-const ok = (answer, extra = {}) => tarotReadingProblems(answer, { name: 'Суд', ...extra });
+const ok = (answer, extra = {}) => tarotReadingProblems(answer, { name: 'Часы', ...extra });
 
 test('a reading that follows the rules passes the quality filter', () => {
   assert.deepEqual(ok(GOOD), []);
@@ -20,14 +20,14 @@ test('a reading that follows the rules passes the quality filter', () => {
 
 test('the filter rejects readings that break the rules of a reading', () => {
   const has = (problems, word) => problems.some((problem) => problem.includes(word));
-  assert.ok(has(ok(GOOD.replaceAll('Суд', 'Башня')), 'карт'), 'не называет карту');
+  assert.ok(has(ok(GOOD.replaceAll('Часы', 'Дом')), 'карт'), 'не называет карту');
   assert.ok(has(ok(`${GOOD} Это обязательно случится.`), 'обещ'), 'обещание');
   assert.ok(has(ok(`${GOOD} Всё произойдёт через 3 месяца.`), 'срок'), 'срок');
   assert.ok(has(ok(`1. ${GOOD}`), 'разметк'), 'список');
   assert.ok(has(ok(`**${GOOD}**`), 'разметк'), 'жирный');
   assert.ok(has(ok(`${GOOD} Это как tarot reading.`), 'латин'), 'латиница');
   assert.ok(has(ok(`Как нейросеть, я вижу: ${GOOD}`), 'ИИ'), 'ИИ');
-  assert.ok(has(ok('Карта «Суд» может говорить о выборе. Присмотритесь к нему.'), 'длин'), 'коротко');
+  assert.ok(has(ok('Карта «Часы» может говорить о выборе. Присмотритесь к нему.'), 'длин'), 'коротко');
   assert.ok(has(ok(`${GOOD} ${GOOD} ${GOOD}`), 'длин'), 'длинно');
   assert.ok(has(ok(GOOD.replaceAll('\n\n', ' ')), 'абзац'), 'один сплошной абзац');
   assert.ok(has(ok(GOOD.replace('может говорить', 'говорит').replace('Скорее всего, стоит', 'Нужно').replace('Возможная линия', 'Линия')), 'возможн'), 'нет оговорок');
@@ -69,7 +69,7 @@ test('a reading card is checked like any other card, plus the rules of a reading
   assert.ok(cardProblems({ ...card, card: { number: 22, position: 0 } }).length > 0);
   assert.ok(cardProblems({ ...card, card: undefined }).length > 0);
   assert.ok(cardProblems({ ...card, answer: `${GOOD} Это обязательно случится.` }).length > 0);
-  assert.equal(tarotCardByNumber(20).name, 'Суд');
+  assert.equal(tarotCardByNumber(20).name, 'Часы');
   assert.throws(() => tarotCardByNumber(22));
 });
 
@@ -82,11 +82,11 @@ test('the dataset builder turns a reading card into the live reading prompt', ()
   const rows = readFileSync(join(dir, 'out', 'train.jsonl'), 'utf8').trim().split('\n').map((line) => JSON.parse(line));
   assert.equal(rows.length, 1);
   const [system, user] = rows[0].prompt;
-  assert.match(system.content, /Расклад по запросу/);
+  assert.match(system.content, /Метафорическая карта/);
   const prompt = JSON.parse(user.content);
   assert.equal(prompt.mode, 'tarot');
   assert.equal(prompt.question, 'Что мне важно понять о работе?');
-  assert.equal(prompt.forecast.card.name, 'Суд');
+  assert.equal(prompt.forecast.card.name, 'Часы');
   assert.equal(prompt.forecast.card.position, 3);
   assert.deepEqual(prompt.history, []);
   assert.equal(rows[0].completion[0].content, GOOD);
@@ -103,7 +103,7 @@ test('the draft generator writes only drafts that pass the filter and carries on
     req.on('data', (chunk) => { body += chunk; });
     req.on('end', () => {
       const prompt = JSON.parse(JSON.parse(body).prompt);
-      const text = GOOD.replace('Суд', prompt.forecast.card.name);
+      const text = GOOD.replace('Часы', prompt.forecast.card.name);
       res.writeHead(200, { 'Content-Type': 'application/x-ndjson' });
       res.end(`${JSON.stringify({ response: text, done: false })}\n${JSON.stringify({ response: '', done: true, done_reason: 'stop' })}\n`);
     });

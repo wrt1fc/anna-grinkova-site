@@ -18,8 +18,8 @@ async function api(path, options = {}) {
   return { response, data: await response.json() };
 }
 
-const tarotNumerals = ['0', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX', 'XXI'];
-function tarotArt(number) { return `url("./assets/tarot/${String(number).padStart(2, '0')}.webp")`; }
+const tarotNumerals = Array.from({ length: 22 }, (_, index) => String(index + 1));   // the cards of the deck are numbered 1-22
+function tarotArt(number) { return `url("./assets/cards/${String(number).padStart(2, '0')}.svg")`; }
 // Today's weekday (Mon = 0) is marked on both seven-day graphics.
 document.querySelectorAll('.week-visual-days, .week-feature-rule')
   .forEach((group) => group.children[(new Date().getDay() + 6) % 7]?.classList.add('is-today'));
@@ -105,8 +105,8 @@ function renderDailyForecast(data) {
   document.getElementById('day-card-title').textContent = data.tarot.name;
   document.querySelector('.daily-visual .mini-card').style.setProperty('--tarot-art', tarotArt(data.tarot.number));
   document.getElementById('route-day').style.setProperty('--tarot-art', tarotArt(data.tarot.number));
-  document.getElementById('day-card-footer').textContent = `${numeral} · карта дня`;
-  document.getElementById('day-plate-num').textContent = `${numeral}  ·  КАРТА ДНЯ`;
+  document.getElementById('day-card-footer').textContent = `${numeral} · метафорическая карта`;
+  document.getElementById('day-plate-num').textContent = `${numeral}  ·  МЕТАФОРИЧЕСКАЯ КАРТА`;
   document.getElementById('day-plate-name').textContent = data.tarot.name;
   document.getElementById('day-card-label').textContent = `Карта «${data.tarot.name}»`;
   document.getElementById('day-date-label').textContent = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' })
@@ -131,7 +131,7 @@ async function loadDailyForecast() {
       dayCard.style.setProperty('--tarot-art', tarotArt(data.tarot.number));
       document.getElementById('route-day').style.setProperty('--tarot-art', tarotArt(data.tarot.number));
       document.getElementById('day-card-title').textContent = data.tarot.name;
-      document.getElementById('day-card-footer').textContent = `${tarotNumerals[data.tarot.number]} · карта дня`;
+      document.getElementById('day-card-footer').textContent = `${tarotNumerals[data.tarot.number]} · метафорическая карта`;
       updateDayCard();
     }).catch(() => {});
     const fullForecast = api(`/api/forecast/day?draw=${draw}`);
@@ -193,7 +193,7 @@ async function selectDailyCard(index) {
     }
     drawIntro.hidden = true;
     drawResult.hidden = false;
-    document.getElementById('draw-result-number').textContent = `${numeral} · карта дня`;
+    document.getElementById('draw-result-number').textContent = `${numeral} · метафорическая карта`;
     document.getElementById('draw-result-title').textContent = `${data.tarot.name}.`;
     document.getElementById('draw-result-text').textContent = `Тема: ${data.tarot.focus}.`;
     document.getElementById('draw-result-question').textContent = data.reading.question;
@@ -209,9 +209,9 @@ drawReset.addEventListener('click', () => resetDraw(true));
 // Each section has its own address, so search engines can index it (config/seo.json on the server).
 const ROUTE_PATHS = { home: '/', natal: '/natalnaya-karta', day: '/karta-dnya', reading: '/rasklad', week: '/prognoz-na-nedelyu', chat: '/chat', account: '/kabinet' };
 const PAGE_BY_PATH = Object.fromEntries(Object.entries(ROUTE_PATHS).map(([page, path]) => [path, page]));
-const PAGE_TITLES = { natal: 'Натальная карта онлайн бесплатно — Анна Гринькова', home: 'Анна Гринькова — астропсихолог: карта дня и прогноз', day: 'Карта дня таро онлайн бесплатно — Анна Гринькова',
+const PAGE_TITLES = { natal: 'Натальная карта онлайн бесплатно — Анна Гринькова', home: 'Натальная карта онлайн и астропрогноз — Анна Гринькова', day: 'Карта дня онлайн бесплатно — Анна Гринькова',
   week: 'Астрологический прогноз на неделю — Анна Гринькова', chat: 'Чат с Анной Гриньковой — астрология и психология',
-  reading: 'Расклад таро онлайн по вопросу — Анна Гринькова', account: 'Личный кабинет — Анна Гринькова' };
+  reading: 'Метафорические карты онлайн — Анна Гринькова', account: 'Личный кабинет — Анна Гринькова' };
 
 function navigateTo(page) {
   const path = ROUTE_PATHS[page] ?? '/';

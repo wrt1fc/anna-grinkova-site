@@ -61,7 +61,7 @@ test('each section has its own indexable address with title, canonical and only 
   const base = `http://127.0.0.1:${server.address().port}`;
   try {
     const day = await (await fetch(`${base}/karta-dnya`)).text();
-    assert.match(day, /<title>Карта дня таро онлайн бесплатно — Анна Гринькова<\/title>/);
+    assert.match(day, /<title>Карта дня онлайн бесплатно — Анна Гринькова<\/title>/);
     assert.match(day, /<link rel="canonical" href="https:\/\/anna\.example\/karta-dnya" \/>/);
     assert.match(day, /data-page="day">/);
     assert.match(day, /data-page="home" hidden>/);
@@ -114,7 +114,7 @@ test('the reading page has its own address, five cards with numbers, and its sty
   const base = `http://127.0.0.1:${server.address().port}`;
   try {
     const page = await (await fetch(`${base}/rasklad`)).text();
-    assert.match(page, /<title>Расклад таро онлайн по вопросу — Анна Гринькова<\/title>/);
+    assert.match(page, /<title>Метафорические карты онлайн — Анна Гринькова<\/title>/);
     assert.match(page, /<link rel="canonical" href="https:\/\/anna\.example\/rasklad" \/>/);
     assert.match(page, /data-page="reading">/);
     assert.match(page, /data-page="day" hidden>/);
