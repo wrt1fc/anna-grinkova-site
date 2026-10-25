@@ -9,9 +9,10 @@ test('every metaphorical card has a matching local illustration and a distinct i
   assert.deepEqual(CARD_NAMES.slice(0, 3), ['Маяк', 'Мост', 'Ключ']);
   CARD_NAMES.forEach((name, index) => {
     assert.equal(tarotCardByNumber(index).name, name);
-    const art = readFileSync(new URL(`../prototype/assets/cards/${String(index).padStart(2, '0')}.svg`, import.meta.url), 'utf8');
-    assert.match(art, /<svg[^>]+viewBox="0 0 238 368"/);
-    assert.doesNotMatch(art, /https?:\/\/(?!www\.w3\.org)/);
+    const art = readFileSync(new URL(`../prototype/assets/cards/illustrated/${String(index).padStart(2, '0')}.webp`, import.meta.url));
+    assert.equal(art.toString('ascii', 0, 4), 'RIFF', `${name}: valid image container`);
+    assert.equal(art.toString('ascii', 8, 12), 'WEBP', `${name}: WebP artwork`);
+    assert.ok(art.length > 20000, `${name}: full illustration rather than a placeholder`);
   });
 });
 
@@ -23,6 +24,6 @@ test('the day card and five-card spread use the same metaphorical deck', () => {
     assert.ok(item.reading.body.includes(item.tarot.name));
   }
   const app = readFileSync(new URL('../prototype/app.js', import.meta.url), 'utf8');
-  assert.match(app, /assets\/cards\//);
+  assert.match(app, /assets\/cards\/illustrated\//);
   assert.doesNotMatch(app, /assets\/tarot\//);
 });

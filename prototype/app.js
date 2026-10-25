@@ -19,7 +19,7 @@ async function api(path, options = {}) {
 }
 
 const tarotNumerals = Array.from({ length: 22 }, (_, index) => String(index + 1));   // the cards of the deck are numbered 1-22
-function tarotArt(number) { return `url("./assets/cards/${String(number).padStart(2, '0')}.svg")`; }
+function tarotArt(number) { return `url("./assets/cards/illustrated/${String(number).padStart(2, '0')}.webp")`; }
 // Today's weekday (Mon = 0) is marked on both seven-day graphics.
 document.querySelectorAll('.week-visual-days, .week-feature-rule')
   .forEach((group) => group.children[(new Date().getDay() + 6) % 7]?.classList.add('is-today'));
@@ -105,8 +105,8 @@ function renderDailyForecast(data) {
   document.getElementById('day-card-title').textContent = data.tarot.name;
   document.querySelector('.daily-visual .mini-card').style.setProperty('--tarot-art', tarotArt(data.tarot.number));
   document.getElementById('route-day').style.setProperty('--tarot-art', tarotArt(data.tarot.number));
-  document.getElementById('day-card-footer').textContent = `${numeral} · метафорическая карта`;
-  document.getElementById('day-plate-num').textContent = `${numeral}  ·  МЕТАФОРИЧЕСКАЯ КАРТА`;
+  document.getElementById('day-card-footer').textContent = `№ ${numeral}`;
+  document.getElementById('day-plate-num').textContent = `${numeral}  ·  ВАША КАРТА НА СЕГОДНЯ`;
   document.getElementById('day-plate-name').textContent = data.tarot.name;
   document.getElementById('day-card-label').textContent = `Карта «${data.tarot.name}»`;
   document.getElementById('day-date-label').textContent = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' })
@@ -131,7 +131,7 @@ async function loadDailyForecast() {
       dayCard.style.setProperty('--tarot-art', tarotArt(data.tarot.number));
       document.getElementById('route-day').style.setProperty('--tarot-art', tarotArt(data.tarot.number));
       document.getElementById('day-card-title').textContent = data.tarot.name;
-      document.getElementById('day-card-footer').textContent = `${tarotNumerals[data.tarot.number]} · метафорическая карта`;
+      document.getElementById('day-card-footer').textContent = `№ ${tarotNumerals[data.tarot.number]}`;
       updateDayCard();
     }).catch(() => {});
     const fullForecast = api(`/api/forecast/day?draw=${draw}`);
@@ -241,7 +241,9 @@ function showRoute() {
     hash = '';
   }
   const page = PAGE_BY_PATH[window.location.pathname] ?? 'home';
-  if (hash && hash !== 'about') history.replaceState(null, '', window.location.pathname + window.location.search);
+  const anchor = hash ? document.getElementById(hash) : null;
+  const routeAnchor = anchor?.closest('.route')?.dataset.page === page ? anchor : null;
+  if (hash && hash !== 'about' && !routeAnchor) history.replaceState(null, '', window.location.pathname + window.location.search);
   for (const element of pages) element.hidden = element.dataset.page !== page;
   for (const element of navigation) {
     const navPage = element.dataset.nav || element.dataset.mobileNav;
@@ -252,6 +254,10 @@ function showRoute() {
   document.title = PAGE_TITLES[page];
   window.scrollTo({ top: 0, behavior: 'auto' });
   if (hash === 'about') requestAnimationFrame(() => document.getElementById('about').scrollIntoView({ behavior: 'smooth' }));
+  if (routeAnchor) requestAnimationFrame(() => {
+    routeAnchor.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    routeAnchor.focus({ preventScroll: true });
+  });
   if (page === 'day') {
     dayCardTurn = 0;
     dayCardTilt = 0;

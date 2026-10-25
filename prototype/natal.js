@@ -1,5 +1,9 @@
 // The natal chart page: a copy of the birth form, the request to /api/natal and the result (wheel, planets, texts).
 (() => {
+  // The wheel on the home page: signs and equal houses, no planets (the same empty wheel as before the calculation).
+  const emptyNatal = { empty: true, planets: [], aspects: [], cusps: Array.from({ length: 12 }, (_, i) => i * 30), angles: { asc: { longitude: 0, sign: 'Овен' }, mc: { longitude: 270, sign: 'Козерог' } } };
+  const homeWheel = document.getElementById('home-wheel');
+  if (homeWheel) window.drawNatalWheel(homeWheel, emptyNatal);
   const SUFFIX = '-natal';
   const slot = document.getElementById('natal-form-slot');
   const source = document.getElementById('birth-form');
@@ -18,11 +22,29 @@
     for (const node of form.querySelectorAll(`[${attribute}]`)) node.setAttribute(attribute, node.getAttribute(attribute) + SUFFIX);
   }
   const submit = form.querySelector('button[type="submit"]');
-  submit.innerHTML = 'Рассчитать карту <span aria-hidden="true">↗</span>';
+  submit.innerHTML = 'Рассчитать мою карту <span aria-hidden="true">↗</span>';
   const unknown = document.createElement('label');
   unknown.className = 'natal-unknown';
   unknown.innerHTML = '<input type="checkbox" name="timeUnknown" /> <span>Не знаю время рождения</span>';
   form.querySelector('.birth-manual').after(unknown);
+  const timeHint = document.createElement('p');
+  timeHint.className = 'natal-time-hint';
+  timeHint.id = 'natal-time-hint';
+  timeHint.textContent = 'Без точного времени покажем планеты и знаки, но не асцендент и дома.';
+  unknown.after(timeHint);
+  unknown.querySelector('input').setAttribute('aria-describedby', timeHint.id);
+  const fieldHints = [
+    ['.birth-date-field', 'День, месяц и год вашего рождения.'],
+    ['.birth-time-control', 'Местное время рождения, как в свидетельстве.'],
+    ['.city-field', 'Выберите город из подсказок — часовой пояс учтём автоматически.'],
+  ];
+  for (const [selector, content] of fieldHints) {
+    const field = form.querySelector(selector);
+    if (!field) continue;
+    const hint = document.createElement('p');
+    hint.className = 'natal-field-hint'; hint.textContent = content;
+    (selector === '.birth-time-control' ? field.parentElement : field).append(hint);
+  }
   submit.before(statusLine);
   slot.append(form);
 
@@ -31,6 +53,8 @@
   const timeInput = form.querySelector(`[id="birth-time-display${SUFFIX}"]`);
   const timeToggle = form.querySelector(`[id="birth-time-toggle${SUFFIX}"]`);
   const unknownBox = unknown.querySelector('input');
+  timeInput.closest('.birth-field').after(unknown);
+  unknown.after(timeHint);
   unknownBox.addEventListener('change', () => {
     timeInput.required = !unknownBox.checked;
     timeInput.disabled = unknownBox.checked;
@@ -54,12 +78,20 @@
 
   function renderBigThree(natal) {
     const list = document.getElementById('natal-big-three');
+    document.getElementById('natal-overview-title').textContent = natal.angles ? 'Три точки опоры' : 'Две точки опоры';
     list.replaceChildren();
-    const items = [['Солнце', natal.planets.find((p) => p.key === 'sun').sign], ['Луна', natal.planets.find((p) => p.key === 'moon').sign]];
-    if (natal.angles) items.push(['Асцендент', natal.angles.asc.sign]);
-    for (const [label, sign] of items) {
+    const items = [['Солнце', natal.planets.find((p) => p.key === 'sun').sign, 'sun', 'Как вы проявляете себя'], ['Луна', natal.planets.find((p) => p.key === 'moon').sign, 'moon', 'Что даёт вам чувство опоры']];
+    if (natal.angles) items.push(['Асцендент', natal.angles.asc.sign, 'asc', 'Как вас видят окружающие']);
+    for (const [label, sign, key, meaning] of items) {
       const item = document.createElement('li');
-      item.append(text('span', 'natal-chip-label', label), text('strong', '', sign));
+      const link = text('a', 'natal-key-link', '');
+      link.href = `#natal-topic-${key}`;
+      const labelNode = text('span', 'natal-key-copy', '');
+      labelNode.append(text('span', 'natal-chip-label', label), text('strong', '', sign), text('span', 'natal-key-meaning', meaning));
+      const arrow = text('span', 'natal-key-arrow', '↗');
+      arrow.setAttribute('aria-hidden', 'true');
+      link.append(labelNode, arrow);
+      item.append(link);
       list.append(item);
     }
   }
@@ -87,6 +119,8 @@
     for (const section of natal.sections) {
       const card = document.createElement('article');
       card.className = 'natal-card';
+      card.id = `natal-topic-${section.key}`;
+      card.tabIndex = -1;
       const tag = [SECTION_TAG[section.key], section.sign + (section.house && !['asc', 'mc'].includes(section.key) ? `, ${section.house} дом` : '')].join(' · ');
       card.append(text('span', 'natal-card-tag', tag), text('h3', '', section.title), text('p', 'natal-card-lead', section.lead), text('p', 'natal-card-text', section.text));
       box.append(card);

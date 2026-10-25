@@ -1,0 +1,62 @@
+/* Natal chart: a calm input surface, a legible wheel, then an editorial reading. */
+#route-natal { --natal-line: rgba(222,184,88,.24); }
+#route-natal .natal-hero .forecast-hero-copy { max-width: 900px; }
+#route-natal .natal-hero h1 { font-size: clamp(42px,5.2vw,76px); line-height: 1.08; }
+#route-natal .natal-lead { max-width: 660px; line-height: 1.55; }
+.site-shell #route-natal .natal-start { gap: 48px; padding-top: 40px; }
+#route-natal .natal-form-card { padding: 30px; border: 1px solid var(--natal-line); border-radius: 8px; background: #1c1410; }
+#route-natal .natal-form-title { margin-bottom: 8px; font-size: clamp(23px,2vw,28px); }
+#route-natal .natal-form-intro { margin: 0 0 28px; color: var(--muted); font-size: 15px; line-height: 1.5; }
+#route-natal .birth-form { max-width: none; grid-template-columns: minmax(0,1fr); gap: 22px; }
+#route-natal .birth-form .birth-field { min-width: 0; }
+#route-natal .birth-form input:not([type=checkbox]), #route-natal .birth-form select { font-size: 16px; background-color: #130e0b; }
+#route-natal .birth-form button[type=submit] { width: 100%; justify-content: space-between; min-height: 56px; }
+#route-natal .natal-field-hint { margin: 8px 0 0; color: var(--muted); font: 400 12px/1.5 var(--body); }
+#route-natal .birth-form .natal-unknown { min-height: 44px; margin: -10px 0 0; }
+#route-natal .natal-time-hint { grid-column: 1 / -1; margin: -20px 0 0 28px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+#route-natal .natal-status { color: var(--gold-light); }
+#route-natal .natal-privacy { margin-top: 20px; font-size: 12px; line-height: 1.65; }
+#route-natal .natal-wheel-stage { align-self: center; }
+#route-natal .natal-wheel-shell { position: relative; width: min(100%,560px); }
+#route-natal .natal-wheel-empty { width: 100%; opacity: 1; }
+#route-natal .natal-wheel-empty .natal-wheel-svg { animation: none; }
+#route-natal .natal-wheel-empty .nw-angle-label, .natal-feature-art .nw-angle-label { display: none; }
+#route-natal .natal-wheel-center { position: absolute; inset: 31%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 7px; }
+#route-natal .natal-wheel-center span { color: var(--muted); font-size: 14px; }
+#route-natal .natal-wheel-center strong { font: italic 500 clamp(36px,4vw,60px)/1.1 var(--accent); color: var(--gold-light); }
+#route-natal .natal-wheel-caption { margin: 18px 0 0; color: var(--muted); font-size: 14px; line-height: 1.7; text-align: center; }
+#route-natal .nw-ring { stroke: rgba(222,184,88,.72); }
+#route-natal .nw-sign-glyph { fill: var(--gold-light); }
+#route-natal .natal-result-head { padding-top: 44px; }
+#route-natal .natal-result-grid { align-items: center; }
+#route-natal .natal-overview-lead { max-width: 34ch; margin: 0 0 20px; color: var(--muted); font-size: 15px; line-height: 1.6; }
+#route-natal .natal-big-three { display: block; margin: 0; }
+#route-natal .natal-big-three li { display: block; min-width: 0; padding: 0; border: 0; border-bottom: 1px solid var(--natal-line); border-radius: 0; }
+#route-natal .natal-key-link { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 20px 2px; color: inherit; text-decoration: none; }
+#route-natal .natal-key-link:hover strong { color: var(--gold-light); }
+#route-natal .natal-key-link:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; }
+#route-natal .natal-key-copy { display: grid; gap: 5px; }
+#route-natal .natal-key-meaning { color: var(--muted); font-size: 13px; line-height: 1.4; }
+#route-natal .natal-key-arrow { color: var(--gold-light); font-size: 22px; }
+#route-natal .natal-technical { margin-top: 28px; padding: 18px 0; border-bottom: 1px solid var(--natal-line); }
+#route-natal .natal-technical summary { cursor: pointer; color: var(--gold-light); font-size: 15px; line-height: 1.5; min-height: 24px; }
+#route-natal .natal-technical[open] summary { margin-bottom: 18px; }
+#route-natal .natal-table { font-size: 14px; }
+#route-natal .natal-table td { font-variant-numeric: tabular-nums; }
+#route-natal .natal-sections { gap: 36px 48px; margin-top: 64px; }
+#route-natal .natal-card { padding: 24px 0 0; border: 0; border-top: 1px solid var(--natal-line); background: none; scroll-margin-top: calc(var(--header) + 24px); }
+#route-natal .natal-card h3 { font-size: clamp(23px,2.1vw,30px); line-height: 1.2; }
+#route-natal .natal-card-text { line-height: 1.7; }
+#route-natal .natal-next { padding-top: 32px; border-top: 1px solid var(--natal-line); }
+@media (min-width: 1024px) {
+  .site-shell #route-natal .natal-start { grid-template-columns: minmax(0,480px) minmax(0,1fr); column-gap: clamp(40px,7vw,120px); }
+  #route-natal .natal-sections { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  #route-natal .natal-wheel-stage { display: grid; }
+}
+@media (max-width: 767px) {
+  #route-natal .natal-form-card { padding: 24px 20px; }
+  #route-natal .natal-hero .forecast-kicker { font-size: 17px; }
+  #route-natal .natal-lead { font-size: 16px; }
+  #route-natal .natal-result-grid { gap: 28px; margin-top: 28px; }
+  #route-natal .natal-sections { margin-top: 44px; gap: 30px; }
+}

@@ -64,7 +64,8 @@
   window.drawNatalWheel = function drawNatalWheel(container, natal) {
     container.replaceChildren();
     const origin = natal.angles ? natal.angles.asc.longitude : 0;
-    const svg = el('svg', { viewBox: `0 0 ${SIZE} ${SIZE}`, role: 'img', 'aria-label': describe(natal), class: 'natal-wheel-svg' });
+    // Leave room for the ASC/MC labels outside the zodiac ring.
+    const svg = el('svg', { viewBox: `-40 -40 ${SIZE + 80} ${SIZE + 80}`, role: 'img', 'aria-label': describe(natal), class: 'natal-wheel-svg' });
     svg.append(el('circle', { cx: C, cy: C, r: R_OUT, class: 'nw-ring' }), el('circle', { cx: C, cy: C, r: R_SIGN, class: 'nw-ring' }),
       el('circle', { cx: C, cy: C, r: R_HOUSE, class: 'nw-ring nw-ring-inner' }));
 
