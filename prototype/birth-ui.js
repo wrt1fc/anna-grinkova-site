@@ -27,6 +27,13 @@ window.initBirthDate = function initBirthDate(form, suffix = '') {
   }
 
   function setBirthDate(iso) {
+    if (!iso) {
+      dateDisplay.value = ''; dateValue.value = ''; dateDisplay.setCustomValidity('');
+      viewYear = today.getFullYear() - 25;
+      viewMonth = today.getMonth();
+      renderCalendar();
+      return;
+    }
     const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
     if (!match) return;
     dateDisplay.value = `${match[3]}.${match[2]}.${match[1]}`;
@@ -85,6 +92,9 @@ window.initBirthDate = function initBirthDate(form, suffix = '') {
       viewYear === today.getFullYear() && viewMonth === today.getMonth();
   }
 
+  // Cloned forms already contain the source form's options.
+  monthSelect.replaceChildren();
+  yearSelect.replaceChildren();
   months.forEach((name, index) => monthSelect.add(new Option(name, String(index))));
   for (let year = today.getFullYear(); year >= earliestYear; year -= 1) {
     yearSelect.add(new Option(String(year), String(year)));
@@ -142,7 +152,7 @@ window.initBirthDate = function initBirthDate(form, suffix = '') {
     cityResults.forEach((city, index) => {
       const option = document.createElement('button');
       option.type = 'button';
-      option.id = `city-option-${index}`;
+      option.id = `city-option${suffix}-${index}`;
       option.className = 'city-option';
       option.setAttribute('role', 'option');
       option.setAttribute('aria-selected', String(index === activeCity));
@@ -202,7 +212,7 @@ window.initBirthDate = function initBirthDate(form, suffix = '') {
       event.preventDefault();
       activeCity = (activeCity + cityResults.length + (event.key === 'ArrowDown' ? 1 : -1)) % cityResults.length;
       renderCities();
-      cityInput.setAttribute('aria-activedescendant', `city-option-${activeCity}`);
+      cityInput.setAttribute('aria-activedescendant', `city-option${suffix}-${activeCity}`);
       cityList.children[activeCity].scrollIntoView({ block: 'nearest' });
     } else if (event.key === 'Enter' && activeCity >= 0) {
       event.preventDefault();
@@ -213,6 +223,10 @@ window.initBirthDate = function initBirthDate(form, suffix = '') {
     if (!form.querySelector('.city-field').contains(event.target)) closeCities();
   });
   cityInput.addEventListener('blur', () => { window.setTimeout(closeCities, 120); });
+  form.addEventListener('reset', () => {
+    closeCalendar(); closeCities(); clearTimeout(cityTimer);
+    cityRequest++; cityResults = []; cityList.replaceChildren();
+  });
 
   return {
     setDate: setBirthDate,

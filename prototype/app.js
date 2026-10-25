@@ -264,7 +264,7 @@ function showRoute() {
     updateDayCard();
     loadDailyForecast();
   }
-  if (page === 'account' || page === 'chat' || page === 'reading' || page === 'subscription') refreshAccount();
+  refreshAccount();
   document.dispatchEvent(new CustomEvent('anna-route', { detail: { page } }));
 }
 
@@ -442,11 +442,19 @@ document.getElementById('auth-resend').addEventListener('click', async () => {
 });
 
 function renderAccount(data) {
-  if ((currentUser?.id ?? null) !== (data?.user?.id ?? null)) {
+  const identityChanged = (currentUser?.id ?? null) !== (data?.user?.id ?? null);
+  if (identityChanged) {
     resetDraw();
     document.dispatchEvent(new Event('anna-account-changed'));
   }
   currentUser = data?.user || null;
+  if (identityChanged) {
+    const form = document.getElementById('birth-form');
+    form.reset();
+    window.birthControls.setDate('');
+    window.birthTimeControls.setTime('');
+    form.querySelector('.birth-manual').open = false;
+  }
   // chat.js may load after this runs, so the state is also kept on <body> for it to read on start.
   document.body.dataset.signedIn = String(!!currentUser);
   document.body.dataset.visitorName = currentUser?.displayName || '';
@@ -475,9 +483,11 @@ function renderAccount(data) {
   }
 }
 
+let accountRequest = 0;
 async function refreshAccount() {
-  try { const { response, data } = await api('/api/me'); renderAccount(response.ok ? data : null); }
-  catch { renderAccount(null); }
+  const request = ++accountRequest;
+  try { const { response, data } = await api('/api/me'); if (request === accountRequest) renderAccount(response.ok ? data : null); }
+  catch { if (request === accountRequest) renderAccount(null); }
 }
 
 document.getElementById('account-name-form').addEventListener('submit', async (event) => {
@@ -531,6 +541,7 @@ document.getElementById('birth-form').addEventListener('submit', async (event) =
     const values = Object.fromEntries(new FormData(form));
     const { response, data } = await api('/api/profile', { method: 'PUT', body: JSON.stringify(values) });
     message.textContent = response.ok ? 'Данные рождения сохранены.' : data.message || 'Не удалось сохранить данные.';
+    if (response.ok) document.dispatchEvent(new Event('anna-birth-profile-saved'));
     if (data.error === 'birth_time_ambiguous') form.querySelector('.birth-manual').open = true;
   } catch { message.textContent = 'Сервис недоступен. Попробуйте позже.'; }
   finally { button.disabled = false; }

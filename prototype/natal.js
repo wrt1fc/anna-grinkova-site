@@ -67,6 +67,7 @@
     angles: { asc: { longitude: 0, sign: 'Овен' }, mc: { longitude: 270, sign: 'Козерог' } } });
 
   const result = document.getElementById('natal-result');
+  let owner = null, ownLoaded = false, ownController = null, ownRequest = 0, manualChart = false, calculation = 0;
   const SECTION_TAG = { sun: 'Солнце', moon: 'Луна', asc: 'Асцендент', venus: 'Венера', mars: 'Марс', mc: 'MC' };
   const text = (tag, className, content) => {
     const node = document.createElement(tag);
@@ -150,7 +151,7 @@
     }
   }
 
-  function render(natal, { own = false } = {}) {
+  function render(natal, { own = false, scroll = true } = {}) {
     renderBigThree(natal);
     renderTable(natal);
     renderSections(natal);
@@ -163,13 +164,16 @@
     result.classList.remove('is-fresh');
     void result.offsetWidth; // restarts the entrance animation
     result.classList.add('is-fresh');
-    result.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+    if (scroll) result.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
   }
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (!dateControls.validateDate()) return;
     if (!unknownBox.checked && !timeControls.validateTime()) return;
+    const request = ++calculation;
+    manualChart = true;
+    ownController?.abort(); ownController = null; ownRequest++;
     submit.disabled = true;
     message('Считаем карту…');
     try {
@@ -178,6 +182,7 @@
       if (unknownBox.checked) values.birthTime = '12:00';
       const response = await fetch('/api/natal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(values) });
       const data = await response.json();
+      if (request !== calculation) return;
       if (!response.ok) {
         message(data.message || 'Проверьте дату, время и город рождения.');
         if (data.error === 'birth_time_ambiguous') form.querySelector('.birth-manual').open = true;
@@ -185,19 +190,46 @@
       }
       message('');
       render(data.natal);
-    } catch { message('Сервис недоступен. Попробуйте позже.'); }
-    finally { submit.disabled = false; }
+    } catch { if (request === calculation) message('Сервис недоступен. Попробуйте позже.'); }
+    finally { if (request === calculation) submit.disabled = false; }
   });
 
   // A signed-in account with saved birth data sees its own chart at once.
-  let ownLoaded = false;
-  document.addEventListener('anna-route', async (event) => {
-    if (event.detail.page !== 'natal' || ownLoaded || document.body.dataset.signedIn !== 'true') return;
+  async function loadOwnChart() {
+    if (document.getElementById('route-natal').hidden || !owner || ownLoaded || ownController || manualChart) return;
+    const request = ++ownRequest, user = owner;
+    const controller = new AbortController(); ownController = controller;
     try {
-      const response = await fetch('/api/natal/me', { credentials: 'same-origin' });
+      const response = await fetch('/api/natal/me', { credentials: 'same-origin', cache: 'no-store', signal: controller.signal });
       if (!response.ok) return;
+      const data = await response.json();
+      if (request !== ownRequest || user !== owner || document.getElementById('route-natal').hidden) return;
       ownLoaded = true;
-      render((await response.json()).natal, { own: true });
+      render(data.natal, { own: true, scroll: false });
     } catch { /* the form stays available */ }
+    finally { if (request === ownRequest) ownController = null; }
+  }
+  document.addEventListener('anna-route', event => {
+    if (event.detail.page === 'natal') loadOwnChart();
+    else { ownController?.abort(); ownController = null; ownRequest++; }
   });
+  document.addEventListener('anna-account-state', event => {
+    const next = event.detail.signedIn ? event.detail.userId : null;
+    if (next !== owner) {
+      ownController?.abort(); ownController = null; ownRequest++; calculation++;
+      ownLoaded = false; manualChart = false; submit.disabled = false; message('');
+      if (owner) {
+        result.hidden = true; form.reset(); dateControls.setDate(''); timeControls.setTime('');
+        unknownBox.dispatchEvent(new Event('change'));
+      }
+      owner = next;
+    }
+    document.getElementById('natal-save-link').hidden = !!owner;
+    loadOwnChart();
+  });
+  document.addEventListener('anna-birth-profile-saved', () => {
+    ownController?.abort(); ownController = null; ownRequest++;
+    ownLoaded = false; manualChart = false;
+  });
+  if (document.body.dataset.signedIn === 'true') window.refreshAccount?.();
 })();
