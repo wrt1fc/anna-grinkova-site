@@ -14,6 +14,23 @@ function ollamaStream(chunks, { doneReason = 'stop', done = true } = {}) {
 }
 
 const forecast = chatForecastContext(forecastForDate('2026-10-07'));
+
+test('a repeated long sentence split across chunks never reaches the visitor or final answer', async () => {
+  const sentence = 'Сатурн в Скорпионе в восьмом доме связан со страхом не выдержать давления.';
+  const next = '\n\nПопробуйте выбрать одну небольшую задачу на сегодня.';
+  const deltas = [];
+  const reply = await chatReturning([sentence, ' ' + sentence.slice(0, 30), sentence.slice(30), ' ' + sentence, next], {})
+    .answer({ message: 'Что значит Сатурн?', history: [], forecast, onDelta: (delta) => deltas.push(delta) });
+  assert.equal(reply.answer, sentence + next);
+  assert.equal(deltas.join(''), sentence + next);
+});
+
+test('different sentences about the same planet are preserved', async () => {
+  const text = 'Луна в Водолее связана с потребностью в свободе и общении. Луна в седьмом доме подчёркивает важность партнёрских отношений.';
+  const reply = await chatReturning([text], {}).answer({ message: 'Что значит Луна?', history: [], forecast });
+  assert.equal(reply.answer, text);
+});
+
 function chatReturning(chunks, options, capture = {}) {
   return createLocalChat({ model: 'qwen3.5:4b', fetchImpl: async (url, request) => {
     Object.assign(capture, { url, request, payload: JSON.parse(request.body) });
@@ -21,13 +38,34 @@ function chatReturning(chunks, options, capture = {}) {
   } });
 }
 
+test('a wrong natal sign is retried before any text reaches the visitor', async () => {
+  const chart = { planets: ['Луна 12°00′ Водолей, 7 дом'] };
+  let calls = 0;
+  const deltas = [];
+  const chat = createLocalChat({ model: 'anna-v4', fetchImpl: async () => ollamaStream([
+    ++calls === 1 ? 'Луна в Льве подчёркивает желание признания и внимания.' : 'Луна в Водолее связана с потребностью в свободе и общении.',
+  ]) });
+  const reply = await chat.answer({ message: 'Расскажите про Луну', history: [], forecast, chart, onDelta: (delta) => deltas.push(delta) });
+  assert.equal(calls, 2);
+  assert.equal(deltas.join(''), reply.answer);
+  assert.equal(reply.answer.includes('Льве'), false);
+});
+
+test('a second wrong natal sign fails without streaming the false claim', async () => {
+  const deltas = [];
+  await assert.rejects(chatReturning(['Луна в Льве подчёркивает желание признания и внимания.'], {}).answer({
+    message: 'Расскажите про Луну', history: [], forecast, chart: { planets: ['Луна 12°00′ Водолей, 7 дом'] }, onDelta: (delta) => deltas.push(delta),
+  }), /contradicted/);
+  assert.deepEqual(deltas, []);
+});
+
 test('chat streams plain text built from calculated facts and the approved project context', async () => {
   const capture = {};
   const deltas = [];
   const reply = await chatReturning(['Карта поднимает ', 'тему выбора. ', 'Сначала проверьте факты.'], {}, capture)
     .answer({ message: 'Что значит карта?', history: [], forecast, visitorName: 'Мария', onDelta: (delta) => deltas.push(delta) });
   assert.equal(reply.answer, 'Карта поднимает тему выбора. Сначала проверьте факты.');
-  assert.deepEqual(deltas, ['Карта поднимает ', 'тему выбора. ', 'Сначала проверьте факты.']);
+  assert.deepEqual(deltas, ['Карта поднимает тему выбора.', ' Сначала проверьте факты.']);
   assert.equal(reply.truncated, false);
   assert.equal(capture.url, 'http://127.0.0.1:11434/api/generate');
   assert.equal(capture.payload.stream, true);
