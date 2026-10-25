@@ -3,6 +3,7 @@
 #route-day .mini-card-face { border-radius: 16px; }
 #route-day .mini-card-face::before,
 #route-day .mini-card-face::after { border-radius: inherit; }
+#route-day .mini-card-face-back { background: #1a110d url('./assets/card-back.svg') center / 100% 100% no-repeat; }
 .daily-draw-fan .draw-card,
 .daily-draw-fan .draw-card-front,
 .daily-draw-fan .draw-card-back { border-radius: 14px; }
