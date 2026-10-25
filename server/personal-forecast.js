@@ -35,7 +35,7 @@ export function personalForecastForDate(day, profile, userId, generalForecast = 
       title: `${card.name}: ваш фокус дня`,
       body: `На 12:00 МСК Солнце в знаке ${transit.sun.sign}, Луна в знаке ${transit.moon.sign}; фаза — ${general.astronomy.moonPhase}. ${aspectFact} ${moonChange ? `${moonChange} ` : ''}${exactFact ? `${exactFact} ` : ''}Это повод присмотреться к своему ритму и решениям сегодня. Карта «${card.name}» предлагает тему: ${card.focus}.`,
       focus: mainAspect ? `${PLANETS[mainAspect.transit]} — ${PLANETS[mainAspect.natal]}` : `Луна в знаке ${transit.moon.sign}`,
-      action: card.action, question: card.question,
+      theme: general.reading.theme, action: card.action, question: card.question,
     },
   };
 }

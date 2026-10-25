@@ -200,7 +200,8 @@ test('five-card draw returns the chosen card consistently to guest and account',
     assert.equal(preview.data.tarot.name, general[draw].tarot.name);
   }
   assert.equal(general[2].tarot.position, 2);
-  assert.match(general[2].reading.body, /Тема дня:/);
+  assert.ok(general[2].reading.body.includes(`Карта «${general[2].tarot.name}»`));
+  assert.ok(general[2].reading.body.includes(general[2].tarot.focus));
   const pending = await request('/api/auth/register', 'POST', signup);
   const verified = await request('/api/auth/register/verify', 'POST', { challenge: pending.data.challenge, code: sent.at(-1).code });
   const cookie = verified.response.headers.get('set-cookie').split(';')[0];
@@ -209,6 +210,7 @@ test('five-card draw returns the chosen card consistently to guest and account',
   for (let draw = 0; draw < 5; draw++) personal.push((await request(`/api/forecast/day?draw=${draw}`, 'GET', null, cookie)).data);
   assert.equal(new Set(personal.map((item) => item.tarot.number)).size, 5);
   assert.equal(personal[2].scope, 'personal');
+  assert.equal(personal[2].reading.theme, general[2].reading.theme);
   assert.equal(personal[2].tarot.position, 2);
   assert.equal((await request('/api/forecast/day?draw=2', 'GET', null, cookie)).data.tarot.number, personal[2].tarot.number);
   const personalPreview = await request('/api/forecast/card?draw=2', 'GET', null, cookie);

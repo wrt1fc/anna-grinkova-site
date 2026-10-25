@@ -63,7 +63,7 @@ test('chat streams plain text built from calculated facts and the approved proje
   const capture = {};
   const deltas = [];
   const reply = await chatReturning(['Карта поднимает ', 'тему выбора. ', 'Сначала проверьте факты.'], {}, capture)
-    .answer({ message: 'Что значит карта?', history: [], forecast, visitorName: 'Мария', onDelta: (delta) => deltas.push(delta) });
+    .answer({ message: 'На что обратить внимание сегодня?', history: [], forecast, visitorName: 'Мария', onDelta: (delta) => deltas.push(delta) });
   assert.equal(reply.answer, 'Карта поднимает тему выбора. Сначала проверьте факты.');
   assert.deepEqual(deltas, ['Карта поднимает тему выбора.', ' Сначала проверьте факты.']);
   assert.equal(reply.truncated, false);
@@ -71,7 +71,9 @@ test('chat streams plain text built from calculated facts and the approved proje
   assert.equal(capture.payload.stream, true);
   assert.equal(capture.payload.format, undefined);
   const prompt = JSON.parse(capture.payload.prompt);
-  assert.equal(prompt.forecast.card.name, forecast.card.name);
+  assert.deepEqual(prompt.forecast.sky, forecast.sky);
+  assert.equal(prompt.forecast.reading.theme, forecast.reading.theme);
+  assert.equal(prompt.forecast.card, undefined);
   assert.equal(prompt.visitorName, 'Мария');
   assert.deepEqual(prompt.materials, []);
   assert.ok(prompt.facts.some((fact) => fact.includes('Института прогрессивной психологии')));
@@ -129,13 +131,14 @@ test('chat prompt carries the length instruction and keeps answers within its si
   await assert.rejects(chatReturning(['Тест']).answer({ message: 'Тест', history: [], forecast, length: 'huge' }));
 });
 
-test('the day card reaches the model only for questions about the day', async () => {
+test('the calculated day context reaches the model only for questions about the day', async () => {
   const { asksAboutDay, forecastForQuestion } = await import('../server/local-chat.js');
   for (const q of ['Что означает моя карта дня?', 'На что обратить внимание сегодня?', 'Какой прогноз на неделю?']) assert.equal(asksAboutDay(q), true, q);
   for (const q of ['Почему мы часто ссоримся?', 'Как понять, что отношения созависимые?', 'Что делать с бывшим?']) assert.equal(asksAboutDay(q), false, q);
   const trimmed = forecastForQuestion(forecast, 'Почему мы часто ссоримся?');
   assert.deepEqual(Object.keys(trimmed).sort(), ['date', 'scope', 'subject']);
-  assert.equal(forecastForQuestion(forecast, 'Что значит карта?').card.name, forecast.card.name);
+  assert.deepEqual(forecastForQuestion(forecast, 'На что обратить внимание сегодня?').reading, forecast.reading);
+  assert.equal(forecastForQuestion(forecast, 'Что значит натальная карта?').reading, undefined);
 });
 
 test('the model address comes from OLLAMA_URL and must be http(s)', async () => {
