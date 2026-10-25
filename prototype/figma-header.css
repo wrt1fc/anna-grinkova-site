@@ -1,6 +1,6 @@
 /* Header and menus from the Figma frames of "07 · Адаптив" and "Mobile":
-   - from 1024 px: logo on the left, the five links centred, "Личный кабинет" on the right;
-   - 768–1023 px: logo, "Личный кабинет" and a menu button that opens the list of pages;
+   - from 1280 px: logo on the left, page links centred, "Личный кабинет" on the right;
+   - 768–1279 px: logo, "Личный кабинет" and a menu button that opens the list of pages;
    - below 768 px: logo and a user icon, the pages are in the bottom bar.
    Side padding, link size and link gap come from the ramps in responsive-tokens.css. */
 
@@ -28,10 +28,10 @@
   .mobile-nav { display: none !important; }
   body { padding-bottom: 0; }
 }
-@media (min-width: 768px) and (max-width: 1023.98px) {
+@media (min-width: 768px) and (max-width: 1279.98px) {
   .menu-toggle { display: inline-flex; }
 }
-@media (min-width: 1024px) {
+@media (min-width: 1280px) {
   .menu-toggle, .site-menu { display: none !important; }
   .site-header .desktop-nav { display: flex; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); gap: var(--nav-gap); }
   .site-header .desktop-nav a { padding: 12px 0; font-size: var(--nav-fs); white-space: nowrap; }

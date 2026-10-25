@@ -60,7 +60,8 @@
   :is(#route-day, #route-week) .reading-main > p { grid-column: 1; grid-row: 2; }
   :is(#route-day, #route-week) .reading-main blockquote { grid-column: 1; grid-row: 3; }
   :is(#route-day, #route-week) .reading-side { grid-column: 2; grid-row: 2 / span 2; margin: 25px 0 0; }
-  :is(#route-day, #route-week) .unlock-section .button { position: absolute; right: var(--gutter); top: calc(var(--d-unl-pt) + 38px); margin: 0; }
+  .site-shell :is(#route-day, #route-week) .unlock-section { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 32px; padding-bottom: 56px; }
+  :is(#route-day, #route-week) .unlock-section .button { position: static; margin: 0; max-width: 420px; white-space: normal; }
 }
 
 /* resets of older rules */

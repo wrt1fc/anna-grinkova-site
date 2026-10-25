@@ -33,7 +33,7 @@
 #route-reading .rd-guest { margin-top: 30px; max-width: 520px; }
 
 @media (min-width: 1024px) {
-  .site-shell #route-reading .reading-hero .rd-lead { position: absolute; right: var(--gutter); top: calc(var(--c-lead-y) + 44px); margin: 0; }
+  .site-shell #route-reading .reading-hero .rd-lead { position: static; margin: 18px 0 0 auto; }
   .site-shell #route-reading .rd-ask { display: grid; grid-template-columns: 46% 46%; column-gap: 8%; align-items: start; padding-top: 56px; }
   #route-reading .rd-form, #route-reading .rd-guest { grid-column: 1; grid-row: 1; margin-top: 0; }
   #route-reading .rd-deck { grid-column: 2; grid-row: 1; }

@@ -64,7 +64,7 @@
 }
 @media (min-width: 1024px) {
   #route-chat .chat-hero-head { margin-top: 42px; }
-  #route-chat .chat-hero-head > p { position: absolute; right: var(--gutter); top: var(--c-lead-y); margin: 0; }
+  #route-chat .chat-hero-head > p { position: static; margin: 18px 0 0 auto; }
   .site-shell #route-chat .chat-layout { display: grid; grid-template-columns: 25% 72%; column-gap: 3%; align-items: start; padding-top: 56px; }
   #route-chat .chat-panel { order: 0; grid-column: 2; grid-row: 1; }
   #route-chat .chat-aside { order: 0; grid-column: 1; grid-row: 1; margin: 0; }
