@@ -1,4 +1,14 @@
 /* Full illustrations with readable labels; preserve the established card proportions. */
+#route-day:not([hidden]) .daily-visual .mini-card,
+#route-day .mini-card-face { border-radius: 16px; }
+#route-day .mini-card-face::before,
+#route-day .mini-card-face::after { border-radius: inherit; }
+.daily-draw-fan .draw-card,
+.daily-draw-fan .draw-card-front,
+.daily-draw-fan .draw-card-back { border-radius: 14px; }
+.daily-draw-fan .draw-card-mark { border-radius: 8px; }
+#route-reading .rd-card-face { border-radius: 14px; overflow: hidden; }
+#route-reading .rd-result-art { border-radius: 16px; overflow: hidden; }
 #route-day .mini-card-face-front::after {
   content: ""; display: block; position: absolute; inset: 40% 0 0; z-index: 0;
   background: linear-gradient(180deg, transparent 0%, rgba(20,13,8,.2) 40%, rgba(20,13,8,.9) 100%);
@@ -42,9 +52,13 @@
 .natal-feature:focus-visible { outline: 2px solid var(--gold-light); outline-offset: 8px; }
 @media (max-width: 767px) {
   #route-home .daily-draw-copy { min-width: 0; }
-  .site-shell #route-day .forecast-hero.section-wrap { height: auto; padding-bottom: 100px; }
+  .site-shell :is(#route-day, #route-week) .forecast-hero.section-wrap { height: auto; padding-bottom: 100px; }
   #route-day .forecast-visual.daily-visual, #route-day .day-card-scene { width: min(64vw,248px); }
   #route-day .day-card-scene { height: calc(min(64vw,248px) * 1.5); }
   #route-day .mini-card-face-front .mini-card-title { font-size: 30px; }
   #route-day .mini-card-face-front .mini-card-title { bottom: 24px; }
+}
+@media (max-width: 1023px) {
+  .site-shell :is(#route-day, #route-week) .unlock-section { padding-bottom: 64px; }
+  :is(#route-day, #route-week) .unlock-section .button { min-width: 0; max-width: 100%; padding-inline: 24px; gap: 18px; white-space: normal; }
 }
