@@ -78,6 +78,21 @@ test('each section has its own indexable address with title, canonical and only 
     const sitemap = await (await fetch(`${base}/sitemap.xml`)).text();
     assert.match(sitemap, /<loc>https:\/\/anna\.example\/karta-dnya<\/loc>/);
     assert.equal(sitemap.includes('/kabinet'), false);
+    assert.equal(sitemap.includes('/podpiska'), false);
+    const subscriptionResponse = await fetch(`${base}/podpiska`);
+    assert.equal(subscriptionResponse.status, 200);
+    const subscription = await subscriptionResponse.text();
+    assert.match(subscription, /data-page="subscription">/);
+    assert.match(subscription, /data-page="account" hidden>/);
+    assert.match(subscription, /<meta name="robots" content="noindex, nofollow" \/>/);
+    assert.match(subscription, /<title>Подписка и оплата — Анна Гринькова<\/title>/);
+    // A public page must not contain anyone's checkout link or email.
+    assert.equal(subscription.includes('customer_email='), false);
+    for (const resource of ['/subscription.css?v=1', '/subscription.js?v=1']) {
+      const asset = await fetch(`${base}${resource}`);
+      assert.equal(asset.status, 200);
+      assert.match(asset.headers.get('content-type'), /css|javascript/);
+    }
     const robots = await (await fetch(`${base}/robots.txt`)).text();
     assert.match(robots, /Sitemap: https:\/\/anna\.example\/sitemap\.xml/);
     assert.match(robots, /Clean-param: payment/);

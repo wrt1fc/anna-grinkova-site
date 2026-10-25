@@ -49,10 +49,12 @@
     <link rel="stylesheet" href="./natal.css?v=4" />
     <link rel="stylesheet" href="./metaphor-cards.css?v=5" />
     <link rel="stylesheet" href="./natal-refine.css?v=1" />
+    <link rel="stylesheet" href="./subscription.css?v=1" />
     <script src="./birth-ui.js?v=2" defer></script>
     <script src="./birth-time.js?v=2" defer></script>
     <script src="./birth-init.js?v=1" defer></script>
-    <script src="./app.js?v=28" defer></script>
+    <script src="./app.js?v=29" defer></script>
+    <script src="./subscription.js?v=1" defer></script>
     <script src="./home-draw.js?v=3" defer></script>
     <script src="./chat.js?v=13" defer></script>
     <script src="./reading.js?v=2" defer></script>
@@ -327,8 +329,70 @@
             <div class="chat-panel"><div class="chat-panel-head"><span class="chat-panel-mark" aria-hidden="true"><svg class="ui-icon"><use href="./assets/icons.svg#star" /></svg></span><div><strong>Вопрос Анне</strong><span>Ответы по методике Анны Гриньковой</span></div><button type="button" class="chat-clear" id="chat-clear" aria-label="Очистить диалог">Очистить</button></div><div class="chat-transcript" id="chat-transcript" role="log" aria-label="Сообщения чата" aria-live="polite"><article class="chat-message chat-greeting" id="chat-empty" data-role="assistant"><span class="chat-greeting-avatar" aria-hidden="true"><img src="./assets/institute-emblem-gold.svg" alt="" /></span><span class="chat-message-label">Помощник Анны</span><p>Здравствуйте. Я помощник Анны Гриньковой и отвечаю по её методике. Расскажите, что сейчас волнует. Можно начать с простого: «Почему мы с партнёром ссоримся из-за одного и того же?»</p><p>Выберите, как подробно вам ответить, и задайте вопрос.</p><div class="chat-format" role="group" aria-label="Формат ответа"><button type="button" data-chat-length="short"><strong>Коротко</strong><span>1–2 предложения</span></button><button type="button" data-chat-length="medium"><strong>Обычно</strong><span>суть и пример</span></button><button type="button" data-chat-length="detailed"><strong>Подробно</strong><span>разбор с выводом</span></button></div><div class="chat-library"><p class="chat-library-title">Что можно спросить</p><details class="chat-library-group" open><summary>Карта дня<svg class="ui-icon" aria-hidden="true"><use href="./assets/icons.svg#chevron-right" /></svg></summary><div class="chat-library-list"><button type="button" data-chat-prompt="Что означает моя карта дня?">Что означает моя карта дня?</button><button type="button" data-chat-prompt="На что обратить внимание сегодня?">На что обратить внимание сегодня?</button><button type="button" data-chat-prompt="Как применить совет карты в отношениях?">Как применить совет карты в отношениях?</button><button type="button" data-chat-prompt="Какой вопрос задать себе сегодня?">Какой вопрос задать себе сегодня?</button></div></details><details class="chat-library-group" open><summary>Любовь и отношения<svg class="ui-icon" aria-hidden="true"><use href="./assets/icons.svg#chevron-right" /></svg></summary><div class="chat-library-list"><button type="button" data-chat-prompt="Почему я притягиваю один и тот же тип партнёров?">Почему я притягиваю один и тот же тип партнёров?</button><button type="button" data-chat-prompt="Почему мы с партнёром часто ссоримся?">Почему мы с партнёром часто ссоримся?</button><button type="button" data-chat-prompt="Как понять, что отношения созависимые?">Как понять, что отношения созависимые?</button><button type="button" data-chat-prompt="Как говорить партнёру о своих желаниях?">Как говорить партнёру о своих желаниях?</button><button type="button" data-chat-prompt="Почему мне трудно принимать заботу?">Почему мне трудно принимать заботу?</button><button type="button" data-chat-prompt="Что делать, если страсть в паре ушла?">Что делать, если страсть в паре ушла?</button></div></details><details class="chat-library-group"><summary>Луна, Венера и язык любви<svg class="ui-icon" aria-hidden="true"><use href="./assets/icons.svg#chevron-right" /></svg></summary><div class="chat-library-list"><button type="button" data-chat-prompt="Как Луна влияет на то, как я чувствую любовь?">Как Луна влияет на то, как я чувствую любовь?</button><button type="button" data-chat-prompt="Чем любовь по Венере отличается от любви по Луне?">Чем любовь по Венере отличается от любви по Луне?</button><button type="button" data-chat-prompt="Что показывает седьмой дом в карте?">Что показывает седьмой дом в карте?</button><button type="button" data-chat-prompt="Как узнать знак своей Луны?">Как узнать знак своей Луны?</button></div></details><details class="chat-library-group"><summary>Я и мои чувства<svg class="ui-icon" aria-hidden="true"><use href="./assets/icons.svg#chevron-right" /></svg></summary><div class="chat-library-list"><button type="button" data-chat-prompt="Почему я всё время подстраиваюсь под других?">Почему я всё время подстраиваюсь под других?</button><button type="button" data-chat-prompt="Как перестать быть удобной?">Как перестать быть удобной?</button><button type="button" data-chat-prompt="Почему я не ухожу оттуда, где мне плохо?">Почему я не ухожу оттуда, где мне плохо?</button><button type="button" data-chat-prompt="Как прожить расставание и не застрять в нём?">Как прожить расставание и не застрять в нём?</button></div></details><details class="chat-library-group"><summary>Семья и родители<svg class="ui-icon" aria-hidden="true"><use href="./assets/icons.svg#chevron-right" /></svg></summary><div class="chat-library-list"><button type="button" data-chat-prompt="Почему я повторяю сценарий мамы в отношениях?">Почему я повторяю сценарий мамы в отношениях?</button><button type="button" data-chat-prompt="Что такое родовой сценарий?">Что такое родовой сценарий?</button><button type="button" data-chat-prompt="Как поддержать взрослую дочь и не давить на неё?">Как поддержать взрослую дочь и не давить на неё?</button></div></details></div></article></div><div class="chat-composer"><div class="chat-examples" aria-label="Примеры вопросов"><span class="chat-examples-label">Можно спросить</span><button type="button" data-chat-prompt="Что означает моя карта дня?">Что означает моя карта дня?</button><button type="button" data-chat-prompt="Как Луна влияет на то, как я чувствую любовь?">Как Луна влияет на любовь?</button><button type="button" data-chat-prompt="Как перестать быть удобной?">Как перестать быть удобной?</button></div><div class="chat-locked" id="chat-locked"><p>Чат работает после входа. Так ответ учитывает ваши данные рождения.</p><button class="button button-gold" type="button" data-open-signup>Войти и задать вопрос <span aria-hidden="true">↗</span></button></div><p class="chat-status" id="chat-status" role="status"></p><form id="chat-form" hidden><label class="visually-hidden" for="chat-input">Ваш вопрос</label><textarea id="chat-input" name="message" rows="2" maxlength="600" placeholder="Напишите свой вопрос…" required></textarea><button type="submit" id="chat-send" aria-label="Отправить сообщение"><svg class="ui-icon" aria-hidden="true"><use href="./assets/icons.svg#send" /></svg></button><button type="button" id="chat-stop" aria-label="Остановить ответ" hidden>Стоп</button></form><p class="chat-disclaimer">Ответы носят информационный характер и не заменяют консультацию специалиста.</p></div></div>
           </section>
         </div>
+        <div class="route" id="route-subscription" data-page="subscription" hidden>
+          <section class="subscription-layout" aria-labelledby="subscription-title">
+            <a class="subscription-back" href="/kabinet">←&nbsp; В личный кабинет</a>
+            <div class="subscription-hero">
+              <p class="subscription-kicker">Для ваших вопросов и открытий</p>
+              <h1 id="subscription-title">Подписка.</h1>
+              <p class="subscription-lead">Разбирайтесь в себе через натальную карту и задавайте вопросы в удобном ритме.</p>
+            </div>
+            <div class="subscription-current" aria-live="polite">
+              <p id="subscription-current-title">Бесплатный доступ после входа</p>
+              <p class="subscription-small" id="subscription-current-note">Карта дня и прогноз на неделю доступны всем. После входа — 5 сообщений помощнику в день.</p>
+            </div>
+            <div class="subscription-periods" aria-label="Выберите срок подписки">
+              <article class="subscription-period" aria-labelledby="subscription-30-title">
+                <div class="subscription-period-head">
+                  <p class="subscription-period-tag">Комфортный старт</p>
+                  <h2 id="subscription-30-title">На 30 дней</h2>
+                  <p class="subscription-price">990 ₽</p>
+                  <p class="subscription-period-note">Оплата за 30 дней доступа</p>
+                </div>
+                <a class="button button-gold subscription-pay" data-subscribe-id="sub-30d" href="/podpiska#subscription-account" aria-label="Перейти к оплате подписки на 30 дней"><span class="subscription-pay-label">Перейти к оплате</span><span aria-hidden="true">↗</span></a>
+                <p class="subscription-small">Одинаковые возможности в обоих вариантах</p>
+              </article>
+              <article class="subscription-period subscription-period-best" aria-labelledby="subscription-90-title">
+                <div class="subscription-period-head">
+                  <p class="subscription-period-tag">Экономия 900 ₽</p>
+                  <h2 id="subscription-90-title">На 90 дней</h2>
+                  <p class="subscription-price">2070 ₽</p>
+                  <p class="subscription-period-note">690 ₽ за каждые 30 дней</p>
+                </div>
+                <a class="button button-gold subscription-pay" data-subscribe-id="sub-90d" href="/podpiska#subscription-account" aria-label="Перейти к оплате подписки на 90 дней"><span class="subscription-pay-label">Перейти к оплате</span><span aria-hidden="true">↗</span></a>
+                <p class="subscription-small">Одинаковые возможности в обоих вариантах</p>
+              </article>
+            </div>
+            <div class="subscription-included">
+              <h2>Что входит в подписку</h2>
+              <div class="subscription-benefits">
+                <div class="subscription-benefit"><h3>60 сообщений</h3><p>помощнику Анны каждый день</p></div>
+                <div class="subscription-benefit"><h3>Ваша натальная карта</h3><p>ответы с учётом данных рождения</p></div>
+                <div class="subscription-benefit"><h3>5 разборов в день</h3><p>по запросу с метафорической картой</p></div>
+              </div>
+            </div>
+            <div class="subscription-account" id="subscription-account" tabindex="-1">
+              <p class="subscription-small">Подписка для этого аккаунта</p>
+              <p class="subscription-email" id="subscription-email">Войдите, чтобы оформить подписку</p>
+              <p class="subscription-small" id="subscription-account-note">Подписка привяжется к вашему аккаунту. Укажите ту же почту в платёжной форме.</p>
+              <div class="subscription-account-actions">
+                <button class="quiet-button" type="button" id="subscription-login" data-open-signup>Войти и оформить подписку</button>
+                <button class="quiet-button" type="button" id="subscription-check" hidden>Проверить подписку и оплату</button>
+              </div>
+              <p class="subscription-status" id="subscription-status" role="status" tabindex="-1"></p>
+            </div>
+            <div class="subscription-help">
+              <div><h2>Где я оплачиваю?</h2><p>Кнопка откроет платёжную форму Prodamus. Стоимость зависит только от выбранного срока.</p></div>
+              <div><h2>Когда появится доступ?</h2><p>После подтверждения оплаты сервисом. Если статус не обновился сразу, вернитесь в кабинет чуть позже.</p></div>
+            </div>
+          </section>
+        </div>
         <div class="route" id="route-account" data-page="account" hidden>
           <section class="simple-hero section-wrap"><a class="back-link" href="/"><span aria-hidden="true">←</span> На главную</a><p class="forecast-kicker">Личный кабинет</p><h1>Личный <em>кабинет.</em></h1><p>Имя для чата, данные рождения и настройки аккаунта.</p></section>
+          <section class="account-subscription" aria-labelledby="account-subscription-title">
+            <div class="account-subscription-copy"><h2 id="account-subscription-title">Подписка и оплата</h2><p id="account-subscription-status">60 сообщений в день · от 990 ₽ за 30 дней</p></div>
+            <a class="button button-gold" href="/podpiska">Выбрать подписку <span aria-hidden="true">↗</span></a>
+          </section>
           <section class="account-layout section-wrap" aria-label="Данные личного кабинета">
             <div class="account-card"><span class="subtle-tag">Профиль</span><h2 id="account-heading">Войдите в кабинет.</h2><p id="account-email">Создайте аккаунт, и прогноз станет личным.</p><form id="account-name-form" class="account-name-form" hidden><label for="account-name">Имя для чата</label><div class="account-name-row"><input id="account-name" name="name" type="text" autocomplete="given-name" maxlength="40" placeholder="Как к вам обращаться" required /><button type="submit">Сохранить</button></div><p class="form-status" id="account-name-status" role="status"></p></form><div class="account-actions"><button class="button button-gold" type="button" id="account-login" data-open-signup>Войти или создать аккаунт <span aria-hidden="true">↗</span></button><button class="quiet-button" type="button" id="account-logout" hidden>Выйти из аккаунта</button></div></div>
             <div class="account-card"><span class="subtle-tag">Безопасность</span><h2>Пароль и почта.</h2><p id="email-status">Войдите, чтобы управлять аккаунтом.</p><button class="quiet-button" type="button" id="account-change-password" hidden>Сменить пароль</button><button class="quiet-button" type="button" id="account-verify-email" hidden>Подтвердить почту</button><p class="form-status" id="security-message" role="status"></p></div>

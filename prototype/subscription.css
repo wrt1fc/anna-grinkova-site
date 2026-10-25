@@ -1,0 +1,80 @@
+/* Figma 165:7535–7543, 172:2253, 172:13511. Existing shared header, footer and buttons. */
+#route-subscription { --subscription-gutter: 16px; }
+.site-shell #route-subscription .subscription-layout {
+  display: flex; flex-direction: column; gap: 48px; width: 100%; max-width: none;
+  margin: 0; padding: 48px var(--subscription-gutter) 64px;
+  color: var(--ink); font: 400 16px/25px var(--body);
+}
+#route-subscription h1, #route-subscription h2, #route-subscription h3, #route-subscription p { margin: 0; letter-spacing: 0; }
+#route-subscription .subscription-back { color: var(--gold-light); font: 400 14px/21px var(--body); align-self: flex-start; }
+#route-subscription .subscription-hero { display: flex; flex-direction: column; gap: 16px; }
+#route-subscription .subscription-kicker { color: var(--gold-light); font: italic 500 22px/65px var(--accent); }
+#route-subscription h1 { font: 800 72px/79px var(--display); }
+#route-subscription .subscription-lead { max-width: 760px; color: var(--muted); font: 400 18px/29px var(--body); }
+#route-subscription .subscription-current { display: grid; gap: 8px; padding: 16px 0; border-block: 1px solid #6e4929; }
+#route-subscription .subscription-small { color: var(--muted); font: 400 14px/21px var(--body); }
+#route-subscription .subscription-periods { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px; align-items: start; }
+#route-subscription .subscription-period { display: flex; flex-direction: column; gap: 24px; min-width: 0; padding: 32px; border: 1px solid #6e4929; border-radius: 12px; background: var(--panel); }
+#route-subscription .subscription-period-best { border-color: var(--gold); background: #2b1d16; }
+#route-subscription .subscription-period-head { display: grid; gap: 12px; }
+#route-subscription .subscription-period-tag { color: var(--gold-light); font: 400 14px/21px var(--body); }
+#route-subscription .subscription-period h2 { font: 700 28px/38px var(--display); }
+#route-subscription .subscription-price { font: 800 52px/58px var(--display); }
+#route-subscription .subscription-period-note { color: var(--muted); }
+#route-subscription .subscription-pay { width: 100%; min-width: 0; padding-left: 24px; padding-right: 16px; }
+#route-subscription .subscription-pay-label { flex: 1; min-width: 0; color: #211612; font: 700 15px/18px var(--body); }
+#route-subscription .subscription-pay[aria-disabled="true"] { opacity: .6; cursor: wait; }
+#route-subscription .subscription-included { display: grid; gap: 24px; }
+#route-subscription .subscription-included > h2 { font: 700 32px/38px var(--display); }
+#route-subscription .subscription-benefits { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 32px; }
+#route-subscription .subscription-benefit { display: grid; gap: 8px; min-width: 0; }
+#route-subscription .subscription-benefit h3 { font: 700 28px/38px var(--display); }
+#route-subscription .subscription-benefit p { color: var(--muted); }
+#route-subscription .subscription-account { display: grid; gap: 8px; padding: 24px; border-radius: 12px; background: var(--panel); overflow-wrap: anywhere; }
+#route-subscription .subscription-email { font: 400 18px/29px var(--body); }
+#route-subscription .subscription-account-actions { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; }
+#route-subscription .subscription-account-actions .quiet-button { text-align: left; }
+#route-subscription .subscription-help { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 32px; }
+#route-subscription .subscription-help > div { display: grid; align-content: start; gap: 8px; }
+#route-subscription .subscription-help h2 { font: 400 18px/29px var(--body); }
+#route-subscription .subscription-help p { color: var(--muted); }
+#route-subscription .subscription-status { color: var(--gold-light); overflow-wrap: anywhere; }
+#route-subscription .subscription-status:empty { display: none; }
+#route-subscription [hidden] { display: none; }
+
+/* Account entry is outside the existing forms: no changes to their layout or submission. */
+.site-shell #route-account .account-subscription {
+  display: flex; align-items: center; gap: 24px; margin: 0 var(--gutter) 32px; padding: 24px;
+  border: 1px solid #6e4929; border-radius: 12px; background: var(--panel);
+}
+#route-account .account-subscription-copy { flex: 1; min-width: 0; display: grid; gap: 8px; }
+#route-account .account-subscription h2 { margin: 0; font: 700 32px/38px var(--display); letter-spacing: 0; }
+#route-account .account-subscription p { margin: 0; color: var(--muted); font: 400 16px/25px var(--body); overflow-wrap: anywhere; }
+#route-account .account-subscription .button { min-width: 250px; flex-shrink: 0; }
+@media (min-width: 360px) and (max-width: 389px) { #route-subscription { --subscription-gutter: calc(16px + (100vw - 360px) * .133333); } }
+@media (min-width: 390px) and (max-width: 429px) { #route-subscription { --subscription-gutter: calc(20px + (100vw - 390px) * .1); } }
+@media (min-width: 430px) and (max-width: 767px) { #route-subscription { --subscription-gutter: calc(24px + (100vw - 430px) * .047337); } }
+@media (min-width: 768px) { #route-subscription { --subscription-gutter: calc(40px + (100vw - 768px) * .09375); } }
+@media (min-width: 1024px) { #route-subscription { --subscription-gutter: 64px; } }
+@media (min-width: 1366px) and (max-width: 1439px) { #route-subscription { --subscription-gutter: calc(64px + (100vw - 1366px) * .324324); } }
+@media (min-width: 1440px) { #route-subscription { --subscription-gutter: 88px; } }
+@media (min-width: 1920px) { #route-subscription { --subscription-gutter: calc(88px + (100vw - 1920px) * .4875); } }
+@media (min-width: 2560px) { #route-subscription { --subscription-gutter: calc((100vw - 1760px) / 2); } }
+@media (min-width: 1920px) { #route-subscription h1 { font-size: 88px; } #route-subscription .subscription-lead { font-size: 22px; } }
+@media (min-width: 768px) and (max-width: 1279px) { #route-subscription h1 { font-size: 60px; } }
+@media (max-width: 1023px) {
+  #route-subscription .subscription-benefits, #route-subscription .subscription-help { grid-template-columns: minmax(0,1fr); }
+  #route-subscription .subscription-benefits { gap: 24px; }
+  .site-shell #route-account .account-subscription { flex-direction: column; align-items: stretch; }
+  #route-account .account-subscription .button { width: 100%; min-width: 0; }
+}
+@media (max-width: 767px) {
+  .site-shell #route-subscription .subscription-layout { gap: 32px; padding-top: 32px; padding-bottom: 48px; }
+  #route-subscription .subscription-kicker { font-size: 19px; }
+  #route-subscription h1 { font-size: 48px; }
+  #route-subscription .subscription-lead { font-size: 16px; }
+  #route-subscription .subscription-periods { grid-template-columns: minmax(0,1fr); }
+  #route-subscription .subscription-period { padding: 24px; }
+  #route-subscription .subscription-included > h2 { font-size: 28px; }
+  #route-subscription .subscription-account { padding: 16px; }
+}

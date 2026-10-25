@@ -207,11 +207,11 @@ drawReset.addEventListener('click', () => resetDraw(true));
 
 
 // Each section has its own address, so search engines can index it (config/seo.json on the server).
-const ROUTE_PATHS = { home: '/', natal: '/natalnaya-karta', day: '/karta-dnya', reading: '/rasklad', week: '/prognoz-na-nedelyu', chat: '/chat', account: '/kabinet' };
+const ROUTE_PATHS = { home: '/', natal: '/natalnaya-karta', day: '/karta-dnya', reading: '/rasklad', week: '/prognoz-na-nedelyu', chat: '/chat', account: '/kabinet', subscription: '/podpiska' };
 const PAGE_BY_PATH = Object.fromEntries(Object.entries(ROUTE_PATHS).map(([page, path]) => [path, page]));
 const PAGE_TITLES = { natal: 'Натальная карта онлайн бесплатно — Анна Гринькова', home: 'Натальная карта онлайн и астропрогноз — Анна Гринькова', day: 'Карта дня онлайн бесплатно — Анна Гринькова',
   week: 'Астрологический прогноз на неделю — Анна Гринькова', chat: 'Чат с Анной Гриньковой — астрология и психология',
-  reading: 'Метафорические карты онлайн — Анна Гринькова', account: 'Личный кабинет — Анна Гринькова' };
+  reading: 'Метафорические карты онлайн — Анна Гринькова', account: 'Личный кабинет — Анна Гринькова', subscription: 'Подписка и оплата — Анна Гринькова' };
 
 function navigateTo(page) {
   const path = ROUTE_PATHS[page] ?? '/';
@@ -248,7 +248,7 @@ function showRoute() {
   for (const element of navigation) {
     const navPage = element.dataset.nav || element.dataset.mobileNav;
     // The reading page belongs to the day section in the menus.
-    if (navPage === (page === 'reading' ? 'day' : page) || (hash === 'about' && navPage === 'about')) element.setAttribute('aria-current', 'page');
+    if (navPage === (page === 'reading' ? 'day' : page === 'subscription' ? 'account' : page) || (hash === 'about' && navPage === 'about')) element.setAttribute('aria-current', 'page');
     else element.removeAttribute('aria-current');
   }
   document.title = PAGE_TITLES[page];
@@ -264,7 +264,7 @@ function showRoute() {
     updateDayCard();
     loadDailyForecast();
   }
-  if (page === 'account' || page === 'chat' || page === 'reading') refreshAccount();
+  if (page === 'account' || page === 'chat' || page === 'reading' || page === 'subscription') refreshAccount();
   document.dispatchEvent(new CustomEvent('anna-route', { detail: { page } }));
 }
 
@@ -421,7 +421,7 @@ authForm.addEventListener('submit', async (event) => {
       await refreshAccount();
     } else {
       closeSignup();
-      navigateTo('account');
+      navigateTo(window.location.pathname === ROUTE_PATHS.subscription ? 'subscription' : 'account');
       await refreshAccount();
     }
   } catch { formMessage.textContent = 'Сервис недоступен. Попробуйте позже.'; }
@@ -450,7 +450,7 @@ function renderAccount(data) {
   // chat.js may load after this runs, so the state is also kept on <body> for it to read on start.
   document.body.dataset.signedIn = String(!!currentUser);
   document.body.dataset.visitorName = currentUser?.displayName || '';
-  document.dispatchEvent(new CustomEvent('anna-account-state', { detail: { signedIn: !!currentUser, name: currentUser?.displayName || '' } }));
+  document.dispatchEvent(new CustomEvent('anna-account-state', { detail: { signedIn: !!currentUser, name: currentUser?.displayName || '', userId: currentUser?.id ?? null, email: currentUser?.email || '' } }));
   document.getElementById('account-heading').textContent = currentUser ? 'Вы в кабинете.' : 'Войдите в кабинет.';
   document.getElementById('account-email').textContent = currentUser ? currentUser.email : 'Создайте аккаунт, и прогноз станет личным.';
   document.getElementById('account-login').hidden = !!currentUser;
