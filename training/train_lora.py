@@ -32,6 +32,8 @@ def main():
     parser.add_argument('--grad-accum', type=int, default=8)
     parser.add_argument('--max-steps', type=int, default=-1)
     parser.add_argument('--init-adapter', help='continue training an existing LoRA adapter instead of starting a new one')
+    parser.add_argument('--frozen-embedding-bf16', action='store_true',
+                        help='keep the frozen token embedding in BF16 to reduce VRAM; requires native BF16 support')
     args = parser.parse_args()
 
     data = Path(args.data)
@@ -88,11 +90,23 @@ def main():
         peft_config=None if args.init_adapter else LoraConfig(r=args.rank, lora_alpha=args.rank * 2, lora_dropout=0.05, task_type='CAUSAL_LM',
                                                               target_modules='all-linear'),
     )
+    if args.frozen_embedding_bf16:
+        if not torch.cuda.is_bf16_supported():
+            raise ValueError('--frozen-embedding-bf16 requires a BF16-capable GPU')
+        embedding = model.get_input_embeddings()
+        if embedding.weight.requires_grad:
+            raise ValueError('cannot cast a trainable token embedding')
+        # PEFT preparation promotes non-quantized weights to FP32. This large,
+        # frozen table can stay in BF16; leave normalization and LoRA weights alone.
+        embedding.to(dtype=torch.bfloat16)
+        torch.cuda.empty_cache()
+        print('Frozen token embedding: BF16 (full training examples retained)', flush=True)
     trainer.train()
     trainer.save_model(args.out)
     (Path(args.out) / 'anna-training.json').write_text(json.dumps({
         'base': args.base, 'train_examples': len(dataset['train']), 'epochs': args.epochs, 'lr': args.lr,
         'rank': args.rank, 'max_steps': args.max_steps, 'init_adapter': args.init_adapter,
+        'frozen_embedding_bf16': args.frozen_embedding_bf16,
     }, ensure_ascii=False, indent=2), encoding='utf-8')
     print(f'adapter saved to {args.out}')
 

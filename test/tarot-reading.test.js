@@ -151,7 +151,7 @@ test('a model failure gives the reading back and an unsafe answer is replaced', 
   }, { chatWriter: writer });
 });
 
-const otherCard = (name) => (name === 'Сила' ? 'Звезда' : 'Сила');
+const otherCard = (name) => (name === 'Нить' ? 'Маяк' : 'Нить');
 const parseSse = (text) => text.trim().split('\n\n').map((block) => ({ event: /^event: (.+)$/m.exec(block)[1], data: JSON.parse(/^data: (.+)$/m.exec(block)[1]) }));
 
 test('an answer about another card is asked for once more, and the second one is used', async () => {

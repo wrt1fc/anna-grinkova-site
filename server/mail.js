@@ -29,11 +29,16 @@ export function createUnisenderGoMailer({ apiKey, fromEmail, fetchImpl = fetch }
         body: JSON.stringify({ message: {
           recipients: [{ email: to }], subject, body: { plaintext: text },
           from_email: fromEmail, from_name: FROM_NAME,
-          skip_unsubscribe: 1, global_language: 'ru',
+          global_language: 'ru',
         } }),
         signal: AbortSignal.timeout(TIMEOUT_MS),
       });
-      if (!response.ok) throw new Error(`Mail API HTTP ${response.status}`);
+      if (!response.ok) {
+        // Log the provider's numeric reason, never its raw body (addresses or credentials).
+        let errorCode;
+        try { const error = await response.json(); if (Number.isInteger(error.code)) errorCode = error.code; } catch {}
+        throw new Error(`Mail API HTTP ${response.status}${errorCode === undefined ? '' : ` (code ${errorCode})`}`);
+      }
       const data = await response.json();
       if (data.status !== 'success' || !data.emails?.includes(to)) throw new Error('Mail API rejected recipient');
     },

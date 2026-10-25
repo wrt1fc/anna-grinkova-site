@@ -211,7 +211,7 @@
 /* ================= Day and week pages ================= */
 #route-day,
 #route-week { position: relative; isolation: isolate; }
-#route-week { --tarot-art: url("./assets/tarot/14.webp"); }   /* Temperance, the week's card */
+#route-week { --tarot-art: url("./assets/cards/09.svg"); }   /* the Ladder, the week's card */
 
 /* The page's background is the card's own illustration, blurred into the page colour. */
 #route-day::before,

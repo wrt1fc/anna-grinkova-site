@@ -14,6 +14,7 @@ import { createChatRoutes } from './routes/chat.js';
 import { handleProfileRoutes } from './routes/profiles.js';
 import { createBillingRoutes } from './routes/billing.js';
 import { createNatalRoutes } from './routes/natal.js';
+import { createTelegramRoutes } from './routes/telegram.js';
 import { createBilling } from './billing/service.js';
 import { createProdamus } from './billing/prodamus.js';
 import legal from '../config/legal.json' with { type: 'json' };
@@ -66,7 +67,7 @@ function cookieToken(req) {
 export function createServer({ store, mailer = null, codeSecret, root = new URL('../prototype/', import.meta.url), secureCookies = false,
   mailDailyLimit = 0, trafficLimiter = createTrafficLimiter(), chatLimiter = createTrafficLimiter({ perIpLimit: 6, globalLimit: 300 }),
   chatGate = createConcurrencyGate(2), loginGuard = createLoginGuard(), trustProxy = false, forecastWriter = null, chatWriter = null,
-  requirePrivacyConsent = false, searchVerification = {}, sotisVerifier = null, metrics = NULL_METRICS, knowledge = null, paymentProvider = null, paymentProviders = null, prodamusKey = null, prodamusTest = false, publicUrl = 'http://localhost:3000',
+  requirePrivacyConsent = false, searchVerification = {}, sotisVerifier = null, metrics = NULL_METRICS, knowledge = null, paymentProvider = null, paymentProviders = null, prodamusKey = null, prodamusTest = false, telegramBot = null, telegramBotToken = null, telegramWebhookSecret = null, publicUrl = 'http://localhost:3000',
   pageViewLimiter = createTrafficLimiter({ perIpLimit: 30, globalLimit: 3000 }), streamKeepAliveMs = undefined,
   webhookLimiter = createTrafficLimiter({ perIpLimit: 120, globalLimit: 1200 }) }) {
   if (!codeSecret || String(codeSecret).length < 32) throw new Error('AUTH_CODE_SECRET must have at least 32 characters');
@@ -77,6 +78,7 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
   const publicOrigin = new URL(publicUrl).origin.replace(/[<>"'&]/g, '');
   const billing = createBilling({ store, provider: paymentProvider, providers: paymentProviders, publicUrl });
   const handleNatalRoutes = createNatalRoutes({ store, metrics });
+  const handleTelegramRoutes = createTelegramRoutes({ bot: telegramBot, botToken: telegramBotToken, webhookSecret: telegramWebhookSecret, metrics });
   const handleBillingRoutes = createBillingRoutes({ store, billing, trustProxy, metrics, prodamus: createProdamus({ store, secretKey: prodamusKey, acceptTest: prodamusTest }) });
   const handleChatRoutes = createChatRoutes({ store, chatWriter, chatLimiter, chatGate, historySigner, metrics, knowledge, trustProxy,
     keepAliveMs: streamKeepAliveMs, readingKey: readingCardKey(codeSecret) });
@@ -147,7 +149,7 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
       }
       // Payment notifications have their own checks (provider IPs or signatures) and must not lose to visitor traffic,
       // so they get a separate, larger budget: enough for a provider's bursts, not for a flood of forged requests.
-      const isWebhook = path.startsWith('/api/billing/webhook/');
+      const isWebhook = path.startsWith('/api/billing/webhook/') || path === '/api/telegram/webhook';
       if (path.startsWith('/api/')) {
         const traffic = (isWebhook ? webhookLimiter : trafficLimiter).check(clientAddress(req, trustProxy));
         if (!traffic.allowed) return json(res, 429, { error: 'rate_limited', message: 'Слишком много запросов. Попробуйте позже.' }, { 'Retry-After': String(traffic.retryAfter) });
@@ -163,6 +165,7 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
         if (await handleChatRoutes(ctx)) return;
         if (await handleBillingRoutes(ctx)) return;
         if (await handleNatalRoutes(ctx)) return;
+        if (await handleTelegramRoutes(ctx)) return;
         if (path === '/api/cities' && req.method === 'GET') {
           return json(res, 200, { cities: searchCities(url.searchParams.get('q') || '') });
         }
