@@ -290,6 +290,11 @@ function updatePasswordRules() {
 
 function setAuthMode(mode) {
   authMode = mode;
+  const consent = document.getElementById('signup-privacy');
+  document.getElementById('privacy-field').hidden = mode !== 'register';
+  consent.required = mode === 'register';
+  consent.disabled = mode !== 'register';
+  if (mode !== 'register') consent.checked = false;
   const config = modes[mode];
   document.getElementById('signup-title').textContent = `${config.title}.`;
   document.getElementById('auth-description').textContent = config.description;
@@ -366,9 +371,11 @@ document.addEventListener('keydown', (event) => {
 });
 
 async function sendRegistration() {
+  const privacyConsent = document.getElementById('signup-privacy').checked;
+  if (!privacyConsent) { formMessage.textContent = 'Подтвердите согласие на обработку персональных данных.'; return; }
   if (!updatePasswordRules()) { formMessage.textContent = 'Пароль: от 8 символов, с заглавной буквой, цифрой и спецсимволом.'; return; }
   if (passwordInput.value !== confirmInput.value) { formMessage.textContent = 'Пароли не совпадают.'; return; }
-  const { response, data } = await api('/api/auth/register', { method: 'POST', body: JSON.stringify({ email: emailInput.value, password: passwordInput.value, confirmPassword: confirmInput.value }) });
+  const { response, data } = await api('/api/auth/register', { method: 'POST', body: JSON.stringify({ email: emailInput.value, password: passwordInput.value, confirmPassword: confirmInput.value, privacyConsent }) });
   if (!response.ok) { formMessage.textContent = data.message || 'Не удалось отправить код.'; return; }
   challenge = data.challenge;
   setAuthMode('verify');

@@ -15,3 +15,7 @@
 .button-gold:hover { background: #e8c569; border-color: #8b561e; box-shadow: none; }
 .button-gold:active { background: #d3a95a; box-shadow: none; }
 .button-gold > span[aria-hidden="true"]::before { -webkit-mask: url('./assets/icon-arrow-btn.svg') center / contain no-repeat; mask: url('./assets/icon-arrow-btn.svg') center / contain no-repeat; background: currentColor; }
+
+/* Registration: explicit consent, unchecked by default. */
+#signup-form .auth-privacy{display:flex;align-items:flex-start;gap:12px;cursor:pointer;font-size:14px;line-height:1.5;padding:12px 0;min-height:44px}
+#signup-form .auth-privacy input{appearance:auto;flex:0 0 20px;width:20px;height:20px;min-height:20px;margin:2px 0 0;padding:0;accent-color:var(--gold-light)}
