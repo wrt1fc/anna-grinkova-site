@@ -100,3 +100,8 @@ test('the rouble test payment grants one day once per account, never a chain of 
   assert.equal(await notify(success({ order_id: '3003' })), 200, 'the real plan can still be bought');
   assert.equal((await store.planState(buyer.id)).expiresAt, first.expiresAt + 30 * 86_400_000);
 }, { prodamusTest: true }));
+
+test('an amount written with a comma is read like one with a dot', async () => fixture(async ({ store, notify }) => {
+  assert.equal(await notify(success({ order_id: '4001', sum: '990,00' })), 200);
+  assert.equal((await store.planState((await store.findUserByEmail('buyer@example.com')).id)).plan, 'subscription');
+}));

@@ -32,12 +32,12 @@ export function createBillingRoutes({ store, billing, trustProxy, metrics, proda
   // Prodamus calls this after a payment on its page; the signature is checked inside. Anything but a bad signature gets 200,
   // so Prodamus does not keep retrying a payment we cannot match (it is logged and counted for a manual check).
   async function prodamusWebhook({ req, res, json }) {
-    const { outcome, paymentId } = await prodamus.handle(await readRaw(req), req.headers.sign);
+    const { outcome, paymentId, sum } = await prodamus.handle(await readRaw(req), req.headers.sign);
     metrics.count(`billing_prodamus_${outcome}`);
     if (outcome === 'bad_signature') return json(res, 403, { error: 'forbidden' });
     if (outcome === 'bad_request') return json(res, 400, { error: 'invalid_notification' });
     // The Prodamus order number lets the payment be found in its cabinet and applied by hand; the email is not logged.
-    if (['unknown_user', 'unknown_amount', 'test_used'].includes(outcome)) console.error(`Prodamus payment not applied: ${outcome}, order ${String(paymentId).slice(0, 40)}`);
+    if (['unknown_user', 'unknown_amount', 'test_used'].includes(outcome)) console.error(`Prodamus payment not applied: ${outcome}, order ${String(paymentId).slice(0, 40)}${sum === undefined ? '' : `, sum ${JSON.stringify(sum)}`}`);
     return json(res, 200, { ok: true });
   }
 

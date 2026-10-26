@@ -91,9 +91,12 @@ export function createProdamus({ store, secretKey, acceptTest = false, now = Dat
     if (!validSign(payload, secretKey, signHeader)) return 'bad_signature';
     if (payload.payment_status !== 'success') return 'ignored';
     const paymentId = String(payload.order_id ?? payload.payment_id ?? '');
-    const product = offered.find((item) => Math.round(Number(payload.sum) * 100) === item.amountKop);
+    // The amount may come as "990.00" or "990,00"; it is signed, so reading both forms lets nothing extra through.
+    const sumKop = Math.round(Number(String(payload.sum ?? '').trim().replace(',', '.')) * 100);
+    const product = offered.find((item) => sumKop === item.amountKop);
     if (!paymentId) return 'ignored';
-    if (!product) return { outcome: 'unknown_amount', paymentId };
+    // The received amount goes to the log so a payment for an unexpected price can be understood and applied by hand.
+    if (!product) return { outcome: 'unknown_amount', paymentId, sum: String(payload.sum ?? '').slice(0, 20) };
     const email = normalizeEmail(payload.customer_email);
     const user = email ? await store.findUserByEmail(email) : null;
     if (!user) return { outcome: 'unknown_user', paymentId };
