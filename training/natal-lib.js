@@ -63,8 +63,17 @@ export const KINDS = {
   mc: (n) => ({ question: `MC в моей натальной карте ${SIGN_LOCATIVE[n.angles.mc.sign]}. Что это говорит о моей работе?`, length: 'short' }),
   'venus-sign': (n) => ({ question: `У меня в натальной карте Венера ${SIGN_LOCATIVE[n.planets.venus.sign]}. Как я люблю и чего жду от партнёра?`, length: 'medium' }),
   'mars-sign': (n) => ({ question: `У меня в натальной карте Марс ${SIGN_LOCATIVE[n.planets.mars.sign]}. Как я действую и как злюсь?`, length: 'medium' }),
+  // Added for anna-v6: informal and joking questions (the visitor writes lightly or asks for humor); the answer keeps to the chart.
+  'joke-moon': (n) => ({ question: `Ну давай, расскажи про мою Луну ${SIGN_LOCATIVE[n.planets.moon.sign]} в натальной карте, только без занудства`, length: 'medium' }),
+  'joke-love': () => ({ question: 'Почему у меня в личной жизни вечный сериал? Глянь натальную карту, только давай с юмором', length: 'medium' }),
+  'joke-money': () => ({ question: 'Ну и где мои миллионы по натальной карте? Давай честно и с шуткой', length: 'medium' }),
+  'joke-lazy': () => ({ question: 'Я прокрастинирую уже месяц. Что в натальной карте на этот счёт? Можно по-простому и с юмором', length: 'medium' }),
+  'joke-career': () => ({ question: 'Кем мне работать по натальной карте, чтобы не было скучно? Шути, не стесняйся', length: 'medium' }),
+  'joke-mars': (n) => ({ question: `У меня в натальной карте Марс ${SIGN_LOCATIVE[n.planets.mars.sign]}. Это у меня характер такой или звёзды виноваты? Пошути немного`, length: 'medium' }),
+  'joke-venus': (n) => ({ question: `Венера ${SIGN_LOCATIVE[n.planets.venus.sign]} в моей натальной карте: чего тянуть, звать на свидание или ждать? Только давай по-человечески`, length: 'medium' }),
 };
 const KIND_ORDER = ['moon', 'love', 'sun-asc', 'career', 'aspect', 'saturn', 'house', 'pattern', 'retro', 'money', 'full'];
+export const KIND_ORDER_V6 = ['joke-moon', 'joke-love', 'joke-mars', 'joke-money', 'joke-venus', 'joke-lazy', 'joke-career'];
 export const KIND_ORDER_V5 = ['partner', 'selfworth', 'node', 'anger', 'venus-sign', 'newstart', 'mars-sign', 'mc', 'moon', 'aspect', 'saturn', 'sun-asc', 'career', 'full', 'retro', 'money'];
 
 // A reproducible plan: `train` charts with two questions each and `eval` charts with one, none shared.
