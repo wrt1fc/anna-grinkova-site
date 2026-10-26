@@ -2,7 +2,7 @@ import { forecastForDate, moscowDate, tarotForReading } from '../daily-forecast.
 import { personalForecastForDate } from '../personal-forecast.js';
 import { ANSWER_LENGTHS, DEFAULT_ANSWER_LENGTH, MAX_ANSWER_CHARS, TAROT_MODE, TAROT_QUESTION_MAX_CHARS, TAROT_QUESTION_MIN_CHARS,
   chatForecastContext, forecastForQuestion, tarotReadingContext, asksAboutDay } from '../local-chat.js';
-import { SAFE_FALLBACK_ANSWER, unsafeChatAnswer } from '../chat-safety.js';
+import { SAFE_FALLBACK_ANSWER, copiesMaterials, unsafeChatAnswer } from '../chat-safety.js';
 import { planFor } from '../plans.js';
 import { CRISIS_ANSWER, isCrisisMessage } from '../crisis.js';
 import { profilesWithAccess } from './profiles.js';
@@ -183,7 +183,7 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
     const onDelta = (delta, full) => {
       if (firstToken === null) { firstToken = performance.now() - started; metrics.timing('chat_first_token', firstToken); }
       // Checked on every chunk, so a reply that turns unsafe is stopped and replaced mid-stream.
-      if (unsafeChatAnswer(full, day)) { unsafe = true; abort.abort(); return; }
+      if (unsafeChatAnswer(full, day) || copiesMaterials(full, materials)) { unsafe = true; abort.abort(); return; }
       const safeUpTo = full.length - STREAM_HOLDBACK_CHARS;
       // A reading is sent whole after it has been checked against the drawn card, never piece by piece.
       if (send && !tarot && safeUpTo > sent) { send('delta', { text: full.slice(sent, safeUpTo) }); sent = safeUpTo; }
@@ -218,7 +218,7 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
         catch (error) { if (abort.signal.aborted) throw error; reply = { answer: '' }; }
         if (wrongCard(reply.answer, card)) { metrics.count('tarot_calculated'); reply = { answer: fallbackReading(card) }; }
       }
-      const filtered = unsafeChatAnswer(reply.answer, day);
+      const filtered = unsafeChatAnswer(reply.answer, day) || copiesMaterials(reply.answer, materials);
       if (filtered) console.warn('Chat answer rejected by safety check');
       return await finish(filtered ? SAFE_FALLBACK_ANSWER : reply.answer, filtered, reply);
     } catch (error) {

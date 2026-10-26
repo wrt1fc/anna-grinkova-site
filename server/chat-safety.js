@@ -51,6 +51,23 @@ const UNSAFE_PATTERNS = [
 ];
 
 // Model-agnostic check before an answer is shown: no impersonation, prices, links, invented dates or promises.
+// Anna's materials are private: the model sees fragments of them, but a visitor must not get them back word for word
+// (for example by asking to "quote the lecture"). An answer that repeats a run of this many words from a fragment is replaced.
+const COPY_WORDS = 8;
+const wordsOf = (text) => String(text).toLowerCase().replaceAll('ё', 'е').match(/[\p{L}\p{N}]+/gu) ?? [];
+export function copiesMaterials(answer, materials = []) {
+  if (!materials.length) return false;
+  const words = wordsOf(answer);
+  if (words.length < COPY_WORDS) return false;
+  const runs = new Set();
+  for (const material of materials) {
+    const source = wordsOf(material.text);
+    for (let at = 0; at + COPY_WORDS <= source.length; at++) runs.add(source.slice(at, at + COPY_WORDS).join(' '));
+  }
+  for (let at = 0; at + COPY_WORDS <= words.length; at++) if (runs.has(words.slice(at, at + COPY_WORDS).join(' '))) return true;
+  return false;
+}
+
 export function unsafeChatAnswer(answer, forecastDate) {
   if (UNSAFE_PATTERNS.some((pattern) => pattern.test(answer))) return true;
   const [year, month, day] = String(forecastDate).split('-').map(Number);
