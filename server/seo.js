@@ -53,8 +53,8 @@ export function sitemapXml(origin, today = new Date().toISOString().slice(0, 10)
 
 // Clean-param tells Yandex that ?payment=… (return from a payment page) does not make a new page.
 export function robotsTxt(origin) {
-  return ['User-agent: *', 'Disallow: /api/', 'Disallow: /kabinet', 'Allow: /', '', 'User-agent: Yandex', 'Disallow: /api/',
-    'Disallow: /kabinet', 'Clean-param: payment&test_payment', 'Allow: /', '', `Sitemap: ${origin}/sitemap.xml`, ''].join('\n');
+  return ['User-agent: *', 'Disallow: /api/', 'Disallow: /kabinet', 'Disallow: /miniapp/', 'Allow: /', '', 'User-agent: Yandex', 'Disallow: /api/',
+    'Disallow: /kabinet', 'Disallow: /miniapp/', 'Clean-param: payment&test_payment', 'Allow: /', '', `Sitemap: ${origin}/sitemap.xml`, ''].join('\n');
 }
 
 export function notFoundPage() {

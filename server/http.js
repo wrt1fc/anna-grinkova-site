@@ -398,8 +398,10 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
         return res.end(req.method === 'HEAD' ? undefined : renderPage(shell, route, publicOrigin, searchVerification));
       }
+      // The mini-app is its own page under /miniapp/; the address without the slash would break its relative links.
+      if (path === '/miniapp') { res.writeHead(301, { Location: '/miniapp/' }); return res.end(); }
       let decoded;
-      try { decoded = decodeURIComponent(path); } catch { res.writeHead(400); return res.end(); }
+      try { decoded = decodeURIComponent(path === '/miniapp/' ? '/miniapp/index.html' : path); } catch { res.writeHead(400); return res.end(); }
       if (decoded.includes('\0')) { res.writeHead(400); return res.end(); }
       const target = resolve(rootPath, '.' + (decoded === '/' ? '/index.html' : decoded));
       if (target !== resolve(rootPath) && !target.startsWith(resolve(rootPath) + sep)) { res.writeHead(403); return res.end(); }

@@ -148,3 +148,19 @@ test('the reading page has its own address, five cards with numbers, and its sty
     await store.close();
   }
 });
+
+test('the mini-app is served under /miniapp/, kept out of search and robots.txt', async () => {
+  const store = await createStore('pglite:memory');
+  const server = createServer({ store, publicUrl: 'https://anna.example', codeSecret: 'test-secret-with-at-least-thirty-two-characters' });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const bare = await fetch(`${base}/miniapp`, { redirect: 'manual' });
+    assert.equal(bare.status, 301);
+    assert.equal(bare.headers.get('location'), '/miniapp/');
+    const page = await fetch(`${base}/miniapp/`);
+    assert.equal(page.status, 200);
+    assert.match(await page.text(), /name="robots" content="noindex, nofollow"/);
+    assert.match(await (await fetch(`${base}/robots.txt`)).text(), /Disallow: \/miniapp\//);
+  } finally { await new Promise((resolve) => server.close(resolve)); await store.close(); }
+});
