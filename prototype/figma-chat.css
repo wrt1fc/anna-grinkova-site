@@ -91,3 +91,8 @@
   body:has(#route-chat:not([hidden])) { overflow: visible; }
 }
 #route-chat .chat-aside { align-self: stretch; width: 100%; }
+
+/* The tone switch: two buttons under the three length buttons */
+#route-chat .chat-tone { grid-template-columns: repeat(2, 1fr); margin-top: 8px; }
+#route-chat .chat-format button[aria-pressed="true"] { border-color: var(--gold-light); background: rgba(222, 184, 88, .12); }
+#route-chat .chat-format button[aria-pressed="true"] strong { color: var(--gold-light); }

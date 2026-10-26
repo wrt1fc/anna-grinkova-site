@@ -32,6 +32,25 @@ function setLength(value) {
 }
 for (const button of formatButtons) button.addEventListener('click', () => setLength(button.dataset.chatLength));
 setLength(chatLengthValue);
+
+// The tone of the answer ("normal" or "playful") is chosen in the greeting right after the length and kept the same way.
+const toneKey = 'anna-chat-tone';
+const toneButtons = document.querySelectorAll('[data-chat-tone]');
+const tones = new Set([...toneButtons].map((button) => button.dataset.chatTone));
+let chatToneValue = 'normal';
+try {
+  const savedTone = localStorage.getItem(toneKey);
+  if (tones.has(savedTone)) chatToneValue = savedTone;
+} catch { /* storage unavailable: keep the default */ }
+function selectedTone() { return chatToneValue; }
+function setTone(value) {
+  if (!tones.has(value)) return;
+  chatToneValue = value;
+  try { localStorage.setItem(toneKey, value); } catch { /* not critical */ }
+  for (const button of toneButtons) button.setAttribute('aria-pressed', String(button.dataset.chatTone === value));
+}
+for (const button of toneButtons) button.addEventListener('click', () => setTone(button.dataset.chatTone));
+setTone(chatToneValue);
 const chatPrompts = document.querySelectorAll('[data-chat-prompt]');
 const chatSignInButton = chatLocked.querySelector('[data-open-signup]');
 
@@ -173,7 +192,7 @@ async function sendChat(message, existingUserMessage = false) {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-      body: JSON.stringify({ message: text, history: chatHistory.slice(-6), draw: window.chatDrawPosition(), length: selectedLength(),
+      body: JSON.stringify({ message: text, history: chatHistory.slice(-6), draw: window.chatDrawPosition(), length: selectedLength(), tone: selectedTone(),
         profileId: window.chatSelectedProfileId?.() ?? null }),
       signal: controller.signal,
     });

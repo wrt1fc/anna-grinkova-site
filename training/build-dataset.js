@@ -50,7 +50,7 @@ cards.forEach((card, index) => {
   const astro = chartContext(profile, message, new Date(`${day}T09:00:00Z`));
   const prompt = tarot ? chatPrompt({ message, history: [], forecast: tarotReadingContext(day, tarotCardByNumber(card.card.number, card.card.position)),
     length: 'medium', mode: TAROT_MODE }) : chatPrompt({ message, history: [], forecast: forecastForQuestion(chatForecastContext(forecastForDate(day, index % 5)), message),
-    length: card.length ?? DEFAULT_ANSWER_LENGTH, materials: findMaterials(knowledge, message, astro.queries), chart: astro.chart });
+    length: card.length ?? DEFAULT_ANSWER_LENGTH, materials: findMaterials(knowledge, message, astro.queries), chart: astro.chart, tone: card.tone ?? null });
   const side = card.split === 'eval' || heldOut(message) ? 'eval' : 'train';
   split[side].push({
     id: card.id,

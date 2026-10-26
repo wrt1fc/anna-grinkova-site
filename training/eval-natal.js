@@ -42,7 +42,7 @@ for (const row of plan) {
   let answer = '';
   let problems;
   try {
-    ({ answer } = await chat.answer({ message: row.question, history: [], forecast: forecastForQuestion(forecast, row.question), length: row.length,
+    ({ answer } = await chat.answer({ message: row.question, history: [], forecast: forecastForQuestion(forecast, row.question), length: row.length, tone: row.tone ?? null,
       chart: astro.chart, materials: findMaterials(knowledge, row.question, astro.queries) }));
     problems = [];
     if (unsafeChatAnswer(answer, day)) problems.push('сработала проверка безопасности');

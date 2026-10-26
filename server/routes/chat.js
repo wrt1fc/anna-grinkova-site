@@ -1,6 +1,6 @@
 import { forecastForDate, moscowDate, tarotForReading } from '../daily-forecast.js';
 import { personalForecastForDate } from '../personal-forecast.js';
-import { ANSWER_LENGTHS, DEFAULT_ANSWER_LENGTH, MAX_ANSWER_CHARS, TAROT_MODE, TAROT_QUESTION_MAX_CHARS, TAROT_QUESTION_MIN_CHARS,
+import { ANSWER_LENGTHS, CHAT_TONES, DEFAULT_ANSWER_LENGTH, MAX_ANSWER_CHARS, TAROT_MODE, TAROT_QUESTION_MAX_CHARS, TAROT_QUESTION_MIN_CHARS,
   chatForecastContext, forecastForQuestion, tarotReadingContext, asksAboutDay } from '../local-chat.js';
 import { SAFE_FALLBACK_ANSWER, copiesMaterials, unsafeChatAnswer } from '../chat-safety.js';
 import { planFor } from '../plans.js';
@@ -36,6 +36,7 @@ function invalidChatBody(body) {
     || history.reduce((sum, item) => sum + (typeof item?.content === 'string' ? item.content.length : 0), 0) > MAX_HISTORY_CHARS
     || !Number.isInteger(draw) || draw < 0 || draw > 4
     || (body.length !== undefined && !Object.hasOwn(ANSWER_LENGTHS, body.length))
+    || (body.tone !== undefined && body.tone !== 'normal' && !CHAT_TONES.includes(body.tone))
     || (body.profileId !== undefined && body.profileId !== null && !(Number.isSafeInteger(body.profileId) && body.profileId > 0));
 }
 
@@ -209,7 +210,7 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
       const generate = (extra = {}) => chatWriter.answer({ message, history: tarot ? [] : historySigner.trusted(body.history ?? []),
         forecast: tarot ? context : forecastForQuestion(context, message),
         visitorName: user.displayName || null, chart: astro.chart, ...(tarot ? { mode: TAROT_MODE } : {}),
-        length: tarot ? 'medium' : body.length ?? DEFAULT_ANSWER_LENGTH, materials, signal: abort.signal, onDelta, ...extra });
+        length: tarot ? 'medium' : body.length ?? DEFAULT_ANSWER_LENGTH, ...(!tarot && CHAT_TONES.includes(body.tone) ? { tone: body.tone } : {}), materials, signal: abort.signal, onDelta, ...extra });
       let reply = await generate();
       if (tarot && wrongCard(reply.answer, card)) {
         // The model wrote about another card: one more try, then a calculated reading of the card the person was shown.

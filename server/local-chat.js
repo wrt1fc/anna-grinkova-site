@@ -48,9 +48,12 @@ export function tarotReadingContext(day, card) {
 }
 
 // The same prompt shape is used for training examples, so the tuned model learns to follow length.
-export function chatPrompt({ message, history, forecast, visitorName = null, length = DEFAULT_ANSWER_LENGTH, materials = [], chart = null, mode = null }) {
+export const CHAT_TONES = Object.keys(chatContext.tones ?? {});
+
+export function chatPrompt({ message, history, forecast, visitorName = null, length = DEFAULT_ANSWER_LENGTH, materials = [], chart = null, mode = null, tone = null }) {
   // The natal chart block is sent only for chart questions, so ordinary answers keep the trained prompt shape.
   return JSON.stringify({ facts: chatContext.facts, materials, forecast, ...(chart ? { chart } : {}), ...(mode ? { mode } : {}), history, visitorName, length,
+    ...(tone && chatContext.tones?.[tone] ? { tone, toneInstruction: chatContext.tones[tone].instruction } : {}),
     lengthInstruction: answerSize(mode, length).instruction, question: message });
 }
 
@@ -134,7 +137,7 @@ export function wrongPlanetSign(answer, chart) {
 export function createLocalChat({ model, fetchImpl = fetch }) {
   if (typeof model !== 'string' || !/^[\w./:-]{2,80}$/.test(model)) throw new Error('Invalid local model name');
   return {
-    async answer({ message, history, forecast, visitorName = null, signal, length = DEFAULT_ANSWER_LENGTH, materials = [], chart = null, mode = null, onDelta = null, temperature = 0.25, qualityRetry = false }) {
+    async answer({ message, history, forecast, visitorName = null, signal, length = DEFAULT_ANSWER_LENGTH, materials = [], chart = null, mode = null, tone = null, onDelta = null, temperature = 0.25, qualityRetry = false }) {
       const size = answerSize(mode, length);
       if (!size) throw new Error('Unknown answer length');
       if (mode !== TAROT_MODE && chart?.missing && /отношени|любов|любви|партн[её]р|замуж|брак/iu.test(message)) {
@@ -155,7 +158,7 @@ export function createLocalChat({ model, fetchImpl = fetch }) {
           system: systemFor(mode) + questionGuidance(message, chart, mode) + (qualityRetry
             ? '\nПовторная проверка ответа: не повторяйте предложения. Положения планет в поле chart — уже рассчитанные факты; не исправляйте их и не добавляйте другие положения. Возьмите одно положение из chart и объясните его простыми словами, затем предложите один небольшой практический шаг.'
             : ''),
-          prompt: chatPrompt({ message, history: mode === TAROT_MODE ? history : historyForQuestion(history, message), forecast, visitorName, length, materials, chart, mode }),
+          prompt: chatPrompt({ message, history: mode === TAROT_MODE ? history : historyForQuestion(history, message), forecast, visitorName, length, materials, chart, mode, tone }),
         }),
         // Also stops generation when the visitor presses Stop or leaves the page.
         signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
@@ -185,7 +188,7 @@ export function createLocalChat({ model, fetchImpl = fetch }) {
       if (wrongPlanetSign(answer, chart) || (chart && repeated && !qualityRetry)) {
         if (qualityRetry) throw new Error('Local chat contradicted the calculated chart');
         return createLocalChat({ model, fetchImpl }).answer({ message, history, forecast, visitorName, signal,
-          length, materials, chart, mode, onDelta, temperature: 0.1, qualityRetry: true });
+          length, materials, chart, mode, tone, onDelta, temperature: 0.1, qualityRetry: true });
       }
       if (answer.length > emitted.length) onDelta?.(answer.slice(emitted.length), answer);
       return { answer, model, length, truncated, contextVersion: chatContext.version };

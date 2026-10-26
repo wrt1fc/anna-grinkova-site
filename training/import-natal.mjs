@@ -23,12 +23,14 @@ let skipped = 0;
 for (const block of readFileSync(inPath, 'utf8').replace(/\r\n/g, '\n').split(/^=== /m).slice(1)) {
   const [header, ...rest] = block.split('\n');
   const id = header.split('|')[0].trim();
-  const row = plan.get(id);
+  // A block id ending in "-p" is the playful version (tone: playful) of the plan question with the same name.
+  const playful = id.endsWith('-p');
+  const row = plan.get(playful ? id.slice(0, -2) : id);
   if (!row) { console.log(`✖ ${id}: нет в плане`); skipped++; continue; }
   if (done.has(id)) continue;
   const answer = rest.join('\n').trim().replace(/\n{3,}/g, '\n\n');
   const card = { id, status: 'draft', split: row.split, length: row.length, topic: 'Натальная карта', question: row.question, answer,
-    chartFor: row.chartFor, source: { file: `написано вручную (${author})`, from: 'натальный расчёт сайта и методика Анны' } };
+    chartFor: row.chartFor, ...(playful ? { tone: 'playful' } : {}), source: { file: `написано вручную (${author})`, from: 'натальный расчёт сайта и методика Анны' } };
   const problems = [...cardProblems(card), ...chartClaimProblems(answer, natalChart(row.chartFor))];
   if (problems.length) { console.log(`✖ ${id}: ${problems.join('; ')}`); skipped++; continue; }
   appendFileSync(outPath, `${JSON.stringify(card)}\n`);
