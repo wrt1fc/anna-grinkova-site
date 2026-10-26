@@ -7,7 +7,7 @@
 # Optional: REPEAT_PENALTY=1.05 adds that value to the model file (Ollama's repeat_penalty) for this model.
 set -Eeuo pipefail
 VERSION=${1:?version, for example v5}
-KNOWLEDGE=${2:?folder with Anna's materials}
+KNOWLEDGE=${2:?folder with the materials of Anna}
 PLAN=${3:?plan json with the natal check questions}
 ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
 PY=${PY:-/home/ubuntu/natal-bench/venv/bin/python}
