@@ -6,7 +6,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { forecastForDate, moscowDate } from '../server/daily-forecast.js';
-import { ANSWER_LENGTHS, chatForecastContext, createLocalChat, forecastForQuestion } from '../server/local-chat.js';
+import { ANSWER_LENGTHS, chatForecastContext, cleanRepeatedSentences, createLocalChat, forecastForQuestion } from '../server/local-chat.js';
 import { chartContext, findMaterials } from '../server/chat-grounding.js';
 import { natalChart } from '../server/astro-chart.js';
 import { loadKnowledge } from '../server/knowledge.js';
@@ -27,7 +27,10 @@ const CHART_WORDS = /(Солнце|Луна|Меркурий|Венера|Мар
 
 const plan = JSON.parse(readFileSync(planPath, 'utf8')).filter((row) => row.split === 'eval');
 const knowledge = knowledgeDir ? loadKnowledge(resolve(knowledgeDir)) : null;
-const chat = createLocalChat({ model });
+// The chat writer asks the model again when it repeats a sentence or names a wrong sign, so the number of requests per question
+// shows how often the raw model went wrong; it is shown for every answer and in the summary.
+let requests = 0;
+const chat = createLocalChat({ model, fetchImpl: (...fetchArgs) => { requests += 1; return fetch(...fetchArgs); } });
 const day = moscowDate();
 const forecast = chatForecastContext(forecastForDate(day));
 const rows = [];
@@ -35,6 +38,7 @@ for (const row of plan) {
   const profile = { birthUtc: row.chartFor.birthUtc, birthLatitude: row.chartFor.latitude, birthLongitude: row.chartFor.longitude };
   const astro = chartContext(profile, row.question);
   const started = performance.now();
+  requests = 0;
   let answer = '';
   let problems;
   try {
@@ -45,19 +49,21 @@ for (const row of plan) {
     if (answer.length < MIN_CHARS[row.length] || answer.length > ANSWER_LENGTHS[row.length].maxChars) problems.push(`длина ${answer.length} вне режима ${row.length}`);
     if (AI_WORDS.test(answer)) problems.push('называет себя ИИ без вопроса');
     if (!CHART_WORDS.test(answer)) problems.push('не опирается на положения карты');
+    if (cleanRepeatedSentences(answer).trim() !== answer.trim()) problems.push('повторяются предложения');
     problems.push(...chartClaimProblems(answer, natalChart(row.chartFor)).map((problem) => `расхождение с расчётом: ${problem}`));
   } catch (error) {
     problems = [`ошибка: ${error.message}`];
   }
   const ms = Math.round(performance.now() - started);
-  rows.push({ row, answer, problems, ms });
-  console.log(`${problems.length ? '✖' : '✔'} ${row.id} (${ms} мс)${problems.length ? ` — ${problems.join('; ')}` : ''}`);
+  const retried = requests > 1;
+  rows.push({ row, answer, problems, ms, retried });
+  console.log(`${problems.length ? '✖' : '✔'} ${row.id} (${ms} мс${retried ? ', повторный запрос к модели' : ''})${problems.length ? ` — ${problems.join('; ')}` : ''}`);
 }
 const failed = rows.filter((item) => item.problems.length).length;
-console.log(`\n${rows.length - failed} из ${rows.length} прошли; модель ${model}, расчёт ${day}`);
+console.log(`\n${rows.length - failed} из ${rows.length} прошли; ответов с повторным запросом к модели: ${rows.filter((item) => item.retried).length}; модель ${model}, расчёт ${day}`);
 if (reportPath) {
-  writeFileSync(reportPath, [`# Контрольный прогон натальных вопросов: ${model}`, '', `Дата расчёта ${day}. Прошли ${rows.length - failed} из ${rows.length}.`, '',
-    ...rows.flatMap(({ row, answer, problems, ms }) => [`## ${problems.length ? '✖' : '✔'} ${row.question}`, '',
-      `Режим: ${row.length}; ${ms} мс${problems.length ? `; проблемы: ${problems.join('; ')}` : ''}`, '', `> ${answer || '—'}`, ''])].join('\n'));
+  writeFileSync(reportPath, [`# Контрольный прогон натальных вопросов: ${model}`, '', `Дата расчёта ${day}. Прошли ${rows.length - failed} из ${rows.length}; с повторным запросом к модели: ${rows.filter((item) => item.retried).length}.`, '',
+    ...rows.flatMap(({ row, answer, problems, ms, retried }) => [`## ${problems.length ? '✖' : '✔'} ${row.question}`, '',
+      `Режим: ${row.length}; ${ms} мс${retried ? '; был повторный запрос к модели' : ''}${problems.length ? `; проблемы: ${problems.join('; ')}` : ''}`, '', `> ${answer || '—'}`, ''])].join('\n'));
 }
 process.exitCode = failed ? 1 : 0;

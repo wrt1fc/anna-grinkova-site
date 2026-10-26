@@ -54,11 +54,21 @@ export const KINDS = {
   },
   saturn: (n) => ({ question: `Я постоянно боюсь не справиться. В моей натальной карте Сатурн ${SIGN_LOCATIVE[n.planets.saturn.sign]}, в ${n.planets.saturn.house} доме. Что с этим делать?`, length: 'medium' }),
   full: () => ({ question: 'Сделайте разбор моей натальной карты', length: 'detailed' }),
+  // Added for anna-v5: more everyday questions and the lunar node, with the same rule that every statement must follow the chart.
+  partner: () => ({ question: 'Какой партнёр мне подходит по натальной карте?', length: 'medium' }),
+  selfworth: () => ({ question: 'Мне трудно поверить в себя. Что в моей натальной карте про это и что с этим делать?', length: 'medium' }),
+  anger: () => ({ question: 'Почему я срываюсь на близких? Что в моей натальной карте про это?', length: 'medium' }),
+  newstart: () => ({ question: 'Почему мне страшно начинать новое дело? Что в моей натальной карте про это?', length: 'medium' }),
+  node: (n) => ({ question: `У меня в натальной карте Северный узел ${SIGN_LOCATIVE[n.planets.node.sign]}, в ${n.planets.node.house} доме. Что это значит?`, length: 'medium' }),
+  mc: (n) => ({ question: `MC в моей натальной карте ${SIGN_LOCATIVE[n.angles.mc.sign]}. Что это говорит о моей работе?`, length: 'short' }),
+  'venus-sign': (n) => ({ question: `У меня в натальной карте Венера ${SIGN_LOCATIVE[n.planets.venus.sign]}. Как я люблю и чего жду от партнёра?`, length: 'medium' }),
+  'mars-sign': (n) => ({ question: `У меня в натальной карте Марс ${SIGN_LOCATIVE[n.planets.mars.sign]}. Как я действую и как злюсь?`, length: 'medium' }),
 };
 const KIND_ORDER = ['moon', 'love', 'sun-asc', 'career', 'aspect', 'saturn', 'house', 'pattern', 'retro', 'money', 'full'];
+export const KIND_ORDER_V5 = ['partner', 'selfworth', 'node', 'anger', 'venus-sign', 'newstart', 'mars-sign', 'mc', 'moon', 'aspect', 'saturn', 'sun-asc', 'career', 'full', 'retro', 'money'];
 
 // A reproducible plan: `train` charts with two questions each and `eval` charts with one, none shared.
-export function buildPlan({ train = 50, evalCharts = 12, seed = 20261022 } = {}) {
+export function buildPlan({ train = 50, evalCharts = 12, seed = 20261022, order = KIND_ORDER, idPrefix = 'n', avoid = new Set() } = {}) {
   const random = seeded(seed);
   const plan = [];
   const seen = new Set();
@@ -71,19 +81,19 @@ export function buildPlan({ train = 50, evalCharts = 12, seed = 20261022 } = {})
       day.setUTCHours(Math.floor(random() * 24), Math.floor(random() * 4) * 15);
       const [latitude, longitude] = PLACES[Math.floor(random() * PLACES.length)];
       chartFor = { birthUtc: day.toISOString(), latitude, longitude };
-    } while (seen.has(chartFor.birthUtc));
+    } while (seen.has(chartFor.birthUtc) || avoid.has(chartFor.birthUtc));
     seen.add(chartFor.birthUtc);
     const natal = natalChart(chartFor);
     const isEval = index >= train;
     const wanted = isEval ? 1 : 2;
     let made = 0;
-    for (let offset = 0; made < wanted && offset < KIND_ORDER.length; offset++) {
-      const kind = KIND_ORDER[(index * 2 + made + offset) % KIND_ORDER.length];
+    for (let offset = 0; made < wanted && offset < order.length; offset++) {
+      const kind = order[(index * 2 + made + offset) % order.length];
       if (plan.some((row) => row.chartIndex === index && row.kind === kind)) continue;
       const item = KINDS[kind](natal, index + made);
       if (!item) continue;
       made++;
-      plan.push({ id: `n${isEval ? 'e' : 't'}-${String(index + 1).padStart(2, '0')}-${kind}`, chartIndex: index, split: isEval ? 'eval' : 'train', kind, chartFor, ...item });
+      plan.push({ id: `${idPrefix}${isEval ? 'e' : 't'}-${String(index + 1).padStart(2, '0')}-${kind}`, chartIndex: index, split: isEval ? 'eval' : 'train', kind, chartFor, ...item });
     }
   }
   return plan;

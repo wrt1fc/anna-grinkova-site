@@ -1,4 +1,4 @@
-// Usage: node training/natal-plan.mjs <plan.json>                      writes the plan (charts and questions, reproducible by seed)
+// Usage: node training/natal-plan.mjs <plan.json> [--round v5 --avoid <old-plan.json>]   writes the plan (charts and questions, reproducible by seed)
 //        node training/natal-plan.mjs <plan.json> --worksheet N [--size 12] [--knowledge <dir>]
 //        prints the N-th group of training questions together with exactly what the model will be shown for them
 //        (planets with sign, house and retrograde flag, angles, aspects, Anna's money block and her matching slides),
@@ -7,15 +7,17 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { chartContext, findMaterials } from '../server/chat-grounding.js';
 import { loadKnowledge } from '../server/knowledge.js';
-import { buildPlan } from './natal-lib.js';
+import { KIND_ORDER_V5, buildPlan } from './natal-lib.js';
 
 const args = process.argv.slice(2);
 const option = (name, fallback) => { const at = args.indexOf(name); return at >= 0 ? args[at + 1] : fallback; };
-const planPath = args.find((arg, index) => !arg.startsWith('--') && !['--worksheet', '--size', '--knowledge'].includes(args[index - 1]));
+const planPath = args.find((arg, index) => !arg.startsWith('--') && !['--worksheet', '--size', '--knowledge', '--round', '--avoid'].includes(args[index - 1]));
 if (!planPath) { console.error('Usage: node training/natal-plan.mjs <plan.json> [--worksheet N] [--size 12] [--knowledge <dir>]'); process.exit(2); }
 
 if (!args.includes('--worksheet')) {
-  const plan = buildPlan();
+  // --round v5 --avoid <old-plan.json>: a second, new set of charts and everyday questions for anna-v5 (no chart of the old plan is reused).
+  const avoid = new Set(option('--avoid') ? JSON.parse(readFileSync(option('--avoid'), 'utf8')).map((row) => row.chartFor.birthUtc) : []);
+  const plan = option('--round') === 'v5' ? buildPlan({ train: 48, evalCharts: 8, seed: 20261026, order: KIND_ORDER_V5, idPrefix: 'v5', avoid }) : buildPlan();
   writeFileSync(planPath, JSON.stringify(plan, null, 1));
   const count = (split) => plan.filter((row) => row.split === split).length;
   console.log(`план: ${count('train')} вопросов для обучения, ${count('eval')} для проверки; ${planPath}`);
