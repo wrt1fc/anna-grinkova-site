@@ -88,5 +88,7 @@ test('money questions are recognised', () => {
   assert.ok(asksAboutMoney('Как мне увеличить доход?'));
   assert.ok(asksAboutMoney('Какая у меня финансовая стратегия?'));
   assert.ok(asksAboutMoney('Откуда мне лучше зарабатывать?'));
+  assert.ok(asksAboutMoney('Мне копить или тратить?'));
+  assert.ok(asksAboutMoney('Почему у меня не держатся накопления?'));
   assert.equal(asksAboutMoney('Почему я срываюсь на близких?'), false);
 });

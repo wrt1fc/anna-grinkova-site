@@ -1,7 +1,8 @@
 // Usage: node training/build-dataset.js <cards.jsonl[,more.jsonl]> <out-dir> [--include-drafts] [--knowledge <dir>] [--holdout 0.08]
 // Turns approved cards into chat-format JSONL that matches the live /api/chat prompt,
 // so the tuned model learns Anna's manner inside the exact format it will be served with:
-// the same day forecast, the same natal chart and money block (cards with `chartFor`) and the same material search.
+// the same day forecast, the same natal chart and money block (cards with `chartFor`), the partner's chart for compatibility
+// (`partnerFor`), the visitor's name and gender (`visitorName`, `gender`) and the same material search.
 import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -47,10 +48,12 @@ cards.forEach((card, index) => {
   // A card reading is built exactly as the live /api/tarot/reading prompt: its own rules, one card, no history.
   const tarot = card.mode === 'tarot';
   const profile = card.chartFor ? { birthUtc: card.chartFor.birthUtc, birthLatitude: card.chartFor.latitude, birthLongitude: card.chartFor.longitude } : null;
-  const astro = chartContext(profile, message, new Date(`${day}T09:00:00Z`));
+  const partner = card.partnerFor ? { birthUtc: card.partnerFor.birthUtc, birthLatitude: card.partnerFor.latitude, birthLongitude: card.partnerFor.longitude,
+    label: card.partnerFor.label ?? null, gender: card.partnerFor.gender ?? null } : null;
+  const astro = chartContext(profile, message, new Date(`${day}T09:00:00Z`), { partner });
   const prompt = tarot ? chatPrompt({ message, history: [], forecast: tarotReadingContext(day, tarotCardByNumber(card.card.number, card.card.position)),
     length: 'medium', mode: TAROT_MODE }) : chatPrompt({ message, history: [], forecast: forecastForQuestion(chatForecastContext(forecastForDate(day, index % 5)), message),
-    length: card.length ?? DEFAULT_ANSWER_LENGTH, materials: findMaterials(knowledge, message, astro.queries), chart: astro.chart, tone: card.tone ?? null });
+    visitorName: card.visitorName ?? null, visitorGender: card.gender ?? null, length: card.length ?? DEFAULT_ANSWER_LENGTH, materials: findMaterials(knowledge, message, astro.queries), chart: astro.chart, tone: card.tone ?? null });
   const side = card.split === 'eval' || heldOut(message) ? 'eval' : 'train';
   split[side].push({
     id: card.id,
