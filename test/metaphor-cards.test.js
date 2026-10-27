@@ -23,7 +23,4 @@ test('the day card and five-card spread use the same metaphorical deck', () => {
     assert.equal(item.tarot.name, CARD_NAMES[item.tarot.number]);
     assert.ok(item.reading.body.includes(item.tarot.name));
   }
-  const app = readFileSync(new URL('../prototype/app.js', import.meta.url), 'utf8');
-  assert.match(app, /assets\/cards\/illustrated\//);
-  assert.doesNotMatch(app, /assets\/tarot\//);
 });

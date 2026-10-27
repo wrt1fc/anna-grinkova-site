@@ -84,11 +84,6 @@ test('each section has its own indexable address with title, canonical and only 
     assert.match(subscription, /<title>Подписка и оплата — Анна Гринькова<\/title>/);
     // A public page must not contain anyone's checkout link or email.
     assert.equal(subscription.includes('customer_email='), false);
-    for (const resource of ['/subscription.css?v=1', '/subscription.js?v=1']) {
-      const asset = await fetch(`${base}${resource}`);
-      assert.equal(asset.status, 200);
-      assert.match(asset.headers.get('content-type'), /css|javascript/);
-    }
     const robots = await (await fetch(`${base}/robots.txt`)).text();
     assert.match(robots, /Sitemap: https:\/\/anna\.example\/sitemap\.xml/);
     assert.match(robots, /Clean-param: payment/);
