@@ -44,3 +44,7 @@
 - Не коммитить секреты, `data/`, методички и материалы из `D:\AnnaAI`.
 - В интерфейсе не писать «ИИ», «нейросеть», «модель».
 - Сообщения коммитов: `feat:`/`fix:`/`docs:` + строка `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+
+## Новый интерфейс (27.10.2026)
+
+Сайт полностью заменён мини-приложением из Figma «08 · Мини-приложение» (`prototype/miniapp/`, HTML/CSS/JS-модули). Оно открывается на `/` и на старых адресах (`/karta-dnya`, `/chat`, `/kabinet`, `/podpiska`, `/natalnaya-karta`, `/prognoz-na-nedelyu`, `/rasklad` ведут на нужный экран); `/miniapp/` — дубль. Старый интерфейс (`prototype/index.html`, `app.js`, `styles.css` и др.) остался в репозитории, но не отдаётся; удалить после проверки.

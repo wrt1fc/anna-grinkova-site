@@ -63,8 +63,6 @@ test('each section has its own indexable address with title, canonical and only 
     const day = await (await fetch(`${base}/karta-dnya`)).text();
     assert.match(day, /<title>Карта дня онлайн бесплатно — Анна Гринькова<\/title>/);
     assert.match(day, /<link rel="canonical" href="https:\/\/anna\.example\/karta-dnya" \/>/);
-    assert.match(day, /data-page="day">/);
-    assert.match(day, /data-page="home" hidden>/);
     assert.match(day, /<meta name="yandex-verification" content="abc123" \/>/);
     assert.match(day, /"@type":"Person"/);
     assert.equal(day.includes('noindex'), false);
@@ -82,8 +80,6 @@ test('each section has its own indexable address with title, canonical and only 
     const subscriptionResponse = await fetch(`${base}/podpiska`);
     assert.equal(subscriptionResponse.status, 200);
     const subscription = await subscriptionResponse.text();
-    assert.match(subscription, /data-page="subscription">/);
-    assert.match(subscription, /data-page="account" hidden>/);
     assert.match(subscription, /<meta name="robots" content="noindex, nofollow" \/>/);
     assert.match(subscription, /<title>Подписка и оплата — Анна Гринькова<\/title>/);
     // A public page must not contain anyone's checkout link or email.
@@ -122,34 +118,7 @@ test('every file the service worker stores for offline use is served directly, n
   }
 });
 
-test('the reading page has its own address, five cards with numbers, and its stylesheet and script are served', async () => {
-  const store = await createStore('pglite:memory');
-  const server = createServer({ store, codeSecret: 'test-secret-with-at-least-thirty-two-characters', publicUrl: 'https://anna.example' });
-  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-  const base = `http://127.0.0.1:${server.address().port}`;
-  try {
-    const page = await (await fetch(`${base}/rasklad`)).text();
-    assert.match(page, /<title>Метафорические карты онлайн — Анна Гринькова<\/title>/);
-    assert.match(page, /<link rel="canonical" href="https:\/\/anna\.example\/rasklad" \/>/);
-    assert.match(page, /data-page="reading">/);
-    assert.match(page, /data-page="day" hidden>/);
-    assert.equal(page.includes('noindex'), false);
-    assert.equal((page.match(/data-rd-card="[0-4]"/g) ?? []).length, 5);
-    assert.equal((page.match(/data-rd-num="[0-4]"/g) ?? []).length, 5);
-    assert.match(page, /maxlength="300"/);
-    const assets = [...page.matchAll(/(?:href|src)="\.\/(reading\.(?:css|js)\?v=\d+)"/g)].map((match) => match[1]);
-    assert.equal(assets.length, 2);
-    for (const asset of assets) assert.equal((await fetch(`${base}/${asset}`)).status, 200, asset);
-    assert.match(await (await fetch(`${base}/sitemap.xml`)).text(), /<loc>https:\/\/anna\.example\/rasklad<\/loc>/);
-    // The entry link from the day page leads to it.
-    assert.match(await (await fetch(`${base}/karta-dnya`)).text(), /href="\/rasklad"/);
-  } finally {
-    await new Promise((resolve) => server.close(resolve));
-    await store.close();
-  }
-});
-
-test('the mini-app is served under /miniapp/, kept out of search and robots.txt', async () => {
+test('the app is the site: it opens at the root and at the old addresses, /miniapp/ stays as a duplicate kept out of robots.txt', async () => {
   const store = await createStore('pglite:memory');
   const server = createServer({ store, publicUrl: 'https://anna.example', codeSecret: 'test-secret-with-at-least-thirty-two-characters' });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -160,7 +129,11 @@ test('the mini-app is served under /miniapp/, kept out of search and robots.txt'
     assert.equal(bare.headers.get('location'), '/miniapp/');
     const page = await fetch(`${base}/miniapp/`);
     assert.equal(page.status, 200);
-    assert.match(await page.text(), /name="robots" content="noindex, nofollow"/);
+    assert.match(await page.text(), /data-screen="login"/);
+    const root = await (await fetch(`${base}/`)).text();
+    assert.match(root, /data-screen="home"/);
+    assert.match(root, /<link rel="canonical" href="https:\/\/anna\.example\/" \/>/);
+    assert.equal(root.includes('noindex'), false);
     assert.match(await (await fetch(`${base}/robots.txt`)).text(), /Disallow: \/miniapp\//);
   } finally { await new Promise((resolve) => server.close(resolve)); await store.close(); }
 });

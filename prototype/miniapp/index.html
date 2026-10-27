@@ -5,11 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Фортуна — личный астролог</title>
   <meta name="description" content="Натальная карта, прогноз на день и неделю, вопросы Фортуне." />
-  <meta name="robots" content="noindex, nofollow" />
   <meta name="theme-color" content="#130d0b" />
-  <link rel="icon" href="../assets/app/icon-192.png" />
-  <link rel="stylesheet" href="../assets/fonts/fonts.css" />
-  <link rel="stylesheet" href="./miniapp.css?v=1" />
+  <link rel="icon" href="/assets/app/icon-192.png" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/assets/app/apple-touch-icon.png" />
+  <link rel="canonical" href="__PUBLIC_URL__/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="ru_RU" />
+  <meta property="og:site_name" content="Анна Гринькова" />
+  <meta property="og:title" content="Фортуна — личный астролог" />
+  <meta property="og:description" content="Натальная карта, прогноз на день и неделю, вопросы Фортуне." />
+  <meta property="og:url" content="__PUBLIC_URL__/" />
+  <meta property="og:image" content="__PUBLIC_URL__/assets/app/og-image.jpg" />
+  <link rel="stylesheet" href="/assets/fonts/fonts.css" />
+  <link rel="stylesheet" href="/miniapp/miniapp.css?v=2" />
 </head>
 <body>
 <div class="app" id="app">
@@ -20,7 +29,7 @@
 
     <!-- Вход -->
     <section class="screen screen-center" data-screen="login" hidden aria-labelledby="t-login">
-      <img class="logo-mark" src="./assets/logo.svg" alt="" width="84" height="84" />
+      <img class="logo-mark" src="/miniapp/assets/logo.svg" alt="" width="84" height="84" />
       <h1 id="t-login" class="title-xl">Добро пожаловать</h1>
       <p class="lead">Войдите или зарегистрируйтесь, чтобы получить свой персональный астрологический разбор</p>
       <form class="card form" id="form-login" novalidate>
@@ -37,7 +46,7 @@
     <section class="screen screen-narrow" data-screen="register" hidden aria-labelledby="t-register">
       <button class="back" type="button" data-back>Назад</button>
       <div class="screen-center-block">
-        <img class="logo-mark" src="./assets/logo.svg" alt="" width="64" height="64" />
+        <img class="logo-mark" src="/miniapp/assets/logo.svg" alt="" width="64" height="64" />
         <h1 id="t-register" class="title-lg">Создать аккаунт</h1>
         <p class="lead">Сохраним ваши карты и вопросы, чтобы прогноз стал личным</p>
       </div>
@@ -58,7 +67,7 @@
     <section class="screen screen-narrow" data-screen="code" hidden aria-labelledby="t-code">
       <button class="back" type="button" data-back>Назад</button>
       <div class="screen-center-block">
-        <img class="mail-mark" src="./assets/icon-mail.svg" alt="" width="46" height="46" />
+        <img class="mail-mark" src="/miniapp/assets/icon-mail.svg" alt="" width="46" height="46" />
         <h1 id="t-code" class="title-lg">Код из письма</h1>
         <p class="lead">Мы отправили 6 цифр на <span id="code-email"></span></p>
       </div>
@@ -88,11 +97,11 @@
         <label class="label" for="b-name">Имя</label>
         <input class="field" id="b-name" name="name" autocomplete="given-name" maxlength="40" />
         <label class="label" for="b-date">Дата рождения</label>
-        <button class="field field-pick" id="b-date" type="button" data-pick="date"><span data-value>Выберите дату</span><img src="./assets/icon-cal.svg" alt="" width="22" height="22" /></button>
+        <button class="field field-pick" id="b-date" type="button" data-pick="date"><span data-value>Выберите дату</span><img src="/miniapp/assets/icon-cal.svg" alt="" width="22" height="22" /></button>
         <label class="label" for="b-time">Время рождения</label>
-        <button class="field field-pick" id="b-time" type="button" data-pick="time"><span data-value>Выберите время</span><img src="./assets/icon-clock.svg" alt="" width="22" height="22" /></button>
+        <button class="field field-pick" id="b-time" type="button" data-pick="time"><span data-value>Выберите время</span><img src="/miniapp/assets/icon-clock.svg" alt="" width="22" height="22" /></button>
         <label class="label" for="b-city">Город рождения</label>
-        <button class="field field-pick" id="b-city" type="button" data-pick="city"><span data-value>Выберите город</span><img src="./assets/icon-pin.svg" alt="" width="22" height="22" /></button>
+        <button class="field field-pick" id="b-city" type="button" data-pick="city"><span data-value>Выберите город</span><img src="/miniapp/assets/icon-pin.svg" alt="" width="22" height="22" /></button>
         <p class="hint">Не знаете точное время? Укажите примерное, оно уточняется позже.</p>
         <p class="form-note" data-note role="alert"></p>
         <button class="btn btn-gold" type="submit">Построить карту</button>
@@ -102,9 +111,9 @@
     <!-- Главная -->
     <section class="screen screen-wide has-nav" data-screen="home" hidden aria-labelledby="t-home">
       <header class="topbar card-line">
-        <button class="avatar-btn" type="button" data-go="profile" aria-label="Профиль"><img src="./assets/icon-user.svg" alt="" width="24" height="24" /></button>
+        <button class="avatar-btn" type="button" data-go="profile" aria-label="Профиль"><img src="/miniapp/assets/icon-user.svg" alt="" width="24" height="24" /></button>
         <div class="topbar-text"><strong id="home-name">Гость</strong><span><i class="dot"></i><span id="home-plan">Войдите, чтобы сохранить карту</span></span></div>
-        <button class="bell" type="button" id="home-bell" aria-label="Уведомления"><img src="./assets/icon-bell.svg" alt="" width="22" height="22" /></button>
+        <button class="bell" type="button" id="home-bell" aria-label="Уведомления"><img src="/miniapp/assets/icon-bell.svg" alt="" width="22" height="22" /></button>
       </header>
       <section class="card hero" aria-label="Натальная карта">
         <div class="hero-copy">
@@ -115,18 +124,18 @@
         <div class="hero-wheel" id="home-wheel" aria-hidden="true"></div>
       </section>
       <div class="tiles">
-        <button class="card tile" type="button" data-go="day"><img src="./assets/icon-sun.svg" alt="" width="30" height="30" /><strong>Прогноз на день</strong></button>
-        <button class="card tile" type="button" data-go="week"><img src="./assets/icon-cal.svg" alt="" width="30" height="30" /><strong>Прогноз на неделю</strong></button>
+        <button class="card tile" type="button" data-go="day"><img src="/miniapp/assets/icon-sun.svg" alt="" width="30" height="30" /><strong>Прогноз на день</strong></button>
+        <button class="card tile" type="button" data-go="week"><img src="/miniapp/assets/icon-cal.svg" alt="" width="30" height="30" /><strong>Прогноз на неделю</strong></button>
       </div>
       <button class="card row row-ask" type="button" data-go="chat">
-        <img class="row-avatar" src="./assets/fortuna.webp" alt="" width="56" height="56" />
+        <img class="row-avatar" src="/miniapp/assets/fortuna.webp" alt="" width="56" height="56" />
         <span class="row-text"><strong>Задать вопрос Фортуне</strong><small id="home-ask-note">Ответ за полминуты</small></span>
-        <img src="./assets/icon-send.svg" alt="" width="22" height="22" />
+        <img src="/miniapp/assets/icon-send.svg" alt="" width="22" height="22" />
       </button>
-      <button class="card row row-center" type="button" data-go="chat" data-intro="1"><img class="row-icon" src="./assets/icon-star.svg" alt="" width="22" height="22" /><span class="row-text"><strong>Знакомство с Фортуной</strong><small id="home-intro-note">Первые вопросы бесплатно</small></span></button>
-      <button class="btn btn-gold btn-row" type="button" data-go="plan"><img src="./assets/icon-crown.svg" alt="" width="22" height="22" /><span>Подписка</span></button>
-      <button class="card row row-center" type="button" data-go="install"><img class="row-icon" src="./assets/icon-phone.svg" alt="" width="22" height="22" /><span class="row-text"><strong>Установить приложение</strong><small>на телефон или компьютер</small></span></button>
-      <p class="legal-line"><a href="../#/privacy">Политика обработки персональных данных</a> · <a href="../#/consent">Согласие</a> · <a href="../#/offer">Публичная оферта</a></p>
+      <button class="card row row-center" type="button" data-go="chat" data-intro="1"><img class="row-icon" src="/miniapp/assets/icon-star.svg" alt="" width="22" height="22" /><span class="row-text"><strong>Знакомство с Фортуной</strong><small id="home-intro-note">Первые вопросы бесплатно</small></span></button>
+      <button class="btn btn-gold btn-row" type="button" data-go="plan"><img src="/miniapp/assets/icon-crown.svg" alt="" width="22" height="22" /><span>Подписка</span></button>
+      <button class="card row row-center" type="button" data-go="install"><img class="row-icon" src="/miniapp/assets/icon-phone.svg" alt="" width="22" height="22" /><span class="row-text"><strong>Установить приложение</strong><small>на телефон или компьютер</small></span></button>
+      <p class="legal-line">Политика обработки персональных данных · Согласие · Публичная оферта</p>
     </section>
 
     <!-- Натальная карта -->
@@ -181,12 +190,12 @@
     <section class="screen screen-chat" data-screen="chat" hidden aria-labelledby="t-chat">
       <div class="bar"><button class="back back-round" type="button" data-back aria-label="Назад"></button><h1 id="t-chat" class="visually-hidden">Чат с Фортуной</h1><span class="bar-note" id="chat-quota"></span></div>
       <div class="card-line person-bar" id="person-bar">
-        <span class="person-icon"><img src="./assets/icon-user.svg" alt="" width="22" height="22" /></span>
+        <span class="person-icon"><img src="/miniapp/assets/icon-user.svg" alt="" width="22" height="22" /></span>
         <span class="person-text"><strong id="person-name">Моя карта</strong><small id="person-note">Моя карта</small></span>
         <button class="chip-btn" type="button" id="person-switch">Переключить</button>
       </div>
       <div class="transcript" id="transcript" aria-live="polite">
-        <div class="msg msg-bot"><img src="./assets/fortuna.webp" alt="" width="34" height="34" /><div class="bubble" id="chat-greeting">Здравствуйте. Я Фортуна и отвечаю по своей методике. Расскажите, что сейчас волнует. Выберите удобный формат.</div></div>
+        <div class="msg msg-bot"><img src="/miniapp/assets/fortuna.webp" alt="" width="34" height="34" /><div class="bubble" id="chat-greeting">Здравствуйте. Я Фортуна и отвечаю по своей методике. Расскажите, что сейчас волнует. Выберите удобный формат.</div></div>
         <section class="card chart-chip" id="chart-chip" hidden><p class="eyebrow" id="chart-chip-title">Моя карта</p><div class="chips" id="chart-chip-list"></div></section>
       </div>
       <div class="chat-actions" id="chat-actions">
@@ -197,7 +206,7 @@
       <form class="composer" id="composer" hidden>
         <label class="visually-hidden" for="chat-input">Ваш вопрос</label>
         <textarea id="chat-input" rows="1" maxlength="600" placeholder="Напишите свой вопрос…"></textarea>
-        <button class="send" type="submit" aria-label="Отправить"><img src="./assets/icon-send-dark.svg" alt="" width="20" height="20" /></button>
+        <button class="send" type="submit" aria-label="Отправить"><img src="/miniapp/assets/icon-send-dark.svg" alt="" width="20" height="20" /></button>
       </form>
       <p class="legal-line">Ответы носят информационный характер и не заменяют консультацию специалиста.</p>
     </section>
@@ -225,7 +234,7 @@
       <label class="check"><input type="checkbox" id="pay-consent" /><span>Согласен с офертой и политикой данных</span></label>
       <p class="form-note" data-note role="alert"></p>
       <button class="btn btn-gold" type="button" id="pay-submit">Оплатить</button>
-      <p class="secure"><img src="./assets/icon-lock.svg" alt="" width="14" height="14" />Безопасная оплата</p>
+      <p class="secure"><img src="/miniapp/assets/icon-lock.svg" alt="" width="14" height="14" />Безопасная оплата</p>
     </section>
 
     <!-- Оплата прошла -->
@@ -240,7 +249,7 @@
 
     <!-- Профиль -->
     <section class="screen screen-mid has-nav" data-screen="profile" hidden aria-labelledby="t-profile">
-      <div class="profile-head"><span class="profile-ring"><img src="./assets/icon-star.svg" alt="" width="28" height="28" /></span><h1 id="t-profile" class="title-lg">Гость</h1><p class="muted" id="profile-mail"></p></div>
+      <div class="profile-head"><span class="profile-ring"><img src="/miniapp/assets/icon-star.svg" alt="" width="28" height="28" /></span><h1 id="t-profile" class="title-lg">Гость</h1><p class="muted" id="profile-mail"></p></div>
       <section class="card block"><h2 class="block-title">Текущий тариф</h2><p class="gold" id="profile-plan"></p><p class="block-note" id="profile-quota"></p><button class="btn btn-line" type="button" data-go="plan">Выбрать тариф</button></section>
       <section class="card block"><h2 class="block-title">Натальные карты</h2><p class="block-note" id="profile-chart"></p><button class="btn btn-line" type="button" data-go="birth">Добавить и редактировать</button><button class="btn btn-line" type="button" data-go="people">Добавить близкого человека</button></section>
       <button class="link-btn danger" type="button" id="profile-out">Выйти</button>
@@ -262,7 +271,7 @@
       <h1 id="t-help" class="title-lg left">Помощь</h1>
       <p class="lead left">Ответы на частые вопросы</p>
       <div class="faq" id="faq"></div>
-      <section class="card block" id="help-support-card" hidden><h2 class="block-title"><img src="./assets/icon-support.svg" alt="" width="26" height="26" />Нужна помощь?</h2><p class="block-note">Напишите в поддержку, ответим в рабочее время</p><a class="btn btn-line" id="help-support" href="mailto:support@moyafortuna.ru">Написать в поддержку</a></section>
+      <section class="card block" id="help-support-card" hidden><h2 class="block-title"><img src="/miniapp/assets/icon-support.svg" alt="" width="26" height="26" />Нужна помощь?</h2><p class="block-note">Напишите в поддержку, ответим в рабочее время</p><a class="btn btn-line" id="help-support" href="mailto:support@moyafortuna.ru">Написать в поддержку</a></section>
     </section>
 
     <!-- Установка -->
@@ -277,10 +286,10 @@
   </main>
 
   <nav class="tabbar" id="tabbar" aria-label="Разделы" hidden>
-    <a href="#/home" data-tab="home"><img src="./assets/icon-home.svg" alt="" width="24" height="24" /><span>Главная</span></a>
-    <a href="#/chat" data-tab="chat"><img src="./assets/icon-chat.svg" alt="" width="24" height="24" /><span>Чат</span></a>
-    <a href="#/profile" data-tab="profile"><img src="./assets/icon-user2.svg" alt="" width="24" height="24" /><span>Профиль</span></a>
-    <a href="#/help" data-tab="help"><img src="./assets/icon-info.svg" alt="" width="24" height="24" /><span>Помощь</span></a>
+    <a href="#/home" data-tab="home"><img src="/miniapp/assets/icon-home.svg" alt="" width="24" height="24" /><span>Главная</span></a>
+    <a href="#/chat" data-tab="chat"><img src="/miniapp/assets/icon-chat.svg" alt="" width="24" height="24" /><span>Чат</span></a>
+    <a href="#/profile" data-tab="profile"><img src="/miniapp/assets/icon-user2.svg" alt="" width="24" height="24" /><span>Профиль</span></a>
+    <a href="#/help" data-tab="help"><img src="/miniapp/assets/icon-info.svg" alt="" width="24" height="24" /><span>Помощь</span></a>
   </nav>
 
   <div class="sheet-backdrop" id="sheet-backdrop" hidden>
@@ -291,7 +300,8 @@
     </div>
   </div>
 </div>
-<script src="../natal-wheel.js?v=3"></script>
-<script type="module" src="./miniapp.js?v=1"></script>
+<script src="/natal-wheel.js?v=3"></script>
+<script src="/pwa.js"></script>
+<script type="module" src="/miniapp/miniapp.js?v=2"></script>
 </body>
 </html>

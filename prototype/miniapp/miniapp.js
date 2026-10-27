@@ -30,7 +30,11 @@ let resendTimer = 0;
 let installEvent = null;
 let birthForm = { name: '', date: '', time: '', city: null, place: '' };
 
-function currentName() { return /^#\/([a-z]+)/.exec(location.hash)?.[1] ?? ''; }
+// The old site addresses open the matching screen of the app.
+const SCREEN_OF_PATH = { '/natalnaya-karta': 'natal', '/karta-dnya': 'day', '/rasklad': 'chat', '/prognoz-na-nedelyu': 'week', '/chat': 'chat', '/kabinet': 'profile', '/podpiska': 'plan' };
+const address = (name) => `/#/${name}`;
+
+function currentName() { return /^#\/([a-z]+)/.exec(location.hash)?.[1] ?? SCREEN_OF_PATH[location.pathname] ?? ''; }
 
 function show(name) {
   for (const section of document.querySelectorAll('[data-screen]')) section.hidden = section.dataset.screen !== name;
@@ -52,14 +56,14 @@ async function render() {
   if (!SCREEN_NAMES.includes(name)) name = app.me ? 'home' : 'login';
   if (!app.me && !PUBLIC.has(name)) { nextScreen = name; name = 'login'; }
   if (app.me && AUTH_SCREENS.has(name)) name = 'home';
-  if (location.hash !== `#/${name}`) history.replaceState({ idx: history.state?.idx ?? 0 }, '', `#/${name}`);
+  if (location.hash !== `#/${name}` || location.pathname !== '/') history.replaceState({ idx: history.state?.idx ?? 0 }, '', address(name));
   show(name);
   try { await ENTER[name]?.(); } catch { setNote(name, 'Не удалось загрузить данные. Проверьте связь.'); }
 }
 
-app.go = (name) => { history.pushState({ idx: (history.state?.idx ?? 0) + 1 }, '', `#/${name}`); render(); };
+app.go = (name) => { history.pushState({ idx: (history.state?.idx ?? 0) + 1 }, '', address(name)); render(); };
 // A redirect replaces the current history entry, so the back button never returns to the screen that sent the visitor away.
-app.redirect = (name) => { history.replaceState({ idx: history.state?.idx ?? 0 }, '', `#/${name}`); render(); };
+app.redirect = (name) => { history.replaceState({ idx: history.state?.idx ?? 0 }, '', address(name)); render(); };
 app.back = () => { if ((history.state?.idx ?? 0) > 0) history.back(); else app.go(app.me ? 'home' : 'login'); };
 
 function busy(form, on) { for (const button of form.querySelectorAll('button[type="submit"]')) button.disabled = on; }

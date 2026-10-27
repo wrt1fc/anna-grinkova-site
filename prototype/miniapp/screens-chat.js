@@ -21,7 +21,7 @@ const input = () => $('#chat-input');
 
 function say(role, text, className = '') {
   const row = node('div', `msg msg-${role === 'user' ? 'user' : 'bot'}`);
-  if (role !== 'user') { const avatar = node('img'); avatar.src = './assets/fortuna.webp'; avatar.alt = ''; avatar.width = 34; avatar.height = 34; row.append(avatar); }
+  if (role !== 'user') { const avatar = node('img'); avatar.src = '/miniapp/assets/fortuna.webp'; avatar.alt = ''; avatar.width = 34; avatar.height = 34; row.append(avatar); }
   const bubble = node('div', `bubble ${className}`.trim(), text);
   row.append(bubble);
   transcript().append(row);

@@ -393,7 +393,7 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
       }
       const route = seoRoute(path);
       if (route) {
-        const shell = (await readFile(resolve(rootPath, 'index.html'))).toString('utf8').replaceAll('__PUBLIC_URL__', publicOrigin);
+        const shell = (await readFile(resolve(rootPath, 'miniapp/index.html'))).toString('utf8').replaceAll('__PUBLIC_URL__', publicOrigin);
         if (req.method === 'GET' && pageViewLimiter.check(clientAddress(req, trustProxy)).allowed) metrics.pageView(req, trustProxy);
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
         return res.end(req.method === 'HEAD' ? undefined : renderPage(shell, route, publicOrigin, searchVerification));
