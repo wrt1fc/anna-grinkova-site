@@ -326,3 +326,12 @@ h1:focus { outline: none; }
 
 /* the avatar of Fortuna is a photo: round, with a thin gold ring */
 .row-avatar, .msg-bot img { object-fit: cover; border: 1px solid var(--gold); background: #1b120d; }
+
+.nw-band { fill: rgba(222, 184, 88, .09); stroke: none; }
+.nw-axis { fill: none; stroke: var(--gold); stroke-width: 1.4; opacity: .85; }
+.nw-sign-glyph { font-size: 30px; }
+.nw-planet-glyph { font-size: 27px; }
+.nw-planet-degree { font-size: 13px; }
+.hero-wheel { opacity: 1; }
+.hero-wheel .nw-house-number, .hero-wheel .nw-angle-label { display: none; }
+@media (max-width: 699px) { .hero { grid-template-columns: minmax(0, 1fr) minmax(150px, 46%); } .hero-wheel { margin-right: -10px; } }
