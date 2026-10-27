@@ -96,6 +96,11 @@ const MIGRATIONS = [
   ALTER TABLE users ADD COLUMN privacy_policy_version TEXT;
   ALTER TABLE auth_challenges ADD COLUMN privacy_policy_version TEXT;
   `,
+  // 3: optional gender of the chart owner, so the assistant can choose «дорогая» or «дорогой» and «он» or «она».
+  `
+  ALTER TABLE birth_profiles ADD COLUMN gender TEXT CHECK (gender IN ('female', 'male'));
+  ALTER TABLE chart_profiles ADD COLUMN gender TEXT CHECK (gender IN ('female', 'male'));
+  `,
 ];
 
 const MIGRATION_LOCK = 71_412_026; // any constant shared by all app servers

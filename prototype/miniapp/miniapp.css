@@ -192,6 +192,12 @@ img { display: block; max-width: 100%; }
 .chart-chip { padding: 14px 18px 18px; display: grid; gap: 12px; width: fit-content; max-width: 100%; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border: 1px solid var(--line); border-radius: 22px; font-size: 14px; color: var(--gold-light); background: rgba(15, 10, 7, .6); }
+.gender { border: 0; padding: 0; margin: 0; display: grid; gap: 12px; min-width: 0; }
+.gender legend { padding: 0; margin-bottom: 6px; }
+.chip-radio { cursor: pointer; position: relative; }
+.chip-radio input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.chip-radio:has(input:checked) { border-color: var(--gold-light); color: #2a1c0a; background: var(--gold-grad); }
+.chip-radio:has(input:focus-visible) { outline: 2px solid var(--gold-light); outline-offset: 2px; }
 .chip.is-red { color: var(--red); border-color: rgba(224, 112, 90, .5); }
 .chat-actions { display: grid; gap: 10px; width: min(100%, 420px); margin: 12px auto 0; }
 .composer { position: sticky; bottom: max(12px, env(safe-area-inset-bottom)); display: flex; align-items: flex-end; gap: 8px; padding: 8px 8px 8px 20px; border: 1px solid var(--line); border-radius: 32px; background: rgba(19, 13, 9, .94); backdrop-filter: blur(8px); margin-top: 8px; }

@@ -2,6 +2,7 @@
 // rulers with co-rulers, the ruler of the 2nd house and where it stands, MC sign, elements of personal planets
 // and the financial strategy. Rules are taken from her instructions; open points are marked, not guessed.
 import { SIGNS, POINT_NAMES } from './astro-chart.js';
+import moneyRules from '../config/money-rules.json' with { type: 'json' };
 
 // Her table: each sign has one or two rulers (modern and traditional).
 export const SIGN_RULERS = {
@@ -9,7 +10,7 @@ export const SIGN_RULERS = {
   'Дева': ['mercury'], 'Весы': ['venus'], 'Скорпион': ['pluto', 'mars'], 'Стрелец': ['jupiter', 'neptune'],
   'Козерог': ['saturn', 'uranus'], 'Водолей': ['uranus', 'saturn'], 'Рыбы': ['neptune', 'jupiter'],
 };
-const SIGN_PREPOSITIONAL = { 'Овен': 'Овне', 'Телец': 'Тельце', 'Близнецы': 'Близнецах', 'Рак': 'Раке', 'Лев': 'Льве', 'Дева': 'Деве',
+export const SIGN_PREPOSITIONAL = { 'Овен': 'Овне', 'Телец': 'Тельце', 'Близнецы': 'Близнецах', 'Рак': 'Раке', 'Лев': 'Льве', 'Дева': 'Деве',
   'Весы': 'Весах', 'Скорпион': 'Скорпионе', 'Стрелец': 'Стрельце', 'Козерог': 'Козероге', 'Водолей': 'Водолее', 'Рыбы': 'Рыбах' };
 // Natural houses of each planet, as Chronos shows them in «Домарные свойства» used in the course.
 export const SIGNIFICATION = { sun: [5, 1], moon: [4, 1], mercury: [3], venus: [2, 7], mars: [8], jupiter: [9, 12],
@@ -27,7 +28,7 @@ export const STRATEGIES = {
   harmony: 'гармония', lightning: 'молния', cat: 'котик', stone: 'камень', tiger: 'тигр',
 };
 
-const elementOf = (sign) => ELEMENT_OF_SIGN[SIGNS.indexOf(sign) % 4];
+export const elementOf = (sign) => ELEMENT_OF_SIGN[SIGNS.indexOf(sign) % 4];
 
 // For every planet: houses it rules (by cusp sign), the house it stands in and its natural houses.
 export function houseProperties(natal) {
@@ -109,15 +110,20 @@ export function moneyForPrompt(money) {
   if (!money) return { missing: 'Для денежного разбора нужен рассчитанный куспид 2 дома, то есть известное время рождения.' };
   const { secondHouse: second } = money;
   const counts = Object.entries(money.elements).map(([element, value]) => `${ELEMENT_NAMES[element]} ${value}`).join(', ');
+  const element = moneyRules.elements[elementOf(second.sign)];
   return {
     method: 'методика «Квантовый скачок PRO»: куспид и управитель 2 дома, MC, стихии личных планет',
+    // The main answer to «why does money leave at once»: keep or spend by the element of the 2nd house cusp.
+    rule: `Куспид 2 дома в ${element.adjective} знаке (${second.sign}): ${element.rule}. Как именно: ${moneyRules.signs[second.sign]}.`,
+    planetRules: second.planetsInside.map((planet) => `${POINT_NAMES[planet]} во 2 доме: ${moneyRules.planets[planet]}`),
+    source: second.rulers.map((ruler) => `Управитель 2 дома в ${ruler.house} доме: ${moneyRules.rulerHouses[ruler.house]}`).join(' '),
     secondHouseCusp: `Куспид 2 дома в знаке ${second.sign}`,
     rulers: second.rulers.map((ruler) => `Управитель 2 дома ${POINT_NAMES[ruler.planet]} стоит в ${ruler.house} доме`),
     planetsInSecondHouse: second.planetsInside.map((planet) => POINT_NAMES[planet]),
     mc: `MC (куспид 10 дома) в знаке ${money.mcSign}`,
     elements: `Стихии личных планет: ${counts}${money.strongPlanetsCounted ? ' (с учётом сильных планет)' : ' (без сильных планет из Chronos — они могут добавить по одному баллу стихии)'}`,
     hardAspects: money.hardAspects.map((a) => `${POINT_NAMES[a.luminary]} в негативном аспекте с ${INSTRUMENTAL[a.other]} (орб ${a.orb}°)`),
-    strategy: money.strategy ? `Финансовая стратегия: ${money.strategy}` : 'Финансовая стратегия по этим стихиям однозначно не определяется; предложите уточнить на консультации.',
+    strategy: money.strategy ? `Финансовая стратегия: ${money.strategy}` : 'Финансовая стратегия по этим стихиям однозначно не определяется.',
   };
 }
 

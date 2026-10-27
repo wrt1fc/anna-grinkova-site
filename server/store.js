@@ -57,21 +57,21 @@ function createAccounts(q, transaction) {
     return q.one(`SELECT birth_date AS "birthDate", birth_time AS "birthTime", birth_place AS "birthPlace",
       city_id AS "birthCityId", birth_latitude AS "birthLatitude", birth_longitude AS "birthLongitude",
       birth_time_zone AS "birthTimeZone", birth_utc AS "birthUtc",
-      birth_utc_offset_minutes AS "birthUtcOffsetMinutes", updated_at AS "updatedAt"
+      birth_utc_offset_minutes AS "birthUtcOffsetMinutes", gender, updated_at AS "updatedAt"
       FROM birth_profiles WHERE user_id = $1`, [userId]);
   }
 
   async function saveBirthProfile(userId, profile, now = Date.now()) {
     await q.run(`INSERT INTO birth_profiles (user_id, birth_date, birth_time, birth_place, city_id,
-      birth_latitude, birth_longitude, birth_time_zone, birth_utc, birth_utc_offset_minutes, updated_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) ON CONFLICT (user_id) DO UPDATE SET birth_date = excluded.birth_date,
+      birth_latitude, birth_longitude, birth_time_zone, birth_utc, birth_utc_offset_minutes, updated_at, gender)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) ON CONFLICT (user_id) DO UPDATE SET birth_date = excluded.birth_date,
       birth_time = excluded.birth_time, birth_place = excluded.birth_place, city_id = excluded.city_id,
       birth_latitude = excluded.birth_latitude, birth_longitude = excluded.birth_longitude,
       birth_time_zone = excluded.birth_time_zone, birth_utc = excluded.birth_utc,
-      birth_utc_offset_minutes = excluded.birth_utc_offset_minutes, updated_at = excluded.updated_at`,
+      birth_utc_offset_minutes = excluded.birth_utc_offset_minutes, updated_at = excluded.updated_at, gender = excluded.gender`,
     [userId, profile.birthDate, profile.birthTime, profile.birthPlace, profile.birthCityId ?? null,
       profile.birthLatitude ?? null, profile.birthLongitude ?? null, profile.birthTimeZone ?? null,
-      profile.birthUtc ?? null, profile.birthUtcOffsetMinutes ?? null, now]);
+      profile.birthUtc ?? null, profile.birthUtcOffsetMinutes ?? null, now, profile.gender ?? null]);
     return getBirthProfile(userId);
   }
 

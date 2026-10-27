@@ -1,6 +1,8 @@
 import { getCityById } from './cities.js';
 import { birthInstant } from './birth-time.js';
 
+export const GENDERS = ['female', 'male'];
+
 const fail = (status, error, message) => ({ ok: false, status, data: message ? { error, message } : { error } });
 
 function validBirthDate(date, today = new Date().toISOString().slice(0, 10)) {
@@ -17,6 +19,8 @@ export function parseBirthInput(body) {
   if (!validBirthDate(date) || typeof time !== 'string' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) {
     return fail(400, 'invalid_birth_profile', 'Проверьте дату, время и место рождения.');
   }
+  const gender = body.gender == null || body.gender === '' ? null : body.gender;
+  if (gender !== null && !GENDERS.includes(gender)) return fail(400, 'invalid_gender', 'Выберите пол из списка.');
   const hasCity = body.birthCityId != null && body.birthCityId !== '';
   const city = hasCity ? getCityById(body.birthCityId) : null;
   if (hasCity && !city) return fail(400, 'invalid_city');
@@ -43,5 +47,5 @@ export function parseBirthInput(body) {
   }
   return { ok: true, profile: { birthDate: date, birthTime: time, birthPlace: place, birthCityId: city?.id ?? null,
     birthLatitude: latitude, birthLongitude: longitude, birthTimeZone: timeZone, birthUtc: instant.utc,
-    birthUtcOffsetMinutes: instant.offsetMinutes } };
+    birthUtcOffsetMinutes: instant.offsetMinutes, gender } };
 }

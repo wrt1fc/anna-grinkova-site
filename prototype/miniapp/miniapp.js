@@ -186,13 +186,15 @@ function enterBirth() {
     select.replaceChildren(...allowed.map((key) => { const option = node('option', '', app.relations.labels?.[key] ?? key); option.value = key; return option; }));
   }
   birthForm = { name: person ? '' : app.me?.user?.displayName ?? '', date: profile?.birthDate ?? '', time: profile?.birthTime ?? '',
-    city: profile?.birthCityId ? { id: profile.birthCityId, name: profile.birthPlace } : null, place: profile?.birthPlace ?? '' };
+    city: profile?.birthCityId ? { id: profile.birthCityId, name: profile.birthPlace } : null, place: profile?.birthPlace ?? '', gender: profile?.gender ?? null };
+  for (const radio of document.querySelectorAll('#b-gender input')) radio.checked = radio.value === birthForm.gender;
   setNote('birth');
   paintBirth();
 }
 
 function bindBirth() {
   $('#b-name').addEventListener('input', (event) => { birthForm.name = event.target.value; });
+  $('#b-gender').addEventListener('change', (event) => { birthForm.gender = event.target.value; });
   $('#b-date').addEventListener('click', () => pickDate({ value: birthForm.date, onPick: (value) => { birthForm.date = value; paintBirth(); } }));
   $('#b-time').addEventListener('click', () => pickTime({ value: birthForm.time, onPick: (value) => { birthForm.time = value; paintBirth(); } }));
   $('#b-city').addEventListener('click', () => pickCity({ onPick: (city) => { birthForm.city = city; birthForm.place = city.displayName ?? city.name; paintBirth(); } }));
@@ -206,7 +208,7 @@ function bindBirth() {
       const stored = !person && birth() && !birthForm.city?.latitude ? birth() : null;
       const place = birthForm.city?.id ? { birthCityId: birthForm.city.id, birthPlace: birthForm.place }
         : { birthPlace: birthForm.place, birthLatitude: stored?.birthLatitude, birthLongitude: stored?.birthLongitude, birthTimeZone: stored?.birthTimeZone };
-      const body = { birthDate: birthForm.date, birthTime: birthForm.time, ...place };
+      const body = { birthDate: birthForm.date, birthTime: birthForm.time, gender: birthForm.gender, ...place };
       if (person) {
         const { ok, data } = await api('/api/profiles', { method: 'POST', body: { ...body, relation: $('#b-relation').value, label: birthForm.name.trim() } });
         if (!ok) { setNote('birth', data.message || 'Не удалось сохранить.'); return; }
@@ -242,7 +244,7 @@ function bindShell() {
     event.preventDefault();
     if (target.hasAttribute('data-back')) { app.back(); return; }
     if (target.dataset.go === 'birth') app.birthMode = null;
-    if (target.dataset.intro) { app.pendingQuestion = 'Расскажите, как вы работаете и с какими вопросами можно к вам прийти.'; }
+    if (target.dataset.intro) { app.pendingQuestion = 'Расскажи, как ты работаешь и с какими вопросами к тебе можно прийти.'; }
     app.go(target.dataset.go);
   });
   $('#profile-out').addEventListener('click', async () => {

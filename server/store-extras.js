@@ -3,13 +3,13 @@
 
 const BIRTH_COLUMNS = `birth_date AS "birthDate", birth_time AS "birthTime", birth_place AS "birthPlace",
   city_id AS "birthCityId", birth_latitude AS "birthLatitude", birth_longitude AS "birthLongitude",
-  birth_time_zone AS "birthTimeZone", birth_utc AS "birthUtc", birth_utc_offset_minutes AS "birthUtcOffsetMinutes"`;
+  birth_time_zone AS "birthTimeZone", birth_utc AS "birthUtc", birth_utc_offset_minutes AS "birthUtcOffsetMinutes", gender`;
 const CHAT_RETENTION_MS = 180 * 86_400_000;
 const MAX_CHAT_MESSAGES = 500;
 
 export function createExtras(q, transaction) {
   const profileRow = (row) => row && { id: row.id, relation: row.relation, label: row.label, ...Object.fromEntries(
-    Object.entries(row).filter(([key]) => key.startsWith('birth'))), updatedAt: row.updatedAt };
+    Object.entries(row).filter(([key]) => key.startsWith('birth'))), gender: row.gender ?? null, updatedAt: row.updatedAt };
 
   // The effective plan honours the paid period: see planState in store-billing.js.
   async function setPlan(userId, plan) { await q.run('UPDATE users SET plan = $1, plan_expires_at = NULL WHERE id = $2', [plan, userId]); }
@@ -25,7 +25,8 @@ export function createExtras(q, transaction) {
   }
   function birthValues(profile) {
     return [profile.birthDate, profile.birthTime, profile.birthPlace, profile.birthCityId ?? null, profile.birthLatitude ?? null,
-      profile.birthLongitude ?? null, profile.birthTimeZone ?? null, profile.birthUtc ?? null, profile.birthUtcOffsetMinutes ?? null];
+      profile.birthLongitude ?? null, profile.birthTimeZone ?? null, profile.birthUtc ?? null, profile.birthUtcOffsetMinutes ?? null,
+      profile.gender ?? null];
   }
   // The account row is locked before counting, so two parallel requests cannot exceed the plan.
   async function createChartProfile(userId, { relation, label, ...profile }, limit, now = Date.now()) {
@@ -34,8 +35,8 @@ export function createExtras(q, transaction) {
       const { count } = await tx.q.one('SELECT COUNT(*) AS count FROM chart_profiles WHERE user_id = $1', [userId]);
       if (count >= limit) return null;
       const row = await tx.q.one(`INSERT INTO chart_profiles (user_id, relation, label, birth_date, birth_time, birth_place, city_id,
-        birth_latitude, birth_longitude, birth_time_zone, birth_utc, birth_utc_offset_minutes, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id`,
+        birth_latitude, birth_longitude, birth_time_zone, birth_utc, birth_utc_offset_minutes, gender, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id`,
       [userId, relation, label, ...birthValues(profile), now, now]);
       return tx.getChartProfile(userId, row.id);
     });
@@ -43,7 +44,7 @@ export function createExtras(q, transaction) {
   async function updateChartProfile(userId, id, { relation, label, ...profile }, now = Date.now()) {
     const changed = await q.run(`UPDATE chart_profiles SET relation = $1, label = $2, birth_date = $3, birth_time = $4, birth_place = $5,
       city_id = $6, birth_latitude = $7, birth_longitude = $8, birth_time_zone = $9, birth_utc = $10, birth_utc_offset_minutes = $11,
-      updated_at = $12 WHERE user_id = $13 AND id = $14`, [relation, label, ...birthValues(profile), now, userId, id]);
+      gender = $12, updated_at = $13 WHERE user_id = $14 AND id = $15`, [relation, label, ...birthValues(profile), now, userId, id]);
     return changed ? getChartProfile(userId, id) : null;
   }
   // Questions about a removed person go with the profile; keeping them would keep their story.

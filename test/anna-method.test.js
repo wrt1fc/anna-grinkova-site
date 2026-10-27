@@ -62,6 +62,18 @@ test('money summary and material queries use Anna’s wording', () => {
   assert.match(moneyForPrompt(null).missing, /время рождения/);
 });
 
+test('the money rule names the element of the 2nd house cusp: earth and water keep, fire and air spend', () => {
+  const lines = moneyForPrompt(moneyProfile(chart));
+  // Libra is an air sign.
+  assert.match(lines.rule, /^Куспид 2 дома в воздушном знаке \(Весы\): деньги даны, чтобы тратить/);
+  assert.match(lines.source, /^Управитель 2 дома в 3 доме: .*знакомств/);
+  assert.ok(Array.isArray(lines.planetRules));
+  const withPlanets = moneyForPrompt({ ...moneyProfile(chart), secondHouse: { sign: 'Козерог', rulers: [{ planet: 'saturn', house: 10 }], planetsInside: ['saturn', 'jupiter'] } });
+  assert.match(withPlanets.rule, /земном знаке \(Козерог\): деньги нужно копить/);
+  assert.deepEqual(withPlanets.planetRules.map((line) => line.split(':')[0]), ['Сатурн во 2 доме', 'Юпитер во 2 доме']);
+  assert.match(withPlanets.planetRules[0], /копить/);
+});
+
 test('targeted queries find the exact slide for the chart', () => {
   const knowledge = createKnowledge([
     { text: 'Управитель 2 дома в 3 доме: Больше подходит фриланс, заработок через обучение других людей.', source: 'a' },

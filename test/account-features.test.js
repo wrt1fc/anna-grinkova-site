@@ -67,6 +67,42 @@ test('the free plan allows no extra people; partner allows one, family two', asy
   assert.equal((await request('/api/plan', { cookie })).data.people, 3);
 }));
 
+test('gender is optional, kept for the owner and close people, and reaches the chat as visitorGender and subject.gender', async () => {
+  const seen = [];
+  await fixture(async ({ store, request, signIn }) => {
+    const cookie = await signIn();
+    const birth = { birthDate: '1990-03-10', birthTime: '10:45', birthCityId: 524901 };
+    assert.equal((await request('/api/profile', { method: 'PUT', body: { ...birth, gender: 'other' }, cookie })).response.status, 400);
+    assert.equal((await request('/api/profile', { method: 'PUT', body: birth, cookie })).data.birthProfile.gender, null);
+    assert.equal((await request('/api/profile', { method: 'PUT', body: { ...birth, gender: 'female' }, cookie })).data.birthProfile.gender, 'female');
+    await store.setPlan(await store.findUserIdByEmail('owner@example.com'), 'partner');
+    const created = await request('/api/profiles', { method: 'POST', body: { ...partnerBirth, gender: 'male' }, cookie });
+    assert.equal(created.data.profile.gender, 'male');
+
+    await request('/api/chat', { method: 'POST', body: { message: 'Что меня ждёт в отношениях?' }, cookie });
+    await request('/api/chat', { method: 'POST', body: { message: 'Какой он в отношениях?', profileId: created.data.profile.id }, cookie });
+    assert.equal(seen[0].visitorGender, 'female');
+    assert.equal(seen[1].visitorGender, 'female');
+    assert.equal(seen[1].forecast.subject.gender, 'male');
+  }, { chatWriter: steadyWriter(seen) });
+});
+
+test('a compatibility question compares the owner with the partner profile, selected or not', async () => {
+  const seen = [];
+  await fixture(async ({ store, request, signIn }) => {
+    const cookie = await signIn();
+    await request('/api/profile', { method: 'PUT', body: { birthDate: '1990-03-10', birthTime: '10:45', birthCityId: 524901 }, cookie });
+    await store.setPlan(await store.findUserIdByEmail('owner@example.com'), 'partner');
+    const created = await request('/api/profiles', { method: 'POST', body: partnerBirth, cookie });
+    await request('/api/chat', { method: 'POST', body: { message: 'Какая у нас совместимость?' }, cookie });
+    await request('/api/chat', { method: 'POST', body: { message: 'Подходим ли мы друг другу?', profileId: created.data.profile.id }, cookie });
+    assert.equal(seen[0].chart.partner.label, 'Сергей');
+    assert.equal(seen[1].chart.partner.label, 'Сергей');
+    // The chart itself stays the owner's: the comparison speaks to «тебя».
+    assert.equal(seen[0].chart.planets.join(), seen[1].chart.planets.join());
+  }, { chatWriter: steadyWriter(seen) });
+});
+
 test('profiles belong to their owner and reject unsafe labels', async () => fixture(async ({ store, request, signIn }) => {
   const owner = await signIn('owner@example.com');
   const stranger = await signIn('stranger@example.com');
@@ -91,7 +127,7 @@ test('chat answers about a selected partner profile and refuses profiles beyond 
     const { data } = await request('/api/profiles', { method: 'POST', body: partnerBirth, cookie });
     const reply = await request('/api/chat', { method: 'POST', body: { message: 'Что у партнёра сегодня?', profileId: data.profile.id }, cookie });
     assert.equal(reply.response.status, 200);
-    assert.deepEqual(reply.data.context.subject, { relation: 'partner', label: 'Сергей' });
+    assert.deepEqual(reply.data.context.subject, { relation: 'partner', label: 'Сергей', gender: null });
     assert.equal(seen[0].forecast.scope, 'personal');
     assert.equal(JSON.stringify(seen[0].forecast).includes('1988'), false);
     await store.setPlan(userId, 'individual');

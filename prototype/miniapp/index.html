@@ -18,7 +18,7 @@
   <meta property="og:url" content="__PUBLIC_URL__/" />
   <meta property="og:image" content="__PUBLIC_URL__/assets/app/og-image.jpg" />
   <link rel="stylesheet" href="/assets/fonts/fonts.css" />
-  <link rel="stylesheet" href="/miniapp/miniapp.css?v=2" />
+  <link rel="stylesheet" href="/miniapp/miniapp.css?v=3" />
 </head>
 <body>
 <div class="app" id="app">
@@ -96,6 +96,9 @@
         <div class="form" id="b-relation-row" hidden><label class="label" for="b-relation">Кем вам приходится</label><select class="field" id="b-relation"></select></div>
         <label class="label" for="b-name">Имя</label>
         <input class="field" id="b-name" name="name" autocomplete="given-name" maxlength="40" />
+        <fieldset class="gender" id="b-gender"><legend class="label">Пол</legend>
+          <div class="chips"><label class="chip chip-radio"><input type="radio" name="gender" value="female" />Женский</label><label class="chip chip-radio"><input type="radio" name="gender" value="male" />Мужской</label></div>
+        </fieldset>
         <label class="label" for="b-date">Дата рождения</label>
         <button class="field field-pick" id="b-date" type="button" data-pick="date"><span data-value>Выберите дату</span><img src="/miniapp/assets/icon-cal.svg" alt="" width="22" height="22" /></button>
         <label class="label" for="b-time">Время рождения</label>
@@ -302,6 +305,6 @@
 </div>
 <script src="/natal-wheel.js?v=3"></script>
 <script src="/pwa.js"></script>
-<script type="module" src="/miniapp/miniapp.js?v=2"></script>
+<script type="module" src="/miniapp/miniapp.js?v=3"></script>
 </body>
 </html>

@@ -50,9 +50,9 @@ export function tarotReadingContext(day, card) {
 // The same prompt shape is used for training examples, so the tuned model learns to follow length.
 export const CHAT_TONES = Object.keys(chatContext.tones ?? {});
 
-export function chatPrompt({ message, history, forecast, visitorName = null, length = DEFAULT_ANSWER_LENGTH, materials = [], chart = null, mode = null, tone = null }) {
+export function chatPrompt({ message, history, forecast, visitorName = null, visitorGender = null, length = DEFAULT_ANSWER_LENGTH, materials = [], chart = null, mode = null, tone = null }) {
   // The natal chart block is sent only for chart questions, so ordinary answers keep the trained prompt shape.
-  return JSON.stringify({ facts: chatContext.facts, materials, forecast, ...(chart ? { chart } : {}), ...(mode ? { mode } : {}), history, visitorName, length,
+  return JSON.stringify({ facts: chatContext.facts, materials, forecast, ...(chart ? { chart } : {}), ...(mode ? { mode } : {}), history, visitorName, visitorGender, length,
     ...(tone && chatContext.tones?.[tone] ? { tone, toneInstruction: chatContext.tones[tone].instruction } : {}),
     lengthInstruction: answerSize(mode, length).instruction, question: message });
 }
@@ -63,10 +63,11 @@ export function systemFor(mode) {
 
 function questionGuidance(message, chart, mode) {
   if (mode === TAROT_MODE || !/отношени|любов|любви|партн[её]р|замуж|брак/iu.test(message)) return '';
-  const direct = '\nДля текущего вопроса: отвечайте об отношениях, без вступления «Смотрите» и без отказа «я не могу предсказывать». Не обсуждайте прежнюю карту дня и не отправляйте на консультацию вместо ответа.';
-  if (chart?.missing) return direct + ' Личных данных пока нет: коротко попросите добавить дату, время и город рождения в кабинете. Не перечисляйте планеты. Затем задайте один простой вопрос: человек сейчас в паре или хочет встретить партнёра?';
-  if (chart) return direct + ' Выберите не больше двух показателей из chart. Объясните, что они могут означать в обычной жизни, и предложите один понятный шаг. Без списка планет и без обещаний исхода.';
-  return direct + ' Если вопрос о Луне и любви без слов «сегодня» или «транзит», объясните смысл натальной Луны: потребность в заботе, близости и безопасности. Не приписывайте ежедневные перемены настроения движению Луны. Без личной карты не называйте положения и аспекты человека.';
+  const direct = '\nДля текущего вопроса: отвечай об отношениях, без вступления «Смотри» и без отказа «я не могу предсказывать». Не обсуждай прежнюю карту дня и не отправляй на консультацию вместо ответа.';
+  if (chart?.missing) return direct + ' Личных данных пока нет: коротко попроси добавить дату, время и город рождения в кабинете. Не перечисляй планеты. Затем задай один простой вопрос: человек сейчас в паре или хочет встретить партнёра?';
+  if (chart?.partner) return direct + ' Это вопрос о паре: сравни карту человека из chart с картой партнёра из chart.partner по Луне, Венере, Марсу и стихиям. Без приговора паре и без обещаний исхода.';
+  if (chart) return direct + ' Выбери не больше двух показателей из chart и объясни, что они могут означать в обычной жизни. Без списка планет и без обещаний исхода.';
+  return direct + ' Если вопрос о Луне и любви без слов «сегодня» или «транзит», объясни смысл натальной Луны: потребность в заботе, близости и безопасности. Не приписывай ежедневные перемены настроения движению Луны. Без личной карты не называй положения и аспекты человека.';
 }
 
 // A complete new question about relationships should not inherit the preceding day-card exercise.
@@ -137,11 +138,11 @@ export function wrongPlanetSign(answer, chart) {
 export function createLocalChat({ model, fetchImpl = fetch }) {
   if (typeof model !== 'string' || !/^[\w./:-]{2,80}$/.test(model)) throw new Error('Invalid local model name');
   return {
-    async answer({ message, history, forecast, visitorName = null, signal, length = DEFAULT_ANSWER_LENGTH, materials = [], chart = null, mode = null, tone = null, onDelta = null, temperature = 0.25, qualityRetry = false }) {
+    async answer({ message, history, forecast, visitorName = null, visitorGender = null, signal, length = DEFAULT_ANSWER_LENGTH, materials = [], chart = null, mode = null, tone = null, onDelta = null, temperature = 0.25, qualityRetry = false }) {
       const size = answerSize(mode, length);
       if (!size) throw new Error('Unknown answer length');
       if (mode !== TAROT_MODE && chart?.missing && /отношени|любов|любви|партн[её]р|замуж|брак/iu.test(message)) {
-        const answer = 'Чтобы разобрать ваши отношения по натальной карте, добавьте дату, время и город рождения в кабинете. А пока расскажите: вы сейчас в паре или хотите встретить партнёра?';
+        const answer = 'Чтобы разобрать твои отношения по натальной карте, добавь дату, время и город рождения в кабинете. А пока расскажи: ты сейчас в паре или хочешь встретить партнёра?';
         onDelta?.(answer, answer);
         return { answer, model: null, length, truncated: false, contextVersion: chatContext.version };
       }
@@ -156,9 +157,9 @@ export function createLocalChat({ model, fetchImpl = fetch }) {
           // Fixed context size: Ollama reloads the model whenever num_ctx changes between requests.
           options: { temperature, num_predict: size.numPredict, num_ctx: 8192 },
           system: systemFor(mode) + questionGuidance(message, chart, mode) + (qualityRetry
-            ? '\nПовторная проверка ответа: не повторяйте предложения. Положения планет в поле chart — уже рассчитанные факты; не исправляйте их и не добавляйте другие положения. Возьмите одно положение из chart и объясните его простыми словами, затем предложите один небольшой практический шаг.'
+            ? '\nПовторная проверка ответа: не повторяй предложения. Положения планет в поле chart — уже рассчитанные факты; не исправляй их и не добавляй другие положения. Возьми одно положение из chart и объясни его простыми словами.'
             : ''),
-          prompt: chatPrompt({ message, history: mode === TAROT_MODE ? history : historyForQuestion(history, message), forecast, visitorName, length, materials, chart, mode, tone }),
+          prompt: chatPrompt({ message, history: mode === TAROT_MODE ? history : historyForQuestion(history, message), forecast, visitorName, visitorGender, length, materials, chart, mode, tone }),
         }),
         // Also stops generation when the visitor presses Stop or leaves the page.
         signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
@@ -187,7 +188,7 @@ export function createLocalChat({ model, fetchImpl = fetch }) {
       const repeated = cleanRepeatedSentences(text).trim() !== text.trim();
       if (wrongPlanetSign(answer, chart) || (chart && repeated && !qualityRetry)) {
         if (qualityRetry) throw new Error('Local chat contradicted the calculated chart');
-        return createLocalChat({ model, fetchImpl }).answer({ message, history, forecast, visitorName, signal,
+        return createLocalChat({ model, fetchImpl }).answer({ message, history, forecast, visitorName, visitorGender, signal,
           length, materials, chart, mode, tone, onDelta, temperature: 0.1, qualityRetry: true });
       }
       if (answer.length > emitted.length) onDelta?.(answer.slice(emitted.length), answer);

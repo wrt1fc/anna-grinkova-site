@@ -6,7 +6,7 @@ import { SAFE_FALLBACK_ANSWER, copiesMaterials, unsafeChatAnswer } from '../chat
 import { planFor } from '../plans.js';
 import { CRISIS_ANSWER, isCrisisMessage } from '../crisis.js';
 import { profilesWithAccess } from './profiles.js';
-import { chartContext, findMaterials } from '../chat-grounding.js';
+import { asksAboutCompatibility, chartContext, findMaterials } from '../chat-grounding.js';
 import { clientAddress } from '../traffic.js';
 import { fallbackReading, wrongCard } from '../tarot-guard.js';
 
@@ -48,11 +48,23 @@ function invalidTarotBody(body) {
 
 // The owner's own chart, or a partner/family profile the plan currently allows.
 async function chartFor(store, user, profileId) {
-  if (profileId == null) return { profile: await store.getBirthProfile(user.id), subject: null, profileId: null };
+  const own = await store.getBirthProfile(user.id);
+  // The owner's gender picks «дорогая» or «дорогой» even when the question is about someone else.
+  const visitorGender = own?.gender ?? null;
+  const people = (await profilesWithAccess(store, user.id)).filter((item) => !item.locked);
+  if (profileId == null) return { profile: own, subject: null, profileId: null, visitorGender, own, people };
   const profile = (await profilesWithAccess(store, user.id)).find((item) => item.id === profileId);
   if (!profile) return { error: [404, { error: 'profile_not_found', message: 'Профиль не найден.' }] };
   if (profile.locked) return { error: [403, { error: 'profile_locked', message: 'Этот профиль недоступен на текущем тарифе.' }] };
-  return { profile, subject: { relation: profile.relation, label: profile.label }, profileId: profile.id };
+  return { profile, subject: { relation: profile.relation, label: profile.label, gender: profile.gender ?? null }, profileId: profile.id, visitorGender, own, people };
+}
+
+// A compatibility question compares the owner with the selected person, or with the partner profile when none is selected.
+function compatibilityPair(chart, message) {
+  if (!asksAboutCompatibility(message)) return { primary: chart.profile, partner: null };
+  if (chart.profileId) return { primary: chart.own, partner: chart.profile };
+  const partner = chart.people.find((item) => item.relation === 'partner') ?? chart.people[0] ?? null;
+  return { primary: chart.own, partner };
 }
 
 function sse(res) {
@@ -162,7 +174,8 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
           ? personalForecastForDate(day, chart.profile, chart.profileId ? PROFILE_SEED_OFFSET + chart.profileId : user.id, general, draw)
           : general;
         context = chatForecastContext(forecast, chart.subject);
-        astro = chartContext(chart.profile, message);
+        const pair = compatibilityPair(chart, message);
+        astro = chartContext(pair.primary, message, new Date(), { partner: pair.partner });
         // Only the text goes to the model; file names and scores stay on the server.
         materials = findMaterials(knowledge, message, astro.queries);
       }
@@ -209,7 +222,7 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
     try {
       const generate = (extra = {}) => chatWriter.answer({ message, history: tarot ? [] : historySigner.trusted(body.history ?? []),
         forecast: tarot ? context : forecastForQuestion(context, message),
-        visitorName: user.displayName || null, chart: astro.chart, ...(tarot ? { mode: TAROT_MODE } : {}),
+        visitorName: user.displayName || null, visitorGender: chart.visitorGender ?? null, chart: astro.chart, ...(tarot ? { mode: TAROT_MODE } : {}),
         length: tarot ? 'medium' : body.length ?? DEFAULT_ANSWER_LENGTH, ...(!tarot && CHAT_TONES.includes(body.tone) ? { tone: body.tone } : {}), materials, signal: abort.signal, onDelta, ...extra });
       let reply = await generate();
       if (tarot && wrongCard(reply.answer, card)) {
