@@ -61,7 +61,7 @@ test('each section has its own indexable address with title, canonical and only 
   const base = `http://127.0.0.1:${server.address().port}`;
   try {
     const day = await (await fetch(`${base}/karta-dnya`)).text();
-    assert.match(day, /<title>Карта дня онлайн бесплатно — Анна Гринькова<\/title>/);
+    assert.match(day, /<title>Карта дня онлайн бесплатно — Фортуна<\/title>/);
     assert.match(day, /<link rel="canonical" href="https:\/\/anna\.example\/karta-dnya" \/>/);
     assert.match(day, /<meta name="yandex-verification" content="abc123" \/>/);
     assert.match(day, /"@type":"Person"/);
@@ -81,7 +81,7 @@ test('each section has its own indexable address with title, canonical and only 
     assert.equal(subscriptionResponse.status, 200);
     const subscription = await subscriptionResponse.text();
     assert.match(subscription, /<meta name="robots" content="noindex, nofollow" \/>/);
-    assert.match(subscription, /<title>Подписка и оплата — Анна Гринькова<\/title>/);
+    assert.match(subscription, /<title>Подписка и оплата — Фортуна<\/title>/);
     // A public page must not contain anyone's checkout link or email.
     assert.equal(subscription.includes('customer_email='), false);
     const robots = await (await fetch(`${base}/robots.txt`)).text();

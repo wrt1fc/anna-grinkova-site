@@ -110,7 +110,7 @@ export function moneyForPrompt(money) {
   const { secondHouse: second } = money;
   const counts = Object.entries(money.elements).map(([element, value]) => `${ELEMENT_NAMES[element]} ${value}`).join(', ');
   return {
-    method: 'методика Анны «Квантовый скачок PRO»: куспид и управитель 2 дома, MC, стихии личных планет',
+    method: 'методика «Квантовый скачок PRO»: куспид и управитель 2 дома, MC, стихии личных планет',
     secondHouseCusp: `Куспид 2 дома в знаке ${second.sign}`,
     rulers: second.rulers.map((ruler) => `Управитель 2 дома ${POINT_NAMES[ruler.planet]} стоит в ${ruler.house} доме`),
     planetsInSecondHouse: second.planetsInside.map((planet) => POINT_NAMES[planet]),

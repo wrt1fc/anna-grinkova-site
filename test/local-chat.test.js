@@ -94,9 +94,9 @@ test('chat streams plain text built from calculated facts and the approved proje
   assert.equal(prompt.forecast.card, undefined);
   assert.equal(prompt.visitorName, 'Мария');
   assert.deepEqual(prompt.materials, []);
-  assert.ok(prompt.facts.some((fact) => fact.includes('Института прогрессивной психологии')));
+  assert.ok(prompt.facts.some((fact) => fact.includes('Фортуна')));
   assert.equal(JSON.stringify(prompt).includes('birthTime'), false);
-  assert.match(capture.payload.system, /не выдавайте себя за Анну/i);
+  assert.match(capture.payload.system, /не выдавайте себя за живого специалиста/i);
 });
 
 test('chat passes retrieved materials and the profile subject into the prompt', async () => {
@@ -180,7 +180,7 @@ test('a card reading adds its own rules and mode, and ordinary chat keeps the tr
   assert.equal(JSON.stringify(prompt).includes('sky'), false);
   assert.match(tarotCapture.payload.system, /Метафорическая карта/);
   assert.match(tarotCapture.payload.system, /Не обещайте исход/);
-  assert.match(tarotCapture.payload.system, /не выдавайте себя за Анну/i);
+  assert.match(tarotCapture.payload.system, /не выдавайте себя за живого специалиста/i);
 
   const chatCapture = {};
   await chatReturning(['Карта поднимает тему выбора. Сначала проверьте факты.'], {}, chatCapture)

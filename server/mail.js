@@ -1,7 +1,7 @@
 const UNISENDER_ENDPOINT = 'https://goapi.unisender.ru/ru/transactional/api/v1/email/send.json';
 const BREVO_ENDPOINT = 'https://api.brevo.com/v3/smtp/email';
 const TIMEOUT_MS = 10_000;
-const FROM_NAME = 'Анна Гринькова';
+const FROM_NAME = 'Фортуна';
 
 function letter(purpose, code) {
   // Someone tried to register with an address that already has an account: no code, only a pointer to sign in.

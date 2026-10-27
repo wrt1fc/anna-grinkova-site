@@ -35,7 +35,7 @@ const CONTENT_SECURITY_POLICY = [
 ].join('; ');
 // The 404 page is a fixed text with inline styles and no scripts; the site-wide policy would leave it unstyled.
 const NOT_FOUND_POLICY = "default-src 'none'; style-src 'self' 'unsafe-inline'; font-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
-const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.webp': 'image/webp',
+const MIME = { '.pdf': 'application/pdf', '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.webp': 'image/webp',
   '.png': 'image/png', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json; charset=utf-8',
   '.txt': 'text/plain; charset=utf-8' };
 
