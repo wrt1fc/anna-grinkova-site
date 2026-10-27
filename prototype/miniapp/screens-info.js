@@ -55,9 +55,9 @@ export async function enterDay() {
   const [year, month, day] = data.date.split('-').map(Number);
   const date = new Date(year, month - 1, day);
   $('#day-date').textContent = `${['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'][date.getDay()]}, ${day} ${MONTHS_GEN[month - 1]}`;
-  $('#day-moon-title').textContent = `☽ Луна в ${IN_SIGN[moon.moon.sign] ?? moon.moon.sign}`;
+  $('#day-moon-title').textContent = `☽ Луна в ${IN_SIGN[moon.moon?.sign] ?? /Луна в ([^,;.]+)/.exec(data.reading.body)?.[1] ?? ''}`.trim();
   $('#day-moon-phase').textContent = moon.moonPhase;
-  $('#day-sun').textContent = `☉ Солнце в ${IN_SIGN[moon.sun.sign] ?? moon.sun.sign}`;
+  $('#day-sun').textContent = `☉ Солнце в ${IN_SIGN[moon.sun?.sign] ?? /Солнце в ([^,;.]+)/.exec(data.reading.body)?.[1] ?? ''}`.trim();
   $('#day-moon').style.setProperty('--moon-shift', moonShift(moon.moonAngle));
   $('#day-body').textContent = data.reading.body;
   $('#day-action').textContent = data.reading.action;
