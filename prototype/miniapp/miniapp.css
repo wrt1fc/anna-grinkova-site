@@ -356,3 +356,4 @@ h1:focus { outline: none; }
 .profile-who { display: grid; gap: 6px; justify-items: center; }
 .people-grid { display: grid; gap: 12px; }
 .paid-actions { display: grid; gap: 12px; width: 100%; }
+.home-top { display: contents; }

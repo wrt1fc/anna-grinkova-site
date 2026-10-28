@@ -14,6 +14,7 @@ const IN_SIGN = { Овен: 'Овне', Телец: 'Тельце', Близне
 export async function enterHome() {
   $('#home-name').textContent = visitorName();
   $('#home-plan').textContent = planLine() || 'Добро пожаловать';
+  $('#home-promo-note').textContent = planLine() || 'Первые вопросы бесплатно';
   drawWheel($('#home-wheel'), await loadNatal());
 }
 

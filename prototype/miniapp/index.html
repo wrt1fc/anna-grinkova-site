@@ -18,8 +18,8 @@
   <meta property="og:url" content="__PUBLIC_URL__/" />
   <meta property="og:image" content="__PUBLIC_URL__/assets/app/og-image.jpg" />
   <link rel="stylesheet" href="/assets/fonts/fonts.css" />
-  <link rel="stylesheet" href="/miniapp/miniapp.css?v=4" />
-  <link rel="stylesheet" href="/miniapp/miniapp-desktop.css?v=1" />
+  <link rel="stylesheet" href="/miniapp/miniapp.css?v=5" />
+  <link rel="stylesheet" href="/miniapp/miniapp-desktop.css?v=2" />
 </head>
 <body>
 <div class="app" id="app">
@@ -119,6 +119,7 @@
         <div class="topbar-text"><strong id="home-name">Гость</strong><span><i class="dot"></i><span id="home-plan">Войдите, чтобы сохранить карту</span></span></div>
         <button class="bell" type="button" id="home-bell" aria-label="Уведомления"><img src="/miniapp/assets/icon-bell.svg" alt="" width="22" height="22" /></button>
       </header>
+      <div class="home-top">
       <section class="card hero" aria-label="Натальная карта">
         <div class="hero-copy">
           <p class="eyebrow">Твоя натальная карта</p>
@@ -127,11 +128,22 @@
         </div>
         <div class="hero-wheel" id="home-wheel" aria-hidden="true"></div>
       </section>
+      <section class="card ask-promo only-desk" aria-label="Вопрос Фортуне">
+        <img class="ask-promo-photo" src="/miniapp/assets/fortuna-portrait.webp" alt="" width="600" height="894" />
+        <div class="ask-promo-copy">
+          <p class="eyebrow">Задай вопрос</p>
+          <h2 class="ask-promo-title">Фортуне</h2>
+          <p class="ask-promo-text">Астролог всегда на связи. Ответ по вашей карте за полминуты.</p>
+          <button class="btn btn-gold" type="button" data-go="chat">Задать вопрос Фортуне<img src="/miniapp/assets/icon-send-dark.svg" alt="" width="22" height="22" /></button>
+          <small class="ask-promo-note" id="home-promo-note"></small>
+        </div>
+      </section>
+      </div>
       <div class="tiles">
         <button class="card tile" type="button" data-go="day"><img src="/miniapp/assets/icon-sun.svg" alt="" width="30" height="30" /><strong>Прогноз на день</strong></button>
         <button class="card tile" type="button" data-go="week"><img src="/miniapp/assets/icon-cal.svg" alt="" width="30" height="30" /><strong>Прогноз на неделю</strong></button>
       </div>
-      <button class="card row row-ask" type="button" data-go="chat">
+      <button class="card row row-ask only-phone" type="button" data-go="chat">
         <img class="row-avatar" src="/miniapp/assets/fortuna.webp" alt="" width="56" height="56" />
         <span class="row-text"><strong>Задать вопрос Фортуне</strong><small id="home-ask-note">Ответ за полминуты</small></span>
         <img src="/miniapp/assets/icon-send.svg" alt="" width="22" height="22" />
