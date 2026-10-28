@@ -5,7 +5,8 @@ import { closeSheet, node, openSheet } from './sheet.js';
 
 const MAX_CHARS = 600;
 const HISTORY_ITEMS = 6;
-const SIGN_GLYPHS = { Овен: '♈', Телец: '♉', Близнецы: '♊', Рак: '♋', Лев: '♌', Дева: '♍', Весы: '♎', Скорпион: '♏', Стрелец: '♐', Козерог: '♑', Водолей: '♒', Рыбы: '♓' };
+// U+FE0E asks for the text glyph: without it Windows draws the signs as purple emoji tiles.
+const SIGN_GLYPHS = Object.fromEntries(Object.entries({ Овен: '♈', Телец: '♉', Близнецы: '♊', Рак: '♋', Лев: '♌', Дева: '♍', Весы: '♎', Скорпион: '♏', Стрелец: '♐', Козерог: '♑', Водолей: '♒', Рыбы: '♓' }).map(([sign, glyph]) => [sign, `${glyph}︎`]));
 const PLANET_GLYPHS = { sun: '☉', moon: '☽', pluto: '♇', saturn: '♄' };
 const IDEAS = ['Что главное в моей натальной карте?', 'Что означает мой Сатурн?', 'Что мне важно учесть на этой неделе?',
   'Как мои отношения связаны с картой?', 'В какой сфере мне легче реализоваться?', 'Что говорят мои финансы по карте?'];

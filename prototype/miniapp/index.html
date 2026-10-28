@@ -18,7 +18,8 @@
   <meta property="og:url" content="__PUBLIC_URL__/" />
   <meta property="og:image" content="__PUBLIC_URL__/assets/app/og-image.jpg" />
   <link rel="stylesheet" href="/assets/fonts/fonts.css" />
-  <link rel="stylesheet" href="/miniapp/miniapp.css?v=3" />
+  <link rel="stylesheet" href="/miniapp/miniapp.css?v=4" />
+  <link rel="stylesheet" href="/miniapp/miniapp-desktop.css?v=1" />
 </head>
 <body>
 <div class="app" id="app">
@@ -88,24 +89,24 @@
     </section>
 
     <!-- Данные рождения -->
-    <section class="screen screen-narrow" data-screen="birth" hidden aria-labelledby="t-birth">
+    <section class="screen screen-narrow screen-desk" data-screen="birth" hidden aria-labelledby="t-birth">
       <button class="back" type="button" data-back>Назад</button>
       <h1 id="t-birth" class="title-lg left">Данные рождения</h1>
       <p class="lead left">Нужны, чтобы построить вашу натальную карту</p>
       <form class="form" id="form-birth" novalidate>
-        <div class="form" id="b-relation-row" hidden><label class="label" for="b-relation">Кем вам приходится</label><select class="field" id="b-relation"></select></div>
-        <label class="label" for="b-name">Имя</label>
-        <input class="field" id="b-name" name="name" autocomplete="given-name" maxlength="40" />
-        <fieldset class="gender" id="b-gender"><legend class="label">Пол</legend>
+        <div class="fg fg-rel" id="b-relation-row" hidden><label class="label" for="b-relation">Кем вам приходится</label><select class="field" id="b-relation"></select></div>
+        <div class="fg fg-name"><label class="label" for="b-name">Имя</label>
+        <input class="field" id="b-name" name="name" autocomplete="given-name" maxlength="40" /></div>
+        <fieldset class="gender fg-gender" id="b-gender"><legend class="label">Пол</legend>
           <div class="chips"><label class="chip chip-radio"><input type="radio" name="gender" value="female" />Женский</label><label class="chip chip-radio"><input type="radio" name="gender" value="male" />Мужской</label></div>
         </fieldset>
-        <label class="label" for="b-date">Дата рождения</label>
-        <button class="field field-pick" id="b-date" type="button" data-pick="date"><span data-value>Выберите дату</span><img src="/miniapp/assets/icon-cal.svg" alt="" width="22" height="22" /></button>
-        <label class="label" for="b-time">Время рождения</label>
-        <button class="field field-pick" id="b-time" type="button" data-pick="time"><span data-value>Выберите время</span><img src="/miniapp/assets/icon-clock.svg" alt="" width="22" height="22" /></button>
-        <label class="label" for="b-city">Город рождения</label>
-        <button class="field field-pick" id="b-city" type="button" data-pick="city"><span data-value>Выберите город</span><img src="/miniapp/assets/icon-pin.svg" alt="" width="22" height="22" /></button>
-        <p class="hint">Не знаете точное время? Укажите примерное, оно уточняется позже.</p>
+        <div class="fg fg-date"><label class="label" for="b-date">Дата рождения</label>
+        <button class="field field-pick" id="b-date" type="button" data-pick="date"><span data-value>Выберите дату</span><img src="/miniapp/assets/icon-cal.svg" alt="" width="22" height="22" /></button></div>
+        <div class="fg fg-time"><label class="label" for="b-time">Время рождения</label>
+        <button class="field field-pick" id="b-time" type="button" data-pick="time"><span data-value>Выберите время</span><img src="/miniapp/assets/icon-clock.svg" alt="" width="22" height="22" /></button></div>
+        <div class="fg fg-city"><label class="label" for="b-city">Город рождения</label>
+        <button class="field field-pick" id="b-city" type="button" data-pick="city"><span data-value>Выберите город</span><img src="/miniapp/assets/icon-pin.svg" alt="" width="22" height="22" /></button></div>
+        <p class="hint fg-hint">Не знаете точное время? Укажите примерное, оно уточняется позже.</p>
         <p class="form-note" data-note role="alert"></p>
         <button class="btn btn-gold" type="submit">Построить карту</button>
       </form>
@@ -162,24 +163,30 @@
     </section>
 
     <!-- Прогноз на день -->
-    <section class="screen screen-mid has-nav" data-screen="day" hidden aria-labelledby="t-day">
+    <section class="screen screen-mid has-nav screen-desk" data-screen="day" hidden aria-labelledby="t-day">
       <div class="bar"><button class="back" type="button" data-back>Назад</button></div>
       <h1 id="t-day" class="title-lg left">Прогноз на день</h1>
       <p class="lead left" id="day-date"></p>
-      <section class="card moon-card">
-        <div class="moon-art" id="day-moon" aria-hidden="true"></div>
-        <div class="moon-copy"><h2 id="day-moon-title"></h2><p id="day-moon-phase"></p><p class="gold" id="day-sun"></p></div>
-      </section>
-      <h2 class="eyebrow-title">Фокус дня</h2>
-      <p class="body-text" id="day-body"></p>
-      <section class="card block"><p class="eyebrow">Действие</p><p class="strong-text" id="day-action"></p></section>
-      <button class="link-btn start" type="button" data-ask="day">Спросить Фортуну, что это значит</button>
-      <section class="card block" id="day-personal"><h2 class="block-title">Хотите точнее?</h2><p class="block-text">Добавьте дату рождения, и прогноз учтёт вашу карту.</p><button class="btn btn-gold" type="button" data-go="birth">Сделать прогноз личным</button></section>
-      <p class="form-note" data-note role="alert"></p>
+      <div class="cols">
+        <div class="col">
+          <section class="card moon-card">
+            <div class="moon-art" id="day-moon" aria-hidden="true"></div>
+            <div class="moon-copy"><h2 id="day-moon-title"></h2><p id="day-moon-phase"></p><p class="gold" id="day-sun"></p></div>
+          </section>
+          <h2 class="eyebrow-title">Фокус дня</h2>
+          <p class="body-text" id="day-body"></p>
+          <button class="link-btn start order-5" type="button" data-ask="day">Спросить Фортуну, что это значит</button>
+        </div>
+        <div class="col">
+          <section class="card block order-4"><p class="eyebrow">Действие</p><p class="strong-text" id="day-action"></p></section>
+          <section class="card block order-6" id="day-personal"><h2 class="block-title">Хотите точнее?</h2><p class="block-text">Добавьте дату рождения, и прогноз учтёт вашу карту.</p><button class="btn btn-gold" type="button" data-go="birth">Сделать прогноз личным</button></section>
+        </div>
+      </div>
+      <p class="form-note order-7" data-note role="alert"></p>
     </section>
 
     <!-- Прогноз на неделю -->
-    <section class="screen screen-mid has-nav" data-screen="week" hidden aria-labelledby="t-week">
+    <section class="screen screen-mid has-nav screen-desk" data-screen="week" hidden aria-labelledby="t-week">
       <div class="bar"><button class="back" type="button" data-back>Назад</button></div>
       <h1 id="t-week" class="title-lg left">Прогноз на неделю</h1>
       <p class="lead left" id="week-range"></p>
@@ -215,8 +222,9 @@
     </section>
 
     <!-- Подписка -->
-    <section class="screen screen-narrow plan-screen" data-screen="plan" hidden aria-labelledby="t-plan">
-      <div class="plan-sky" aria-hidden="true"></div>
+    <section class="screen screen-narrow plan-screen screen-desk" data-screen="plan" hidden aria-labelledby="t-plan">
+      <div class="plan-photo" aria-hidden="true"><img src="/miniapp/assets/fortuna-portrait.webp" alt="" width="600" height="894" /></div>
+      <div class="plan-body">
       <button class="close-btn" type="button" data-back aria-label="Закрыть"></button>
       <h1 id="t-plan" class="title-lg">Подписка</h1>
       <p class="lead">Астро-консультации 24/7</p>
@@ -225,65 +233,83 @@
       <p class="form-note" data-note role="alert"></p>
       <button class="btn btn-gold" type="button" id="plan-buy">Купить</button>
       <p class="legal-line">Автопродление включается только по вашей отметке.</p>
+      </div>
     </section>
 
     <!-- Оформление -->
-    <section class="screen screen-narrow" data-screen="pay" hidden aria-labelledby="t-pay">
+    <section class="screen screen-narrow screen-desk" data-screen="pay" hidden aria-labelledby="t-pay">
       <button class="back" type="button" data-back>Назад</button>
       <h1 id="t-pay" class="title-lg left">Оформление</h1>
-      <section class="card block"><h2 class="block-title" id="pay-title"></h2><p class="block-note" id="pay-sub"></p><div class="total"><span>Итого</span><strong id="pay-total"></strong></div></section>
-      <p class="eyebrow-title">Способ оплаты</p>
-      <div class="card block"><strong>Банковская карта</strong><small class="block-note">Откроется защищённая страница оплаты</small></div>
-      <label class="check"><input type="checkbox" id="pay-consent" /><span>Даю согласие на <a href="/legal/consent-personal-data.pdf" target="_blank" rel="noopener">обработку персональных данных</a>, принимаю <a href="/legal/privacy-policy.pdf" target="_blank" rel="noopener">Политику конфиденциальности</a></span></label>
-      <p class="form-note" data-note role="alert"></p>
-      <button class="btn btn-gold" type="button" id="pay-submit">Оплатить</button>
-      <p class="secure"><img src="/miniapp/assets/icon-lock.svg" alt="" width="14" height="14" />Безопасная оплата</p>
+      <div class="cols cols-pay">
+        <div class="col">
+          <section class="card block"><h2 class="block-title" id="pay-title"></h2><p class="block-note" id="pay-sub"></p><div class="total"><span>Итого</span><strong id="pay-total"></strong></div></section>
+        </div>
+        <div class="col">
+          <p class="eyebrow-title">Способ оплаты</p>
+          <div class="card block"><strong>Банковская карта</strong><small class="block-note">Откроется защищённая страница оплаты</small></div>
+          <label class="check"><input type="checkbox" id="pay-consent" /><span>Даю согласие на <a href="/legal/consent-personal-data.pdf" target="_blank" rel="noopener">обработку персональных данных</a>, принимаю <a href="/legal/privacy-policy.pdf" target="_blank" rel="noopener">Политику конфиденциальности</a></span></label>
+          <p class="form-note" data-note role="alert"></p>
+          <button class="btn btn-gold" type="button" id="pay-submit">Оплатить</button>
+          <p class="secure"><img src="/miniapp/assets/icon-lock.svg" alt="" width="14" height="14" />Безопасная оплата</p>
+        </div>
+      </div>
     </section>
 
     <!-- Оплата прошла -->
-    <section class="screen screen-narrow screen-center" data-screen="paid" hidden aria-labelledby="t-paid">
+    <section class="screen screen-narrow screen-center screen-desk" data-screen="paid" hidden aria-labelledby="t-paid">
       <div class="check-ring" aria-hidden="true"></div>
       <h1 id="t-paid" class="title-lg">Оплата прошла</h1>
       <p class="lead" id="paid-text"></p>
       <section class="card block stat"><p class="block-note">Вопросов в чате в день</p><strong class="stat-num" id="paid-count"></strong><p class="block-note" id="paid-mail"></p></section>
-      <button class="btn btn-gold" type="button" data-go="chat">Задать вопрос Фортуне</button>
-      <button class="btn btn-line" type="button" data-go="home">На главную</button>
+      <div class="paid-actions">
+        <button class="btn btn-gold" type="button" data-go="chat">Задать вопрос Фортуне</button>
+        <button class="btn btn-line" type="button" data-go="home">На главную</button>
+      </div>
     </section>
 
     <!-- Профиль -->
-    <section class="screen screen-mid has-nav" data-screen="profile" hidden aria-labelledby="t-profile">
-      <div class="profile-head"><span class="profile-ring"><img src="/miniapp/assets/icon-star.svg" alt="" width="28" height="28" /></span><h1 id="t-profile" class="title-lg">Гость</h1><p class="muted" id="profile-mail"></p></div>
-      <section class="card block"><h2 class="block-title">Текущий тариф</h2><p class="gold" id="profile-plan"></p><p class="block-note" id="profile-quota"></p><button class="btn btn-line" type="button" data-go="plan">Выбрать тариф</button></section>
-      <section class="card block"><h2 class="block-title">Натальные карты</h2><p class="block-note" id="profile-chart"></p><button class="btn btn-line" type="button" data-go="birth">Добавить и редактировать</button><button class="btn btn-line" type="button" data-go="people">Добавить близкого человека</button></section>
+    <section class="screen screen-mid has-nav screen-desk" data-screen="profile" hidden aria-labelledby="t-profile">
+      <div class="profile-head"><span class="profile-ring"><img src="/miniapp/assets/icon-star.svg" alt="" width="28" height="28" /></span><div class="profile-who"><h1 id="t-profile" class="title-lg">Гость</h1><p class="muted" id="profile-mail"></p></div></div>
+      <div class="cols">
+        <section class="card block"><h2 class="block-title">Текущий тариф</h2><p class="gold" id="profile-plan"></p><p class="block-note" id="profile-quota"></p><button class="btn btn-line" type="button" data-go="plan">Выбрать тариф</button></section>
+        <section class="card block"><h2 class="block-title">Натальные карты</h2><p class="block-note" id="profile-chart"></p><button class="btn btn-line" type="button" data-go="birth">Добавить и редактировать</button><button class="btn btn-line btn-people" type="button" data-go="people">Добавить близкого человека</button></section>
+      </div>
       <button class="link-btn danger" type="button" id="profile-out">Выйти</button>
     </section>
 
     <!-- Близкие люди -->
-    <section class="screen screen-narrow has-nav" data-screen="people" hidden aria-labelledby="t-people">
+    <section class="screen screen-narrow has-nav screen-desk" data-screen="people" hidden aria-labelledby="t-people">
       <button class="back" type="button" data-back>Назад</button>
       <h1 id="t-people" class="title-lg left">Близкие люди</h1>
       <p class="lead left">Добавьте партнёра или ребёнка, чтобы задавать вопросы и о них</p>
-      <div class="people-list" id="people-list"></div>
-      <button class="card-dash" type="button" id="people-add"><span aria-hidden="true">+</span>Добавить человека</button>
+      <div class="people-grid">
+        <div class="people-list" id="people-list"></div>
+        <button class="card-dash" type="button" id="people-add"><span aria-hidden="true">+</span>Добавить человека</button>
+      </div>
       <p class="hint" id="people-note"></p>
       <p class="form-note" data-note role="alert"></p>
     </section>
 
     <!-- Помощь -->
-    <section class="screen screen-narrow has-nav" data-screen="help" hidden aria-labelledby="t-help">
+    <section class="screen screen-narrow has-nav screen-desk" data-screen="help" hidden aria-labelledby="t-help">
       <h1 id="t-help" class="title-lg left">Помощь</h1>
       <p class="lead left">Ответы на частые вопросы</p>
+      <div class="cols cols-help">
       <div class="faq" id="faq"></div>
       <section class="card block" id="help-support-card"><h2 class="block-title"><img src="/miniapp/assets/icon-support.svg" alt="" width="26" height="26" />Нужна помощь?</h2><p class="block-note">Напишите в поддержку, ответим в рабочее время</p><a class="btn btn-line" id="help-support" href="mailto:astrologer@annagrinkova.ru">Написать в поддержку</a><p class="hint">ИП Гринькова Анна Геннадьевна · ИНН 410505180105 · ОГРНИП 322290100019898</p></section>
+      </div>
     </section>
 
     <!-- Установка -->
-    <section class="screen screen-narrow" data-screen="install" hidden aria-labelledby="t-install">
+    <section class="screen screen-narrow screen-desk" data-screen="install" hidden aria-labelledby="t-install">
       <button class="back" type="button" data-back>Назад</button>
-      <h1 id="t-install" class="title-lg left">Установить на телефон</h1>
+      <h1 id="t-install" class="title-lg left">Установить <span class="only-phone">на телефон</span><span class="only-desk">приложение</span></h1>
       <p class="lead left">Приложение откроется как обычное, без адресной строки</p>
-      <section class="card block"><h2 class="block-title">iPhone, Safari</h2><ol class="steps"><li>Нажмите «Поделиться» внизу экрана</li><li>Выберите «На экран Домой»</li><li>Нажмите «Добавить»</li></ol></section>
-      <section class="card block"><h2 class="block-title">Android, Chrome</h2><ol class="steps"><li>Нажмите ⋮ в углу браузера</li><li>Выберите «Установить приложение»</li><li>Подтвердите установку</li></ol></section>
+      <div class="cols">
+        <section class="card block"><h2 class="block-title"><img src="/miniapp/assets/icon-share.svg" alt="" width="28" height="28" />iPhone, Safari</h2><ol class="steps"><li>Нажмите «Поделиться» внизу экрана</li><li>Выберите «На экран Домой»</li><li>Нажмите «Добавить»</li></ol></section>
+        <section class="card block only-phone"><h2 class="block-title">Android, Chrome</h2><ol class="steps"><li>Нажмите ⋮ в углу браузера</li><li>Выберите «Установить приложение»</li><li>Подтвердите установку</li></ol></section>
+        <section class="card block only-desk"><h2 class="block-title"><img src="/miniapp/assets/icon-phone.svg" alt="" width="28" height="28" />Компьютер, Chrome</h2><ol class="steps"><li>Нажмите значок установки в адресной строке</li><li>Выберите «Установить»</li><li>Откройте приложение с рабочего стола</li></ol></section>
+      </div>
       <button class="btn btn-gold" type="button" id="install-now" hidden>Установить сейчас</button>
     </section>
   </main>
@@ -305,6 +331,6 @@
 </div>
 <script src="/natal-wheel.js?v=3"></script>
 <script src="/pwa.js"></script>
-<script type="module" src="/miniapp/miniapp.js?v=3"></script>
+<script type="module" src="/miniapp/miniapp.js?v=4"></script>
 </body>
 </html>

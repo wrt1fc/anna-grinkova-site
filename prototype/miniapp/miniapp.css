@@ -67,6 +67,8 @@ img { display: block; max-width: 100%; }
 .form { display: grid; gap: 12px; }
 .card.form { padding: 18px; }
 .label { font-size: 13px; color: var(--gold-light); margin-bottom: -6px; }
+.fg { display: grid; gap: 6px; min-width: 0; }
+.fg .label, .gender .label { margin-bottom: 0; }
 
 /* controls */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; padding: 0 24px; border-radius: 28px; font: 700 16px/1.2 var(--display); text-align: center; transition: transform .15s ease, box-shadow .2s ease, background .2s ease; width: 100%; }
@@ -208,9 +210,12 @@ img { display: block; max-width: 100%; }
 
 /* plan, pay */
 .plan-screen { position: relative; }
-.plan-sky { position: absolute; inset: -16px calc(-1 * var(--gutter)) auto; height: 300px; background: radial-gradient(circle at 50% 38%, #f5d985 0 34px, transparent 36px), radial-gradient(circle at 50% 38%, transparent 58px, rgba(245, 217, 133, .5) 59px 60px, transparent 61px), radial-gradient(70% 100% at 50% 100%, rgba(222, 184, 88, .35), transparent 70%); pointer-events: none; opacity: .9; }
-.plan-screen > :not(.plan-sky):not(.close-btn) { position: relative; }
-.plan-screen .title-lg { margin-top: 196px; }
+.plan-photo { position: absolute; inset: -16px calc(-1 * var(--gutter)) auto; height: 330px; overflow: hidden; pointer-events: none; }
+.plan-photo img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 8%; display: block; }
+.plan-photo::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(11, 8, 7, 0) 45%, var(--bg-deep) 100%); }
+.plan-body { display: flex; flex-direction: column; gap: 14px; }
+.plan-screen > :not(.plan-photo):not(.close-btn) { position: relative; }
+.plan-screen .title-lg { margin-top: 270px; }
 .plan-list { display: grid; gap: 10px; }
 .option { display: flex; align-items: center; gap: 14px; padding: 14px 18px; border: 1px solid var(--line-soft); border-radius: 24px; background: linear-gradient(180deg, rgba(43, 29, 21, .9), rgba(25, 17, 12, .92)); text-align: left; width: 100%; min-height: 64px; }
 .option[aria-checked='true'] { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold) inset; }
@@ -343,3 +348,11 @@ h1:focus { outline: none; }
 @media (max-width: 699px) { .hero { grid-template-columns: minmax(0, 1fr) minmax(150px, 46%); } .hero-wheel { margin-right: -10px; } }
 
 .legal-line a, .check a, .hint a { color: var(--gold-light); text-decoration: underline; text-underline-offset: 2px; }
+
+/* Desktop column wrappers (miniapp-desktop.css) do not exist on a phone: their children flow in the screen as before. */
+.cols, .col { display: contents; }
+.order-4 { order: 4; } .order-5 { order: 5; } .order-6 { order: 6; } .order-7 { order: 7; }
+.only-desk { display: none; }
+.profile-who { display: grid; gap: 6px; justify-items: center; }
+.people-grid { display: grid; gap: 12px; }
+.paid-actions { display: grid; gap: 12px; width: 100%; }

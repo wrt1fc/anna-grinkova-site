@@ -1,0 +1,107 @@
+/* Desktop layouts from the Figma frames «Мини-приложение · ПК / …» (1440 wide): content 1312 wide with 64 px sides,
+   40 px titles on the left and cards in two or three columns. Phones keep miniapp.css as it is. */
+@media (min-width: 1000px) {
+  .screen-desk { width: min(100% - 128px, 1312px); padding-top: 20px; gap: 16px; }
+  .screen-desk:not(.screen-center) .title-lg { font-size: 40px; text-align: left; }
+  .screen-desk > .title-lg, .screen-desk > .bar + .title-lg, .screen-desk > .back + .title-lg { margin-top: 28px; }
+  .screen-desk:not(.screen-center) .lead { text-align: left; font-size: 16px; margin-top: -6px; }
+  .only-desk { display: revert; }
+  .only-desk.card, section.only-desk { display: grid; }
+  .only-phone { display: none; }
+
+  .cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start; margin-top: 16px; }
+  .col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .cols .block { padding: 24px 28px 28px; gap: 10px; }
+  .cols .block-title { font-size: 20px; }
+  .cols .btn-line, .cols .block .btn-gold { justify-self: start; width: auto; min-height: 44px; padding-inline: 40px; font-size: 14px; }
+
+  /* Данные рождения: the form is a card with two columns */
+  #form-birth { margin-top: 24px; padding: 32px 48px 48px; border: 1px solid var(--line); border-radius: 28px;
+    background: linear-gradient(180deg, rgba(43, 29, 21, .92), rgba(25, 17, 12, .94)); box-shadow: 0 10px 30px rgba(0, 0, 0, .28);
+    grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px; row-gap: 24px;
+    grid-template-areas: "rel rel" "name date" "time city" "gender gender" "hint hint" "note note" "btn ."; }
+  #form-birth .fg-rel { grid-area: rel; }
+  #form-birth .fg-name { grid-area: name; }
+  #form-birth .fg-date { grid-area: date; }
+  #form-birth .fg-time { grid-area: time; }
+  #form-birth .fg-city { grid-area: city; }
+  #form-birth .fg-gender { grid-area: gender; }
+  #form-birth .fg-hint { grid-area: hint; font-size: 14px; margin-top: 8px; }
+  #form-birth [data-note] { grid-area: note; }
+  #form-birth [type="submit"] { grid-area: btn; width: 360px; margin-top: 24px; }
+  #form-birth .field { min-height: 56px; font-size: 17px; }
+
+  /* Прогноз на день */
+  [data-screen="day"] .moon-card { padding: 34px 36px; gap: 34px; min-height: 180px; }
+  [data-screen="day"] .moon-art { width: 110px; height: 110px; }
+  [data-screen="day"] .moon-copy h2 { font-size: 28px; }
+  [data-screen="day"] .moon-copy p { font-size: 15px; }
+  [data-screen="day"] .eyebrow-title { margin-top: 12px; }
+  [data-screen="day"] .body-text { font-size: 18px; }
+  [data-screen="day"] .strong-text { font-size: 20px; }
+  [data-screen="day"] .link-btn { font-size: 16px; margin-top: 24px; }
+
+  /* Прогноз на неделю */
+  [data-screen="week"] .week-days { padding: 26px 48px 30px; margin-top: 12px; }
+  [data-screen="week"] #week-soon { padding: 24px 28px; }
+
+  /* Профиль: photo ring on the left of the name, cards two by two */
+  .profile-head { grid-template-columns: 96px auto; justify-content: start; align-items: center; column-gap: 28px; padding-top: 36px; }
+  .profile-ring { width: 96px; height: 96px; }
+  .profile-who { justify-items: start; gap: 4px; }
+  .profile-who .title-lg { font-size: 32px; text-align: left; }
+  [data-screen="profile"] .cols { margin-top: 22px; }
+  [data-screen="profile"] .cols .block { min-height: 180px; align-content: start; }
+  [data-screen="profile"] .btn-people { border: 0; background: none; padding: 0; min-height: 0; text-decoration: none; }
+  [data-screen="profile"] .link-btn.danger { align-self: flex-start; padding-inline: 0; margin-top: 20px; }
+
+  /* Близкие люди: three cards in a row, the add card is the last one */
+  .people-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin-top: 32px; }
+  .people-grid .people-list { display: contents; }
+  .people-grid .person { position: relative; flex-direction: column; align-items: flex-start; gap: 18px; min-height: 200px; padding: 28px; border-radius: 26px; }
+  .people-grid .person-photo { width: 64px; height: 64px; }
+  .people-grid .person strong { font-size: 22px; margin-bottom: 6px; }
+  .people-grid .person small { font-size: 14px; }
+  .people-grid .person .chev { position: absolute; top: 38px; right: 28px; }
+  .people-grid .card-dash { min-height: 200px; flex-direction: column; border-radius: 26px; font-size: 18px; }
+  .people-grid .card-dash span { font-size: 40px; }
+
+  /* Помощь: questions on the left, support on the right */
+  .cols-help { grid-template-columns: minmax(0, 813fr) minmax(0, 475fr); margin-top: 32px; }
+  .cols-help .faq details { padding-inline: 26px; }
+  .cols-help .faq summary { min-height: 66px; font-size: 17px; }
+  .cols-help .faq details p { font-size: 15px; }
+  #help-support-card { padding: 28px; gap: 12px; }
+  #help-support-card .btn-line { justify-self: stretch; }
+
+  /* Оформление */
+  .cols-pay { grid-template-columns: minmax(0, 604fr) minmax(0, 668fr); gap: 40px; }
+  .cols-pay .block { padding: 26px 28px; }
+  .cols-pay .total strong { font-size: 28px; }
+  .cols-pay .eyebrow-title { margin: 0; }
+  .cols-pay .btn-gold { justify-self: stretch; width: 100%; min-height: 56px; font-size: 16px; margin-top: 30px; }
+
+  /* Оплата прошла */
+  [data-screen="paid"] { width: min(100% - 128px, 480px); }
+  .paid-actions { grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 24px; }
+
+  /* Установить приложение */
+  [data-screen="install"] .cols { margin-top: 32px; }
+  [data-screen="install"] .block { padding: 26px 28px 32px; gap: 26px; }
+  [data-screen="install"] .block-title { font-size: 22px; }
+  [data-screen="install"] .steps { gap: 38px; }
+  [data-screen="install"] .steps li { font-size: 16px; }
+  [data-screen="install"] .steps li::before { width: 32px; height: 32px; }
+
+  /* Подписка: the portrait fills the left 640 px, the plans sit on the right */
+  .plan-screen.screen-desk { width: 100%; min-height: 100dvh; padding: 0; display: grid; grid-template-columns: minmax(0, 640px) minmax(0, 1fr); gap: 0; }
+  .plan-screen .plan-photo { position: sticky; top: 0; inset: auto; height: 100dvh; grid-column: 1; grid-row: 1; }
+  .plan-screen .plan-photo img { object-position: 50% 0; }
+  .plan-screen .plan-photo::after { background: linear-gradient(90deg, rgba(11, 8, 7, 0) 56%, var(--bg-deep) 100%), linear-gradient(180deg, rgba(11, 8, 7, 0) 66%, var(--bg-deep) 100%); }
+  .plan-screen .plan-body { grid-column: 2; grid-row: 1; width: min(100% - 124px, 676px); margin: 0 64px 0 60px; padding: 100px 0 48px; gap: 14px; }
+  .plan-screen .plan-body .title-lg { margin-top: 0; text-align: left; }
+  .plan-screen .plan-body .lead { text-align: left; margin-bottom: 22px; }
+  .plan-screen .close-btn { top: 20px; right: 64px; width: 44px; height: 44px; }
+  .plan-screen .btn-gold { min-height: 56px; margin-top: 10px; }
+  .plan-screen .legal-line { text-align: center; }
+}

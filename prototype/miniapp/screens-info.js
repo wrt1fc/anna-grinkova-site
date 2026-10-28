@@ -5,6 +5,10 @@ import { node } from './sheet.js';
 import { drawWheel } from './wheel.js';
 
 const FULL_MOON = 180;
+// U+FE0E asks for the text glyph: without it Windows draws the signs as purple emoji tiles.
+const GLYPH = Object.fromEntries(Object.entries({ Овен: '♈', Телец: '♉', Близнецы: '♊', Рак: '♋', Лев: '♌', Дева: '♍', Весы: '♎', Скорпион: '♏', Стрелец: '♐', Козерог: '♑', Водолей: '♒', Рыбы: '♓' }).map(([sign, glyph]) => [sign, `${glyph}︎`]));
+// «в ♍ Деве», as in the Figma day card; the general and the personal forecast keep the sky in different places.
+const inSign = (sign, body, planet) => (IN_SIGN[sign] ? `в ${GLYPH[sign]} ${IN_SIGN[sign]}` : `в ${new RegExp(`${planet} в ([^,;.]+)`).exec(body)?.[1] ?? ''}`);
 const IN_SIGN = { Овен: 'Овне', Телец: 'Тельце', Близнецы: 'Близнецах', Рак: 'Раке', Лев: 'Льве', Дева: 'Деве', Весы: 'Весах', Скорпион: 'Скорпионе', Стрелец: 'Стрельце', Козерог: 'Козероге', Водолей: 'Водолее', Рыбы: 'Рыбах' };
 
 export async function enterHome() {
@@ -55,9 +59,10 @@ export async function enterDay() {
   const [year, month, day] = data.date.split('-').map(Number);
   const date = new Date(year, month - 1, day);
   $('#day-date').textContent = `${['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'][date.getDay()]}, ${day} ${MONTHS_GEN[month - 1]}`;
-  $('#day-moon-title').textContent = `☽ Луна в ${IN_SIGN[moon.moon?.sign] ?? /Луна в ([^,;.]+)/.exec(data.reading.body)?.[1] ?? ''}`.trim();
+  const sky = moon.transit ?? moon;
+  $('#day-moon-title').textContent = `☽ Луна ${inSign(sky.moon?.sign, data.reading.body, 'Луна')}`.trim();
   $('#day-moon-phase').textContent = moon.moonPhase;
-  $('#day-sun').textContent = `☉ Солнце в ${IN_SIGN[moon.sun?.sign] ?? /Солнце в ([^,;.]+)/.exec(data.reading.body)?.[1] ?? ''}`.trim();
+  $('#day-sun').textContent = `☉ Солнце ${inSign(sky.sun?.sign, data.reading.body, 'Солнце')}`.trim();
   $('#day-moon').style.setProperty('--moon-shift', moonShift(moon.moonAngle));
   $('#day-body').textContent = data.reading.body;
   $('#day-action').textContent = data.reading.action;
