@@ -90,6 +90,7 @@ img { display: block; max-width: 100%; }
 .back-end::before { display: none; }
 .back-round { width: 42px; padding: 0; justify-content: center; border-radius: 50%; }
 .back-round::before { margin: 0 0 0 4px; }
+.back-round .back-label { display: none; }
 .close-btn { position: absolute; top: 16px; right: 0; width: 42px; height: 42px; border: 1px solid var(--line); border-radius: 50%; background: rgba(25, 17, 12, .75); z-index: 2; }
 .close-btn::before, .close-btn::after { content: ''; position: absolute; left: 50%; top: 50%; width: 16px; height: 2px; background: var(--gold-light); border-radius: 2px; transform: translate(-50%, -50%) rotate(45deg); }
 .close-btn::after { transform: translate(-50%, -50%) rotate(-45deg); }
@@ -193,6 +194,8 @@ img { display: block; max-width: 100%; }
 .bubble-actions { margin-top: 12px; display: grid; gap: 8px; }
 .chart-chip { padding: 14px 18px 18px; display: grid; gap: 12px; width: fit-content; max-width: 100%; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+/* Planet and sign glyphs (♇ included) come from a symbol font: the text fonts have no Pluto. */
+.chip { font-family: var(--body), "Segoe UI Symbol", "Noto Sans Symbols", "Noto Sans Symbols 2", "Apple Symbols", "DejaVu Sans", sans-serif; }
 .chip { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border: 1px solid var(--line); border-radius: 22px; font-size: 14px; color: var(--gold-light); background: rgba(15, 10, 7, .6); }
 .gender { border: 0; padding: 0; margin: 0; display: grid; gap: 12px; min-width: 0; }
 .gender legend { padding: 0; margin-bottom: 6px; }
