@@ -9,13 +9,14 @@ import { pairsFromBank, tarotReadingProblems } from '../training/tarot-lib.js';
 import { cardProblems } from '../training/cards.js';
 import { tarotCardByNumber } from '../server/daily-forecast.js';
 
-const GOOD = 'Карта «Часы» в связи с вашим вопросом может говорить о моменте, когда прошлый опыт просит подвести итог. Скорее всего, стоит присмотреться к тому, что вы уже понимаете, но откладываете.\n\n'
-  + 'Возможная линия — пересмотреть, чем вы заняты, не как оценку себя, а как честный взгляд на привычное.\n\n'
-  + 'Шаг на сегодня: назвать вслух одно решение, которое вы давно откладываете.';
+const GOOD = 'Карта «Часы» в связи с твоим вопросом может говорить о моменте, когда прошлый опыт просит подвести итог. Скорее всего, стоит присмотреться к тому, что ты уже понимаешь, но откладываешь.\n\n'
+  + 'Возможная линия — пересмотреть, чем ты занимаешься, не как оценку себя, а как честный взгляд на привычное.\n\n'
+  + 'Шаг на сегодня: назвать вслух одно решение, которое ты давно откладываешь.';
 const ok = (answer, extra = {}) => tarotReadingProblems(answer, { name: 'Часы', ...extra });
 
 test('a reading that follows the rules passes the quality filter', () => {
   assert.deepEqual(ok(GOOD), []);
+  assert.deepEqual(ok(GOOD.replace(/Шаг на сегодня.*$/, 'Попробуй назвать одно решение, которое ты давно откладываешь.')), []);
 });
 
 test('the filter rejects readings that break the rules of a reading', () => {

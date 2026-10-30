@@ -1,6 +1,8 @@
 import chatContext from '../config/chat-context.json' with { type: 'json' };
 import tarotReading from '../config/tarot-reading.json' with { type: 'json' };
 import { ollamaGenerateUrl } from './ollama.js';
+import { conversationalOpening, hasFormalAddress } from './chat-style.js';
+import { SAFE_FALLBACK_ANSWER } from './chat-safety.js';
 
 const ENDPOINT = ollamaGenerateUrl();
 const MODEL_TIMEOUT_MS = 45_000;
@@ -51,9 +53,10 @@ export function tarotReadingContext(day, card) {
 export const CHAT_TONES = Object.keys(chatContext.tones ?? {});
 
 export function chatPrompt({ message, history, forecast, visitorName = null, visitorGender = null, length = DEFAULT_ANSWER_LENGTH, materials = [], chart = null, mode = null, tone = null }) {
+  const selectedTone = !tone || tone === 'normal' ? chatContext.defaultTone : tone;
   // The natal chart block is sent only for chart questions, so ordinary answers keep the trained prompt shape.
   return JSON.stringify({ facts: chatContext.facts, materials, forecast, ...(chart ? { chart } : {}), ...(mode ? { mode } : {}), history, visitorName, visitorGender, length,
-    ...(tone && chatContext.tones?.[tone] ? { tone, toneInstruction: chatContext.tones[tone].instruction } : {}),
+    ...(selectedTone && chatContext.tones?.[selectedTone] ? { tone: selectedTone, toneInstruction: chatContext.tones[selectedTone].instruction } : {}),
     lengthInstruction: answerSize(mode, length).instruction, question: message });
 }
 
@@ -127,7 +130,7 @@ export function wrongPlanetSign(answer, chart) {
     if (!name) continue;
     const expected = SIGN_FORMS.find(([sign]) => line.includes(` ${sign},`))?.[1];
     if (!expected) continue;
-    const claims = new RegExp(`${name}(?: у вас| стоит| находится)? (?:в|во) (${SIGN_FORMS.map(([, form]) => form).join('|')})(?![а-яё])`, 'giu');
+    const claims = new RegExp(`${name}(?: у (?:тебя|вас)| стоит| находится)? (?:в|во) (${SIGN_FORMS.map(([, form]) => form).join('|')})(?![а-яё])`, 'giu');
     for (const claim of answer.matchAll(claims)) {
       if (claim[1].toLowerCase() !== expected.toLowerCase()) return true;
     }
@@ -138,11 +141,11 @@ export function wrongPlanetSign(answer, chart) {
 export function createLocalChat({ model, fetchImpl = fetch }) {
   if (typeof model !== 'string' || !/^[\w./:-]{2,80}$/.test(model)) throw new Error('Invalid local model name');
   return {
-    async answer({ message, history, forecast, visitorName = null, visitorGender = null, signal, length = DEFAULT_ANSWER_LENGTH, materials = [], chart = null, mode = null, tone = null, onDelta = null, temperature = 0.25, qualityRetry = false }) {
+    async answer({ message, history, forecast, visitorName = null, visitorGender = null, signal, length = DEFAULT_ANSWER_LENGTH, materials = [], chart = null, mode = null, tone = null, onDelta = null, temperature = 0.25, qualityRetry = false, styleRetry = false }) {
       const size = answerSize(mode, length);
       if (!size) throw new Error('Unknown answer length');
       if (mode !== TAROT_MODE && chart?.missing && /отношени|любов|любви|партн[её]р|замуж|брак/iu.test(message)) {
-        const answer = 'Чтобы разобрать твои отношения по натальной карте, добавь дату, время и город рождения в кабинете. А пока расскажи: ты сейчас в паре или хочешь встретить партнёра?';
+        const answer = conversationalOpening('Чтобы разобрать твои отношения по натальной карте, добавь дату, время и город рождения в кабинете. А пока расскажи: ты сейчас в паре или хочешь встретить партнёра?', history);
         onDelta?.(answer, answer);
         return { answer, model: null, length, truncated: false, contextVersion: chatContext.version };
       }
@@ -156,7 +159,9 @@ export function createLocalChat({ model, fetchImpl = fetch }) {
           think: false,
           // Fixed context size: Ollama reloads the model whenever num_ctx changes between requests.
           options: { temperature, num_predict: size.numPredict, num_ctx: 8192 },
-          system: systemFor(mode) + questionGuidance(message, chart, mode) + (qualityRetry
+          system: systemFor(mode) + questionGuidance(message, chart, mode)
+            + (history.length ? '\nПродолжай разговор без нового приветствия.' : '\nЭто первый ответ в разговоре. Начни с «Привет!», затем сразу ответь на вопрос.')
+            + (styleRetry ? '\nИсправь обращение: только «ты», «тебе», «твой» и глаголы в единственном числе. Сохрани смысл и факты. Разговорный тон, без официальных приветствий и без цитирования этих правил.' : '') + (qualityRetry
             ? '\nПовторная проверка ответа: не повторяй предложения. Положения планет в поле chart — уже рассчитанные факты; не исправляй их и не добавляй другие положения. Возьми одно положение из chart и объясни его простыми словами.'
             : ''),
           prompt: chatPrompt({ message, history: mode === TAROT_MODE ? history : historyForQuestion(history, message), forecast, visitorName, visitorGender, length, materials, chart, mode, tone }),
@@ -166,32 +171,40 @@ export function createLocalChat({ model, fetchImpl = fetch }) {
       });
       if (!response.ok) throw new Error(`Local chat HTTP ${response.status}`);
       let text = '';
-      let emitted = '';
       let doneReason = null;
       for await (const event of ndjson(response.body)) {
         if (event.error) throw new Error(`Local chat error: ${event.error}`);
         if (typeof event.response === 'string' && event.response) {
           text += event.response;
           if (text.length > size.maxChars) { doneReason = 'length'; break; }
-          const clean = cleanRepeatedSentences(text, true);
-          if (!chart && clean.length > emitted.length) {
-            onDelta?.(clean.slice(emitted.length), clean);
-            emitted = clean;
-          }
+          // Hold the reply until address, greeting and calculated facts have all passed validation.
         }
         if (event.done) doneReason = event.done_reason ?? 'stop';
       }
-      const truncated = doneReason === 'length';
+      let truncated = doneReason === 'length';
       if (!truncated && doneReason !== 'stop') throw new Error('Local chat returned an incomplete response');
-      const answer = cleanRepeatedSentences(truncated ? lastFullSentence(text.slice(0, size.maxChars)) : text).trim();
-      if (answer.length < MIN_ANSWER_CHARS) throw new Error('Local chat returned an invalid answer');
+      const cleaned = cleanRepeatedSentences(truncated ? lastFullSentence(text.slice(0, size.maxChars)) : text).trim();
+      if (cleaned.length < MIN_ANSWER_CHARS) throw new Error('Local chat returned an invalid answer');
+      let answer = conversationalOpening(cleaned, history);
+      if (answer.length > size.maxChars) {
+        truncated = true;
+        answer = lastFullSentence(answer.slice(0, size.maxChars));
+        if (answer.length < MIN_ANSWER_CHARS) answer = conversationalOpening(SAFE_FALLBACK_ANSWER, history);
+      }
+      if (hasFormalAddress(answer)) {
+        if (!styleRetry) return createLocalChat({ model, fetchImpl }).answer({ message, history, forecast, visitorName, visitorGender,
+          signal, length, materials, chart, mode, tone, onDelta, temperature: 0.15, qualityRetry, styleRetry: true });
+        answer = conversationalOpening(SAFE_FALLBACK_ANSWER, history);
+        onDelta?.(answer, answer);
+        return { answer, model, length, truncated: false, contextVersion: chatContext.version, styleFiltered: true };
+      }
       const repeated = cleanRepeatedSentences(text).trim() !== text.trim();
       if (wrongPlanetSign(answer, chart) || (chart && repeated && !qualityRetry)) {
         if (qualityRetry) throw new Error('Local chat contradicted the calculated chart');
         return createLocalChat({ model, fetchImpl }).answer({ message, history, forecast, visitorName, visitorGender, signal,
-          length, materials, chart, mode, tone, onDelta, temperature: 0.1, qualityRetry: true });
+          length, materials, chart, mode, tone, onDelta, temperature: 0.1, qualityRetry: true, styleRetry });
       }
-      if (answer.length > emitted.length) onDelta?.(answer.slice(emitted.length), answer);
+      onDelta?.(answer, answer);
       return { answer, model, length, truncated, contextVersion: chatContext.version };
     },
   };

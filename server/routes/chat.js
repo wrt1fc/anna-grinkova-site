@@ -96,8 +96,8 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
   // A reading differs in its own daily limit, its prompt mode and in leaving no chat history.
   async function postChat({ req, res, user, json, readJson }, tarot = false) {
     const unavailable = tarot
-      ? { error: 'tarot_unavailable', message: 'Расклад сейчас недоступен. Попробуйте позже.' }
-      : { error: 'chat_unavailable', message: 'Чат пока недоступен. Попробуйте позже.' };
+      ? { error: 'tarot_unavailable', message: 'Расклад сейчас недоступен. Попробуй позже.' }
+      : { error: 'chat_unavailable', message: 'Чат пока недоступен. Попробуй позже.' };
     if (!chatWriter) return json(res, 503, unavailable);
     if (!user) {
       return json(res, 401, { error: 'login_required', message: tarot
@@ -105,18 +105,18 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
     }
     const body = await readJson(req, MAX_CHAT_BODY_BYTES);
     if (tarot ? invalidTarotBody(body) : invalidChatBody(body)) {
-      return json(res, 400, tarot ? { error: 'invalid_tarot_reading', message: 'Напишите вопрос (от 10 до 300 символов) и выберите карту от 1 до 5.' }
-        : { error: 'invalid_chat_message', message: 'Проверьте текст сообщения.' });
+      return json(res, 400, tarot ? { error: 'invalid_tarot_reading', message: 'Напиши вопрос (от 10 до 300 символов) и выбери карту от 1 до 5.' }
+        : { error: 'invalid_chat_message', message: 'Проверь текст сообщения.' });
     }
     if (tarot) body.message = body.question.trim();
     if (isCrisisMessage(body.message)) { metrics.count('chat_crisis'); return replyCrisis(req, res, json); }
     const ip = clientAddress(req, trustProxy);
-    if (answering.has(user.id)) return json(res, 429, { error: 'chat_in_progress', message: 'Дождитесь ответа на предыдущий вопрос.' });
+    if (answering.has(user.id)) return json(res, 429, { error: 'chat_in_progress', message: 'Дождись ответа на предыдущий вопрос.' });
     // Counted only after validation, so malformed requests cannot use up the shared budget.
     const limit = chatLimiter.check(`user:${user.id}`);
     if (!limit.allowed) {
       metrics.count('chat_rate_limited');
-      return json(res, 429, { error: 'chat_rate_limited', message: 'Слишком много сообщений. Попробуйте через минуту.' },
+      return json(res, 429, { error: 'chat_rate_limited', message: 'Слишком много сообщений. Попробуй через минуту.' },
         { 'Retry-After': String(limit.retryAfter) });
     }
     // A reading is about the account's own card for the question, so it never reads a natal chart or a profile.
@@ -127,7 +127,7 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
     const releaseGate = (answeringIps.get(ip) ?? 0) < perIpSlots ? chatGate.tryAcquire() : null;
     if (!releaseGate) {
       metrics.count('chat_busy');
-      return json(res, 503, { error: 'chat_busy', message: 'Помощник сейчас отвечает другим посетителям. Попробуйте через минуту.' },
+      return json(res, 503, { error: 'chat_busy', message: 'Помощник сейчас отвечает другим посетителям. Попробуй через минуту.' },
         { 'Retry-After': '20' });
     }
     answering.add(user.id);
@@ -153,8 +153,8 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
       release();
       metrics.count(tarot ? 'tarot_daily_limit' : 'chat_daily_limit');
       return json(res, 429, tarot
-        ? { error: 'tarot_daily_limit', message: `Расклады на сегодня по тарифу «${plan.label}» закончились. Возвращайтесь завтра.` }
-        : { error: 'chat_daily_limit', message: `Сообщения на сегодня по тарифу «${plan.label}» закончились. Возвращайтесь завтра.` });
+        ? { error: 'tarot_daily_limit', message: `Расклады на сегодня по тарифу «${plan.label}» закончились. Возвращайся завтра.` }
+        : { error: 'chat_daily_limit', message: `Сообщения на сегодня по тарифу «${plan.label}» закончились. Возвращайся завтра.` });
     }
 
     const message = body.message.trim();
@@ -232,9 +232,10 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
         catch (error) { if (abort.signal.aborted) throw error; reply = { answer: '' }; }
         if (wrongCard(reply.answer, card)) { metrics.count('tarot_calculated'); reply = { answer: fallbackReading(card) }; }
       }
-      const filtered = unsafeChatAnswer(reply.answer, day) || copiesMaterials(reply.answer, materials);
+      const unsafeReply = unsafeChatAnswer(reply.answer, day) || copiesMaterials(reply.answer, materials);
+      const filtered = reply.styleFiltered || unsafeReply;
       if (filtered) console.warn('Chat answer rejected by safety check');
-      return await finish(filtered ? SAFE_FALLBACK_ANSWER : reply.answer, filtered, reply);
+      return await finish(unsafeReply ? SAFE_FALLBACK_ANSWER : reply.answer, filtered, reply);
     } catch (error) {
       if (unsafe) {
         console.warn('Chat answer stopped mid-stream by safety check');
@@ -251,7 +252,7 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
       if (abort.signal.aborted) return undefined;
       metrics.count('chat_errors');
       console.warn(tarot ? 'Tarot reading failed:' : 'Local chat failed:', error.message);
-      const failure = { error: tarot ? 'tarot_unavailable' : 'chat_unavailable', message: 'Сейчас не удалось получить ответ. Попробуйте ещё раз.' };
+      const failure = { error: tarot ? 'tarot_unavailable' : 'chat_unavailable', message: 'Сейчас не удалось получить ответ. Попробуй ещё раз.' };
       return streaming ? (send('error', failure), res.end()) : json(res, 503, failure);
     } finally {
       clearInterval(keepAlive);

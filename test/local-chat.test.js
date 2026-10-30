@@ -35,18 +35,18 @@ test('missing natal data produces a useful relationship clarification without in
 
 test('a repeated long sentence split across chunks never reaches the visitor or final answer', async () => {
   const sentence = 'Сатурн в Скорпионе в восьмом доме связан со страхом не выдержать давления.';
-  const next = '\n\nПопробуйте выбрать одну небольшую задачу на сегодня.';
+  const next = '\n\nПопробуй выбрать одну небольшую задачу на сегодня.';
   const deltas = [];
   const reply = await chatReturning([sentence, ' ' + sentence.slice(0, 30), sentence.slice(30), ' ' + sentence, next], {})
     .answer({ message: 'Что значит Сатурн?', history: [], forecast, onDelta: (delta) => deltas.push(delta) });
-  assert.equal(reply.answer, sentence + next);
-  assert.equal(deltas.join(''), sentence + next);
+  assert.equal(reply.answer, 'Привет! ' + sentence + next);
+  assert.equal(deltas.join(''), reply.answer);
 });
 
 test('different sentences about the same planet are preserved', async () => {
   const text = 'Луна в Водолее связана с потребностью в свободе и общении. Луна в седьмом доме подчёркивает важность партнёрских отношений.';
   const reply = await chatReturning([text], {}).answer({ message: 'Что значит Луна?', history: [], forecast });
-  assert.equal(reply.answer, text);
+  assert.equal(reply.answer, 'Привет! ' + text);
 });
 
 function chatReturning(chunks, options, capture = {}) {
@@ -77,13 +77,13 @@ test('a second wrong natal sign fails without streaming the false claim', async 
   assert.deepEqual(deltas, []);
 });
 
-test('chat streams plain text built from calculated facts and the approved project context', async () => {
+test('chat returns validated conversational text built from calculated facts and the approved project context', async () => {
   const capture = {};
   const deltas = [];
-  const reply = await chatReturning(['Карта поднимает ', 'тему выбора. ', 'Сначала проверьте факты.'], {}, capture)
+  const reply = await chatReturning(['Карта поднимает ', 'тему выбора. ', 'Сначала проверь факты.'], {}, capture)
     .answer({ message: 'На что обратить внимание сегодня?', history: [], forecast, visitorName: 'Мария', onDelta: (delta) => deltas.push(delta) });
-  assert.equal(reply.answer, 'Карта поднимает тему выбора. Сначала проверьте факты.');
-  assert.deepEqual(deltas, ['Карта поднимает тему выбора.', ' Сначала проверьте факты.']);
+  assert.equal(reply.answer, 'Привет! Карта поднимает тему выбора. Сначала проверь факты.');
+  assert.deepEqual(deltas, [reply.answer]);
   assert.equal(reply.truncated, false);
   assert.equal(capture.url, 'http://127.0.0.1:11434/api/generate');
   assert.equal(capture.payload.stream, true);
@@ -119,7 +119,7 @@ test('a reply cut by the length budget ends at its last full sentence', async ()
   const reply = await chatReturning(['Луна показывает заботу. Венера показывает притяжение. А дальше обры'], { doneReason: 'length' })
     .answer({ message: 'Тест', history: [], forecast });
   assert.equal(reply.truncated, true);
-  assert.equal(reply.answer, 'Луна показывает заботу. Венера показывает притяжение.');
+  assert.equal(reply.answer, 'Привет! Луна показывает заботу. Венера показывает притяжение.');
 });
 
 test('chat passes the visitor abort signal to the model request', async () => {
@@ -134,7 +134,7 @@ test('chat passes the visitor abort signal to the model request', async () => {
 
 test('chat prompt carries the length instruction and keeps answers within its size', async () => {
   const capture = {};
-  const short = await chatReturning(['Луна показывает, через что вы чувствуете заботу.'], {}, capture)
+  const short = await chatReturning(['Луна показывает, через что ты чувствуешь заботу.'], {}, capture)
     .answer({ message: 'Тест', history: [], forecast, length: 'short' });
   assert.equal(short.length, 'short');
   const prompt = JSON.parse(capture.payload.prompt);
@@ -171,7 +171,7 @@ test('a card reading adds its own rules and mode, and ordinary chat keeps the tr
   const { tarotReadingContext } = await import('../server/local-chat.js');
   const reading = tarotReadingContext('2026-10-07', tarotForDate('2026-10-07', 5, 2));
   const tarotCapture = {};
-  await chatReturning(['Карта показывает возможную линию. Присмотритесь к одному шагу.'], {}, tarotCapture)
+  await chatReturning(['Карта показывает возможную линию. Присмотрись к одному шагу.'], {}, tarotCapture)
     .answer({ message: 'Что со мной будет в работе?', history: [], forecast: reading, mode: 'tarot', length: 'medium' });
   const prompt = JSON.parse(tarotCapture.payload.prompt);
   assert.equal(prompt.mode, 'tarot');
@@ -179,11 +179,11 @@ test('a card reading adds its own rules and mode, and ordinary chat keeps the tr
   assert.equal(prompt.forecast.card.position, 3);
   assert.equal(JSON.stringify(prompt).includes('sky'), false);
   assert.match(tarotCapture.payload.system, /Метафорическая карта/);
-  assert.match(tarotCapture.payload.system, /Не обещайте исход/);
+  assert.match(tarotCapture.payload.system, /Не обещай исход/);
   assert.match(tarotCapture.payload.system, /не выдавай себя за живого специалиста/i);
 
   const chatCapture = {};
-  await chatReturning(['Карта поднимает тему выбора. Сначала проверьте факты.'], {}, chatCapture)
+  await chatReturning(['Карта поднимает тему выбора. Сначала проверь факты.'], {}, chatCapture)
     .answer({ message: 'Что значит карта?', history: [], forecast });
   assert.equal('mode' in JSON.parse(chatCapture.payload.prompt), false);
   assert.equal(/Метафорическая карта/.test(chatCapture.payload.system), false);
@@ -194,13 +194,13 @@ test('a reading has its own answer size, ordinary chat keeps the length of its m
   const { tarotReadingContext, TAROT_ANSWER } = await import('../server/local-chat.js');
   const reading = tarotReadingContext('2026-10-07', tarotForDate('2026-10-07', 5, 1));
   const tarotCapture = {};
-  await chatReturning(['Карта показывает возможную линию. Присмотритесь к одному шагу.'], {}, tarotCapture)
+  await chatReturning(['Карта показывает возможную линию. Присмотрись к одному шагу.'], {}, tarotCapture)
     .answer({ message: 'Что со мной будет?', history: [], forecast: reading, mode: 'tarot', length: 'short' });
   assert.equal(JSON.parse(tarotCapture.payload.prompt).lengthInstruction, TAROT_ANSWER.instruction);
   assert.match(TAROT_ANSWER.instruction, /абзац/);
   assert.equal(tarotCapture.payload.options.num_predict, TAROT_ANSWER.numPredict);
   const chatCapture = {};
-  await chatReturning(['Карта поднимает тему выбора. Сначала проверьте факты.'], {}, chatCapture)
+  await chatReturning(['Карта поднимает тему выбора. Сначала проверь факты.'], {}, chatCapture)
     .answer({ message: 'Что значит карта?', history: [], forecast, length: 'short' });
   assert.notEqual(chatCapture.payload.options.num_predict, TAROT_ANSWER.numPredict);
   assert.match(JSON.parse(chatCapture.payload.prompt).lengthInstruction, /1–2 предложения/);
