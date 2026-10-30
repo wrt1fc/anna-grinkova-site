@@ -106,7 +106,7 @@ export async function enterProfile() {
 
 function personRow({ title, note, onOpen }) {
   const row = node('button', 'card person'); row.type = 'button';
-  const photo = node('span', 'person-photo'); const icon = node('img'); icon.src = '/miniapp/assets/icon-user.svg'; icon.alt = ''; icon.width = 24; icon.height = 24; photo.append(icon);
+  const photo = node('span', 'person-photo'); const icon = node('img'); icon.src = '/miniapp/assets/icons-3d/user.webp'; icon.alt = ''; icon.width = 24; icon.height = 24; photo.append(icon);
   const text = node('span'); text.append(node('strong', '', title), node('small', '', note));
   row.append(photo, text, node('i', 'chev'));
   row.addEventListener('click', onOpen);

@@ -219,6 +219,8 @@ test('five-card draw returns the chosen card consistently to guest and account',
     assert.equal(preview.data.date, general[draw].date);
     assert.equal(preview.data.tarot.number, general[draw].tarot.number);
     assert.equal(preview.data.tarot.name, general[draw].tarot.name);
+    assert.deepEqual(preview.data.card, { number: general[draw].tarot.number, name: general[draw].tarot.name,
+      focus: general[draw].tarot.focus, action: general[draw].reading.action, question: general[draw].reading.question });
   }
   assert.equal(general[2].tarot.position, 2);
   assert.ok(general[2].reading.body.includes(`Карта «${general[2].tarot.name}»`));
@@ -238,6 +240,9 @@ test('five-card draw returns the chosen card consistently to guest and account',
   assert.equal(personalPreview.response.status, 200);
   assert.equal(personalPreview.data.tarot.number, personal[2].tarot.number);
   assert.equal(personalPreview.data.tarot.name, personal[2].tarot.name);
+  assert.equal(personalPreview.data.card.number, personal[2].tarot.number);
+  assert.equal(personalPreview.data.card.name, personal[2].tarot.name);
+  assert.ok(personalPreview.data.card.focus && personalPreview.data.card.action && personalPreview.data.card.question);
 }));
 
 test('local writer refines each selected general card once, including concurrent requests', async () => {

@@ -1,8 +1,8 @@
 /* Figma 08 · Мини-приложение, main 181:33 and 360/430/768 variants.
    The home screen promotes the chat; the conversation remains a separate route. */
-.daily-sun { width: 110px; height: 110px; flex: none; border-radius: 50%; overflow: hidden; }
+.daily-sun { width: 110px; height: 110px; flex: none; }
 .daily-sun img { width: 100%; height: 100%; object-fit: contain; }
-.tile-day img { width: 44px; height: 44px; border-radius: 50%; object-fit: contain; flex: none; }
+.tile-day img { width: 48px; height: 48px; object-fit: contain; flex: none; }
 .daily-sun img, .tile-day img { animation: fortuna-sun-float 6s ease-in-out infinite; }
 .screen[hidden] .daily-sun img, .screen[hidden] .tile-day img { animation: none; }
 @media (min-width: 1000px) {
@@ -31,19 +31,56 @@
   [data-screen='home'] .tiles { order: 2; gap: 12px; }
   [data-screen='home'] .tile { display: flex; align-items: center; gap: 10px; min-height: 94px; padding: 12px; }
   [data-screen='home'] .tile strong { min-width: 0; font-size: 13px; line-height: 1.4; }
-  [data-screen='home'] .tile:not(.tile-day) img { width: 28px; height: 28px; flex: none; }
-  [data-screen='home'] .home-natal { order: 3; min-height: 70px; padding: 14px 16px; }
-  [data-screen='home'] .home-subscribe { order: 4; min-height: 60px; }
-  [data-screen='home'] .home-intro { order: 5; }
-  [data-screen='home'] .home-install { order: 6; }
-  [data-screen='home'] > .legal-line { order: 7; }
+  [data-screen='home'] .tile:not(.tile-day) img { width: 48px; height: 48px; flex: none; }
+  [data-screen='home'] .home-card { order: 3; }
+  [data-screen='home'] .home-natal { order: 4; min-height: 70px; padding: 14px 16px; }
+  [data-screen='home'] .home-subscribe { order: 5; min-height: 60px; }
+  [data-screen='home'] .home-intro { order: 6; }
+  [data-screen='home'] .home-install { order: 7; }
+  [data-screen='home'] > .legal-line { order: 8; }
   [data-screen='home'] .home-intro, [data-screen='home'] .home-install { min-height: 64px; padding: 12px 14px; text-align: left; }
   [data-screen='home'] .row-center { justify-content: flex-start; }
-  [data-screen='home'] .row-center .row-icon { position: static; width: 24px; height: 24px; flex: none; }
+  [data-screen='home'] .row-center .row-icon { position: static; width: 40px; height: 40px; flex: none; }
   [data-screen='home'] .row-center .row-text { flex: 1; justify-items: start; }
   [data-screen='home'] .row-text strong { font-size: 15px; }
   [data-screen='home'] .row-text small { font-size: 12px; }
   .daily-sun { width: 86px; height: 86px; }
+}
+
+/* One transparent 3D icon family, shared by the Figma screens and the app. */
+img[src*='/icons-3d/'] { object-fit: contain; flex: none; }
+.topbar .avatar-btn, .topbar .bell { width: 44px; height: 44px; }
+.avatar-btn img, .bell img, .person-icon img, .person-photo img { width: 32px; height: 32px; }
+.tabbar a img { width: 30px; height: 30px; }
+.field-pick img, .block-title img, .send img { width: 30px; height: 30px; }
+.profile-ring img { width: 48px; height: 48px; }
+.btn-row img { width: 34px; height: 34px; left: 18px; }
+.home-natal .row-icon { width: 40px; height: 40px; }
+.home-card { min-height: 76px; padding: 12px 16px; }
+.home-card .row-icon { width: 48px; height: 48px; }
+.home-card .row-text strong { font-size: 17px; }
+.tile:not(.tile-day) > img { width: 48px; height: 48px; }
+.secure img { width: 22px; height: 22px; }
+
+/* Figma 233:180 / 233:633, scales from 320 px without clipping the card or text. */
+[data-screen='card'] { gap: 16px; }
+.day-card-heading { display: grid; justify-items: center; gap: 8px; }
+.day-card-heading .title-lg { font-size: 28px; }
+.day-card-heading .lead { font-size: 14px; }
+.day-card-deck { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; padding-block: 6px; }
+.day-card-choice { display: grid; justify-items: center; gap: 6px; min-width: 44px; min-height: 44px; color: var(--gold-light); font-size: 12px; }
+.day-card-choice img { width: 100%; height: auto; border-radius: 6px; border: 1px solid transparent; transition: transform .2s ease, border-color .2s ease; }
+.day-card-choice[aria-pressed='true'] img { border-color: var(--gold-light); transform: translateY(-4px); }
+.day-card-choice:disabled { cursor: wait; }
+.day-card-result { display: grid; justify-items: center; gap: 14px; }
+.day-card-result > img { width: 214px; max-width: 100%; height: auto; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 16px; }
+.day-card-result h2 { margin: 0; font: 700 26px/1.4 var(--display); }
+.day-card-result p { width: 100%; margin: 0; line-height: 1.5; }
+.day-card-result .gold { font: 700 17px/1.4 var(--display); }
+.day-card-result .btn { margin-top: 4px; font-size: 15px; }
+.day-card-note { margin: 8px 0 0; text-align: center; font-size: 14px; line-height: 1.5; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) {
+  .day-card-choice img { transition: none; }
 }
 @media (min-width: 400px) and (max-width: 999px) {
   .ask-promo, .ask-promo-copy { min-height: 280px; }

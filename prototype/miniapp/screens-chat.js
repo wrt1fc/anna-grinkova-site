@@ -102,7 +102,9 @@ async function send(text) {
   try {
     const response = await fetch('/api/chat', { method: 'POST', credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-      body: JSON.stringify({ message, history: history.slice(-HISTORY_ITEMS), length: 'medium', tone: 'normal', profileId: personId }) });
+      body: JSON.stringify({ message, history: history.slice(-HISTORY_ITEMS), length: 'medium', tone: 'normal', profileId: personId,
+        draw: !personId && app.dayCardContext?.date === new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Moscow' }).format(new Date())
+          ? app.dayCardContext.position : 0 }) });
     if (!(response.headers.get('content-type') || '').includes('text/event-stream')) {
       const data = await response.json();
       if (data.error === 'chat_daily_limit') { bubble.closest('.msg').remove(); limitSheet(); return; }
@@ -157,7 +159,7 @@ async function peopleSheet() {
   for (const entry of entries) {
     const button = node('button', 'btn btn-line', `${entry.label}${entry.id ? '' : ' · моя карта'}`); button.type = 'button';
     button.addEventListener('click', () => {
-      personId = entry.id; history = [];
+      personId = entry.id; history = []; app.dayCardContext = null;
       $('#person-name').textContent = entry.label;
       $('#person-note').textContent = entry.id ? 'Близкий человек' : 'Моя карта';
       closeSheet(); drawChartChip();
@@ -167,7 +169,17 @@ async function peopleSheet() {
   openSheet('Чью карту обсуждаем', list);
 }
 
-export function resetChat() { history = []; personId = null; people = null; }
+export function resetChat() { history = []; personId = null; people = null; app.dayCardContext = null;
+  transcript().querySelectorAll('.msg:not(#chat-welcome)').forEach((row) => row.remove()); }
+
+export function prepareCardQuestion({ position, date, card }) {
+  if (busy) return false;
+  resetChat();
+  app.dayCardContext = { position, date };
+  app.pendingQuestion = `Что для меня может значить сегодняшняя карта «${card.name}»? Помоги разобраться в её образе.`;
+  app.go('chat');
+  return true;
+}
 
 export function bindChat() {
   $('#chat-ask').addEventListener('click', () => showComposer(true));

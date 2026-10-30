@@ -4,14 +4,15 @@ import { $, app, birth, refreshMe, screenEl, setNote } from './state.js';
 import { node } from './sheet.js';
 import { pickCity, pickDate, pickTime } from './pickers.js';
 import { bindInfo, enterDay, enterHome, enterNatal, enterWeek } from './screens-info.js?v=2';
-import { bindChat, enterChat, resetChat } from './screens-chat.js?v=2';
-import { bindPay, bindPeople, enterPay, enterPeople, enterPlan, enterProfile } from './screens-account.js';
+import { bindChat, enterChat, resetChat } from './screens-chat.js?v=3';
+import { bindCard, enterCard, resetCard } from './screens-card.js?v=1';
+import { bindPay, bindPeople, enterPay, enterPeople, enterPlan, enterProfile } from './screens-account.js?v=2';
 
 const PUBLIC = new Set(['login', 'register', 'code', 'help', 'install']);
 const AUTH_SCREENS = new Set(['login', 'register', 'code']);
-const TAB_OF = { home: 'home', natal: 'home', day: 'home', week: 'home', install: 'home', chat: 'chat', profile: 'profile', people: 'profile', help: 'help' };
+const TAB_OF = { home: 'home', natal: 'home', day: 'home', card: 'home', week: 'home', install: 'home', chat: 'chat', profile: 'profile', people: 'profile', help: 'help' };
 const SCREEN_NAMES = [...document.querySelectorAll('[data-screen]')].map((item) => item.dataset.screen);
-const ENTER = { home: enterHome, natal: enterNatal, day: enterDay, week: enterWeek, chat: enterChat, plan: enterPlan, pay: enterPay,
+const ENTER = { home: enterHome, natal: enterNatal, day: enterDay, card: enterCard, week: enterWeek, chat: enterChat, plan: enterPlan, pay: enterPay,
   profile: enterProfile, people: enterPeople, birth: enterBirth, help: enterHelp };
 const RESEND_SECONDS = 60;
 const PASSWORD_RULE = /^(?=.*[a-zа-я])(?=.*[A-ZА-Я])(?=.*\d)(?=.*[^\p{L}\d]).{8,}$/u;
@@ -72,6 +73,7 @@ const emailOk = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value);
 async function afterSignIn() {
   await refreshMe();
   resetChat();
+  resetCard();
   const target = nextScreen && nextScreen !== 'login' ? nextScreen : (birth() ? 'home' : 'birth');
   nextScreen = null;
   app.go(target);
@@ -249,7 +251,7 @@ function bindShell() {
   });
   $('#profile-out').addEventListener('click', async () => {
     try { await api('/api/auth/logout', { method: 'POST', body: {} }); } catch { /* the page still signs out locally */ }
-    app.me = null; app.plan = null; app.natal = null; resetChat();
+    app.me = null; app.plan = null; app.natal = null; resetChat(); resetCard();
     app.go('login');
   });
   $('#home-bell').addEventListener('click', () => app.go('profile'));
@@ -262,6 +264,6 @@ function bindShell() {
   $('#install-now').addEventListener('click', async () => { await installEvent?.prompt(); installEvent = null; $('#install-now').hidden = true; });
 }
 
-bindLogin(); bindRegister(); bindCode(); bindBirth(); bindInfo(); bindChat(); bindPay(); bindPeople(); bindShell();
+bindLogin(); bindRegister(); bindCode(); bindBirth(); bindInfo(); bindChat(); bindCard(); bindPay(); bindPeople(); bindShell();
 await refreshMe().catch(() => { $('#offline').hidden = false; });
 render();

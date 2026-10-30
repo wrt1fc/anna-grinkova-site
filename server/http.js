@@ -180,7 +180,14 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
           const general = forecastForDate(day, draw, user?.id ?? null);
           const profile = user ? await store.getBirthProfile(user.id) : null;
           const forecast = profile?.birthUtc ? personalForecastForDate(day, profile, user.id, general, draw) : general;
-          return json(res, 200, { date: day, tarot: { number: forecast.tarot.number, name: forecast.tarot.name } });
+          // The illustrated metaphor card is independent of generated daily text.
+          // Keep the legacy compact field for existing clients.
+          return json(res, 200, {
+            date: day,
+            tarot: { number: forecast.tarot.number, name: forecast.tarot.name },
+            card: { number: general.tarot.number, name: general.tarot.name, focus: general.tarot.focus,
+              action: general.reading.action, question: general.reading.question },
+          });
         }
         if (path === '/api/forecast/day' && req.method === 'GET') {
           const drawParameters = url.searchParams.getAll('draw');
