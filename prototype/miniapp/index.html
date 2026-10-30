@@ -20,7 +20,8 @@
   <link rel="stylesheet" href="/assets/fonts/fonts.css" />
   <link rel="stylesheet" href="/miniapp/miniapp.css?v=6" />
   <link rel="stylesheet" href="/miniapp/miniapp-desktop.css?v=3" />
-  <link rel="stylesheet" href="/miniapp/fortuna-home.css?v=2" />
+  <link rel="stylesheet" href="/miniapp/fortuna-home.css?v=3" />
+  <link rel="stylesheet" href="/miniapp/card-day.css?v=1" />
 </head>
 <body>
 <div class="app" id="app">
@@ -201,32 +202,47 @@
       <p class="form-note order-7" data-note role="alert"></p>
     </section>
 
-    <!-- Метафорическая карта дня, Figma 233:180 / 233:633 -->
-    <section class="screen screen-narrow has-nav" data-screen="card" hidden aria-labelledby="t-card">
-      <button class="back" type="button" data-back>Назад</button>
+    <!-- Restored card day: Figma 243:1702 / 243:6138 -->
+    <section class="screen has-nav" data-screen="card" hidden aria-labelledby="t-card">
+      <div class="bar"><button class="back" type="button" data-back>Назад</button><p class="day-card-date" id="card-date"></p></div>
       <header class="day-card-heading">
-        <img src="/miniapp/assets/icons-3d/card.webp" alt="" width="56" height="56" />
+        <p class="eyebrow">Твой образ на сегодня</p>
         <h1 id="t-card" class="title-lg">Карта дня</h1>
-        <p class="lead">Выбери одну из пяти карт — ту, которая откликается.</p>
+        <p class="lead">Образ, вопрос к себе и небольшой шаг на сегодня.</p>
       </header>
-      <div class="day-card-deck" id="card-deck" role="group" aria-label="Пять карт дня" aria-busy="false">
-        <button class="day-card-choice" type="button" data-day-card="0" aria-label="Открыть карту 1" aria-pressed="false"><img src="/assets/card-back.svg" alt="" width="176" height="272" /><span>1</span></button>
-        <button class="day-card-choice" type="button" data-day-card="1" aria-label="Открыть карту 2" aria-pressed="false"><img src="/assets/card-back.svg" alt="" width="176" height="272" /><span>2</span></button>
-        <button class="day-card-choice" type="button" data-day-card="2" aria-label="Открыть карту 3" aria-pressed="false"><img src="/assets/card-back.svg" alt="" width="176" height="272" /><span>3</span></button>
-        <button class="day-card-choice" type="button" data-day-card="3" aria-label="Открыть карту 4" aria-pressed="false"><img src="/assets/card-back.svg" alt="" width="176" height="272" /><span>4</span></button>
-        <button class="day-card-choice" type="button" data-day-card="4" aria-label="Открыть карту 5" aria-pressed="false"><img src="/assets/card-back.svg" alt="" width="176" height="272" /><span>5</span></button>
+      <div class="card-day-layout">
+        <div class="card-day-visual">
+          <button class="day-card-stage" id="card-reveal" type="button" aria-label="Открыть мою карту дня" aria-pressed="false">
+            <span class="day-card-face day-card-face-back" aria-hidden="true"><img src="/assets/card-back.svg" alt="" width="176" height="272" /></span>
+            <span class="day-card-face day-card-face-front" aria-hidden="true"><img id="card-image" src="/assets/card-back.svg" width="228" height="352" alt="" /></span>
+          </button>
+          <p class="day-card-caption" id="card-caption">Коснись карты, чтобы открыть её</p>
+          <div class="day-card-deck" id="card-deck" role="group" aria-label="Пять карт дня" aria-busy="false">
+            <button class="day-card-choice" type="button" data-day-card="0" aria-label="Открыть карту 1" aria-pressed="false"><img src="/assets/card-back.svg" alt="" width="176" height="272" /><span>1</span></button>
+            <button class="day-card-choice" type="button" data-day-card="1" aria-label="Открыть карту 2" aria-pressed="false"><img src="/assets/card-back.svg" alt="" width="176" height="272" /><span>2</span></button>
+            <button class="day-card-choice" type="button" data-day-card="2" aria-label="Открыть карту 3" aria-pressed="false"><img src="/assets/card-back.svg" alt="" width="176" height="272" /><span>3</span></button>
+            <button class="day-card-choice" type="button" data-day-card="3" aria-label="Открыть карту 4" aria-pressed="false"><img src="/assets/card-back.svg" alt="" width="176" height="272" /><span>4</span></button>
+            <button class="day-card-choice" type="button" data-day-card="4" aria-label="Открыть карту 5" aria-pressed="false"><img src="/assets/card-back.svg" alt="" width="176" height="272" /><span>5</span></button>
+          </div>
+          <p class="day-card-refresh">Новый набор карт каждый день</p>
+        </div>
+        <div class="card-day-reading">
+          <section class="card block day-card-empty" id="card-empty"><h2 class="block-title">Прислушайся к себе</h2><p>Выбери одну из пяти закрытых карт. Её образ поможет посмотреть на сегодняшний день с другой стороны.</p><p class="block-text">После открытия здесь появятся тема дня, вопрос к себе и действие, которое можно попробовать сегодня.</p><button class="btn btn-gold" type="button" id="card-open">Открыть мою карту</button></section>
+          <section class="day-card-result" id="card-result" hidden aria-labelledby="card-name" aria-live="polite">
+            <h2 id="card-name"></h2><p id="card-body"></p>
+            <div class="card block card-day-question"><h3>Вопрос к себе</h3><p id="card-question"></p></div>
+            <div class="card-day-facts">
+              <section class="card block"><h3>Фокус дня</h3><p id="card-focus"></p></section>
+              <section class="card block"><h3>Действие</h3><p id="card-action"></p></section>
+            </div>
+            <button class="btn btn-gold" type="button" id="card-discuss">Обсудить карту с Фортуной</button>
+          </section>
+        </div>
       </div>
-      <p class="muted center" id="card-date"></p>
+      <section class="card card-day-personal" id="card-personal" hidden><div><h2 class="block-title">Хочешь личный разбор?</h2><p class="block-text">Добавь данные рождения — Фортуна сможет учесть твою натальную карту в разговоре.</p></div><button class="btn btn-line" type="button" data-go="birth">Добавить данные рождения</button></section>
+      <button class="card row card-day-sky" type="button" data-go="day"><img src="/miniapp/assets/icons-3d/sun.webp" alt="" width="44" height="44" /><span class="row-text"><strong>Прогноз на день</strong><small>Положения Луны и Солнца →</small></span></button>
       <p class="form-note" data-note role="alert"></p>
-      <section class="day-card-result" id="card-result" hidden aria-labelledby="card-name" aria-live="polite">
-        <img id="card-image" width="214" height="321" alt="" />
-        <h2 id="card-name"></h2>
-        <p id="card-focus"></p>
-        <p class="muted"><strong>Действие:</strong> <span id="card-action"></span></p>
-        <p id="card-question" class="gold"></p>
-        <button class="btn btn-gold" type="button" id="card-discuss">Обсудить карту с Фортуной</button>
-      </section>
-      <p class="day-card-note">Новый набор — каждый день. Карта помогает прислушаться к себе и не предсказывает события.</p>
+      <p class="day-card-note">Метафорическая карта — повод для размышления, а не обещание событий.</p>
     </section>
 
     <!-- Прогноз на неделю -->
@@ -375,6 +391,6 @@
 </div>
 <script src="/natal-wheel.js?v=3"></script>
 <script src="/pwa.js"></script>
-<script type="module" src="/miniapp/miniapp.js?v=6"></script>
+<script type="module" src="/miniapp/miniapp.js?v=7"></script>
 </body>
 </html>

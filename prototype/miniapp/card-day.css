@@ -1,0 +1,60 @@
+/* Restored screen: Figma 243:1702 (390), 243:6138 (1440), plus four adaptive anchors. */
+[data-screen='card'] { gap: 20px; }
+.day-card-date { margin: 0; color: var(--muted); font-size: 13px; text-align: right; }
+.day-card-heading { display: grid; justify-items: center; gap: 8px; text-align: center; }
+.day-card-heading .eyebrow { font-size: 18px; }
+.day-card-heading .title-lg { font-size: 30px; }
+.day-card-heading .lead { font-size: 15px; }
+.card-day-layout { display: grid; gap: 24px; align-items: start; }
+.card-day-visual { display: grid; justify-items: center; gap: 14px; min-width: 0; }
+.day-card-stage { position: relative; width: 228px; max-width: 100%; aspect-ratio: 176 / 272; margin: 14px 0; border-radius: 18px; perspective: 1000px; }
+.day-card-face { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; backface-visibility: hidden; -webkit-backface-visibility: hidden; transition: transform .5s ease; border: 1px solid var(--line); }
+.day-card-face img { width: 100%; height: 100%; object-fit: cover; }
+.day-card-face-back { transform: rotateY(0); }
+.day-card-face-front { transform: rotateY(180deg); }
+.day-card-stage.is-open .day-card-face-back { transform: rotateY(-180deg); }
+.day-card-stage.is-open .day-card-face-front { transform: rotateY(0); }
+.day-card-stage:disabled { cursor: wait; }
+.day-card-caption, .day-card-refresh { margin: 0; text-align: center; color: var(--muted); font-size: 13px; }
+.day-card-stage.is-open + .day-card-caption { color: var(--gold-light); }
+.day-card-refresh { font-size: 12px; }
+.day-card-deck { width: min(100%, 390px); display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; padding-block: 6px; }
+.day-card-choice { display: grid; justify-items: center; gap: 6px; min-width: 44px; min-height: 44px; color: var(--gold-light); font-size: 12px; }
+.day-card-choice img { width: 100%; height: auto; border-radius: 5px; border: 1px solid transparent; }
+.day-card-choice[aria-pressed='true'] img { border-color: var(--gold-light); box-shadow: 0 0 0 1px var(--gold-light); }
+.day-card-choice:disabled { cursor: wait; }
+.card-day-reading, .day-card-result { display: grid; gap: 18px; min-width: 0; }
+.day-card-result h2 { margin: 0; font: 700 26px/1.25 var(--display); }
+.day-card-result p, .day-card-empty p, .card-day-personal p { margin: 0; }
+#card-body { font-size: 16px; line-height: 1.5; }
+.card-day-question, .card-day-facts .block { padding: 20px; gap: 8px; }
+.card-day-question h3 { margin: 0; font: 400 14px/1.5 var(--body); color: var(--muted); }
+.card-day-question p { font: italic 400 22px/1.5 var(--accent); color: var(--gold-light); }
+.card-day-facts { display: grid; gap: 12px; }
+.card-day-facts h3 { margin: 0; font: italic 400 17px/1.5 var(--accent); color: var(--gold-light); }
+.card-day-facts p { font-size: 16px; line-height: 1.5; }
+.card-day-personal { display: grid; gap: 16px; padding: 20px; }
+.card-day-personal > div { display: grid; gap: 7px; }
+.card-day-personal .btn { font-size: 14px; }
+.card-day-sky { padding: 20px; min-height: 84px; }
+.card-day-sky > img { width: 44px; height: 44px; }
+.card-day-sky .row-text { gap: 3px; }
+.day-card-note { margin: 0; text-align: center; font-size: 12px; line-height: 1.5; color: var(--muted); }
+@media (min-width: 600px) {
+  .day-card-stage { width: 260px; }
+}
+@media (min-width: 1000px) {
+  [data-screen='card'] { width: min(100% - 96px, 1440px); gap: 24px; }
+  .day-card-heading { justify-items: start; text-align: left; }
+  .day-card-heading .title-lg { font-size: 40px; text-align: left; }
+  .day-card-heading .lead { text-align: left; }
+  .card-day-layout { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 32px; }
+  .day-card-stage { width: 300px; }
+  .day-card-result h2, .day-card-empty h2 { font-size: 32px; }
+  #card-body { font-size: 18px; }
+  .card-day-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+  .card-day-personal { grid-template-columns: minmax(0, 1fr) 300px; align-items: center; gap: 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .day-card-face { transition: none; }
+}

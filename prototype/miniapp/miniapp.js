@@ -5,7 +5,7 @@ import { node } from './sheet.js';
 import { pickCity, pickDate, pickTime } from './pickers.js';
 import { bindInfo, enterDay, enterHome, enterNatal, enterWeek } from './screens-info.js?v=2';
 import { bindChat, enterChat, resetChat } from './screens-chat.js?v=3';
-import { bindCard, enterCard, resetCard } from './screens-card.js?v=1';
+import { bindCard, enterCard, resetCard } from './screens-card.js?v=2';
 import { bindPay, bindPeople, enterPay, enterPeople, enterPlan, enterProfile } from './screens-account.js?v=2';
 
 const PUBLIC = new Set(['login', 'register', 'code', 'help', 'install']);
