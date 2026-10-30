@@ -3,8 +3,8 @@ import { api, formatDate } from './api.js';
 import { $, app, birth, refreshMe, screenEl, setNote } from './state.js';
 import { node } from './sheet.js';
 import { pickCity, pickDate, pickTime } from './pickers.js';
-import { bindInfo, enterDay, enterHome, enterNatal, enterWeek } from './screens-info.js';
-import { bindChat, enterChat, resetChat } from './screens-chat.js';
+import { bindInfo, enterDay, enterHome, enterNatal, enterWeek } from './screens-info.js?v=2';
+import { bindChat, enterChat, resetChat } from './screens-chat.js?v=2';
 import { bindPay, bindPeople, enterPay, enterPeople, enterPlan, enterProfile } from './screens-account.js';
 
 const PUBLIC = new Set(['login', 'register', 'code', 'help', 'install']);

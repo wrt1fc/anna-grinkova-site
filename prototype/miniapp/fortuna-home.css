@@ -1,0 +1,54 @@
+/* Figma 08 · Мини-приложение, main 181:33 and 360/430/768 variants.
+   The home screen promotes the chat; the conversation remains a separate route. */
+.daily-sun { width: 110px; height: 110px; flex: none; border-radius: 50%; overflow: hidden; }
+.daily-sun img { width: 100%; height: 100%; object-fit: contain; }
+.tile-day img { width: 44px; height: 44px; border-radius: 50%; object-fit: contain; flex: none; }
+.daily-sun img, .tile-day img { animation: fortuna-sun-float 6s ease-in-out infinite; }
+.screen[hidden] .daily-sun img, .screen[hidden] .tile-day img { animation: none; }
+@media (min-width: 1000px) {
+  .ask-promo-photo { -webkit-mask-image: linear-gradient(90deg, transparent, #000 45%); mask-image: linear-gradient(90deg, transparent, #000 45%); }
+}
+@keyframes fortuna-sun-float {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-3px) rotate(2deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .daily-sun img, .tile-day img { animation: none; }
+}
+@media (max-width: 999px) {
+  [data-screen='home'] { gap: 14px; }
+  [data-screen='home'] .topbar { order: 0; }
+  [data-screen='home'] .hero { display: none; }
+  .ask-promo { order: 1; position: relative; display: block; min-height: 260px; overflow: hidden; }
+  .ask-promo-photo { position: absolute; inset: 0 0 0 auto; width: 59%; height: 100%; object-fit: contain; object-position: center bottom;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 32%); mask-image: linear-gradient(90deg, transparent, #000 32%); }
+  .ask-promo-copy { position: relative; z-index: 1; min-height: 260px; height: 100%; padding: 20px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+  .ask-promo .eyebrow { font: 700 16px/1.35 var(--display); color: var(--ink); }
+  .ask-promo-title { margin: 0; font: 700 32px/1.35 var(--display); letter-spacing: 0; }
+  .ask-promo-text { margin: 0; width: 150px; max-width: 52%; color: var(--muted); font-size: 13px; line-height: 1.4; }
+  .ask-promo .btn { margin-top: auto; width: 198px; max-width: 100%; min-height: 46px; padding-inline: 8px; font-size: 13px; }
+  .ask-promo .btn img, .ask-promo-note { display: none; }
+  [data-screen='home'] .tiles { order: 2; gap: 12px; }
+  [data-screen='home'] .tile { display: flex; align-items: center; gap: 10px; min-height: 94px; padding: 12px; }
+  [data-screen='home'] .tile strong { min-width: 0; font-size: 13px; line-height: 1.4; }
+  [data-screen='home'] .tile:not(.tile-day) img { width: 28px; height: 28px; flex: none; }
+  [data-screen='home'] .home-natal { order: 3; min-height: 70px; padding: 14px 16px; }
+  [data-screen='home'] .home-subscribe { order: 4; min-height: 60px; }
+  [data-screen='home'] .home-intro { order: 5; }
+  [data-screen='home'] .home-install { order: 6; }
+  [data-screen='home'] > .legal-line { order: 7; }
+  [data-screen='home'] .home-intro, [data-screen='home'] .home-install { min-height: 64px; padding: 12px 14px; text-align: left; }
+  [data-screen='home'] .row-center { justify-content: flex-start; }
+  [data-screen='home'] .row-center .row-icon { position: static; width: 24px; height: 24px; flex: none; }
+  [data-screen='home'] .row-center .row-text { flex: 1; justify-items: start; }
+  [data-screen='home'] .row-text strong { font-size: 15px; }
+  [data-screen='home'] .row-text small { font-size: 12px; }
+  .daily-sun { width: 86px; height: 86px; }
+}
+@media (min-width: 400px) and (max-width: 999px) {
+  .ask-promo, .ask-promo-copy { min-height: 280px; }
+}
+@media (min-width: 600px) and (max-width: 999px) {
+  .ask-promo, .ask-promo-copy { min-height: 320px; }
+  .ask-promo-photo { width: min(59%, 300px); }
+}

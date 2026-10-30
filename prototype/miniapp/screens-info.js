@@ -4,7 +4,6 @@ import { $, app, birth, loadNatal, planLine, setNote, visitorName } from './stat
 import { node } from './sheet.js';
 import { drawWheel } from './wheel.js';
 
-const FULL_MOON = 180;
 // U+FE0E asks for the text glyph: without it Windows draws the signs as purple emoji tiles.
 const GLYPH = Object.fromEntries(Object.entries({ Овен: '♈', Телец: '♉', Близнецы: '♊', Рак: '♋', Лев: '♌', Дева: '♍', Весы: '♎', Скорпион: '♏', Стрелец: '♐', Козерог: '♑', Водолей: '♒', Рыбы: '♓' }).map(([sign, glyph]) => [sign, `${glyph}︎`]));
 // «в ♍ Деве», as in the Figma day card; the general and the personal forecast keep the sky in different places.
@@ -46,11 +45,6 @@ export async function enterNatal() {
   }));
 }
 
-function moonShift(angle) {
-  const lit = (1 - Math.cos((angle * Math.PI) / 180)) / 2;
-  return `${angle < FULL_MOON ? -lit * 100 : lit * 100}%`;
-}
-
 export async function enterDay() {
   setNote('day');
   $('#day-personal').hidden = !!birth();
@@ -64,7 +58,6 @@ export async function enterDay() {
   $('#day-moon-title').textContent = `☽ Луна ${inSign(sky.moon?.sign, data.reading.body, 'Луна')}`.trim();
   $('#day-moon-phase').textContent = moon.moonPhase;
   $('#day-sun').textContent = `☉ Солнце ${inSign(sky.sun?.sign, data.reading.body, 'Солнце')}`.trim();
-  $('#day-moon').style.setProperty('--moon-shift', moonShift(moon.moonAngle));
   $('#day-body').textContent = data.reading.body;
   $('#day-action').textContent = data.reading.action;
 }

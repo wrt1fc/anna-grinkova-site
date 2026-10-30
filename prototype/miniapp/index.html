@@ -20,6 +20,7 @@
   <link rel="stylesheet" href="/assets/fonts/fonts.css" />
   <link rel="stylesheet" href="/miniapp/miniapp.css?v=6" />
   <link rel="stylesheet" href="/miniapp/miniapp-desktop.css?v=3" />
+  <link rel="stylesheet" href="/miniapp/fortuna-home.css?v=1" />
 </head>
 <body>
 <div class="app" id="app">
@@ -123,34 +124,33 @@
       <section class="card hero" aria-label="Натальная карта">
         <div class="hero-copy">
           <p class="eyebrow">Твоя натальная карта</p>
-          <h1 id="t-home" class="title-hero">Узнай, что говорят звёзды именно о тебе</h1>
+          <h2 class="title-hero">Узнай, что говорят звёзды именно о тебе</h2>
           <button class="btn btn-gold" type="button" data-go="natal">Построить карту</button>
         </div>
         <div class="hero-wheel" id="home-wheel" aria-hidden="true"></div>
       </section>
-      <section class="card ask-promo only-desk" aria-label="Вопрос Фортуне">
-        <img class="ask-promo-photo" src="/miniapp/assets/fortuna-portrait.webp" alt="" width="600" height="894" />
+      <section class="card ask-promo" aria-label="Вопрос Фортуне">
+        <img class="ask-promo-photo" src="/miniapp/assets/fortuna-portrait-v2.webp" alt="" width="800" height="1200" fetchpriority="high" />
         <div class="ask-promo-copy">
           <p class="eyebrow">Задай вопрос</p>
-          <h2 class="ask-promo-title">Фортуне</h2>
-          <p class="ask-promo-text">Астролог всегда на связи. Ответ по вашей карте за полминуты.</p>
+          <h1 id="t-home" class="ask-promo-title">Фортуне</h1>
+          <p class="ask-promo-text">Разберёмся в твоей карте вместе</p>
           <button class="btn btn-gold" type="button" data-go="chat">Задать вопрос Фортуне<img src="/miniapp/assets/icon-send-dark.svg" alt="" width="22" height="22" /></button>
           <small class="ask-promo-note" id="home-promo-note"></small>
         </div>
       </section>
       </div>
       <div class="tiles">
-        <button class="card tile" type="button" data-go="day"><img src="/miniapp/assets/icon-sun.svg" alt="" width="30" height="30" /><strong>Прогноз на день</strong></button>
+        <button class="card tile tile-day" type="button" data-go="day"><img src="/miniapp/assets/fortuna-sun.webp" alt="" width="44" height="44" /><strong>Прогноз на день</strong></button>
         <button class="card tile" type="button" data-go="week"><img src="/miniapp/assets/icon-cal.svg" alt="" width="30" height="30" /><strong>Прогноз на неделю</strong></button>
       </div>
-      <button class="card row row-ask only-phone" type="button" data-go="chat">
-        <img class="row-avatar" src="/miniapp/assets/fortuna.webp" alt="" width="56" height="56" />
-        <span class="row-text"><strong>Задать вопрос Фортуне</strong><small id="home-ask-note">Ответ за полминуты</small></span>
-        <img src="/miniapp/assets/icon-send.svg" alt="" width="22" height="22" />
+      <button class="card row home-natal only-phone" type="button" data-go="natal">
+        <img class="row-icon" src="/miniapp/assets/icon-star.svg" alt="" width="26" height="26" />
+        <span class="row-text"><strong>Твоя натальная карта</strong><small>Построить или посмотреть</small></span>
       </button>
-      <button class="card row row-center" type="button" data-go="chat" data-intro="1"><img class="row-icon" src="/miniapp/assets/icon-star.svg" alt="" width="22" height="22" /><span class="row-text"><strong>Знакомство с Фортуной</strong><small id="home-intro-note">Первые вопросы бесплатно</small></span></button>
-      <button class="btn btn-gold btn-row" type="button" data-go="plan"><img src="/miniapp/assets/icon-crown.svg" alt="" width="22" height="22" /><span>Подписка</span></button>
-      <button class="card row row-center" type="button" data-go="install"><img class="row-icon" src="/miniapp/assets/icon-phone.svg" alt="" width="22" height="22" /><span class="row-text"><strong>Установить приложение</strong><small>на телефон или компьютер</small></span></button>
+      <button class="card row row-center home-intro" type="button" data-go="chat" data-intro="1"><img class="row-icon" src="/miniapp/assets/icon-star.svg" alt="" width="22" height="22" /><span class="row-text"><strong>Знакомство с Фортуной</strong><small id="home-intro-note">Первые вопросы бесплатно</small></span></button>
+      <button class="btn btn-gold btn-row home-subscribe" type="button" data-go="plan"><img src="/miniapp/assets/icon-crown.svg" alt="" width="22" height="22" /><span>Купить подписку</span></button>
+      <button class="card row row-center home-install" type="button" data-go="install"><img class="row-icon" src="/miniapp/assets/icon-phone.svg" alt="" width="22" height="22" /><span class="row-text"><strong>Установить приложение</strong><small>на телефон или компьютер</small></span></button>
       <p class="legal-line"><a href="/legal/privacy-policy.pdf" target="_blank" rel="noopener">Политика конфиденциальности</a> · <a href="/legal/consent-personal-data.pdf" target="_blank" rel="noopener">Согласие на обработку данных</a></p>
     </section>
 
@@ -182,7 +182,7 @@
       <div class="cols">
         <div class="col">
           <section class="card moon-card">
-            <div class="moon-art" id="day-moon" aria-hidden="true"></div>
+            <div class="daily-sun" aria-hidden="true"><img src="/miniapp/assets/fortuna-sun.webp" alt="" width="110" height="110" /></div>
             <div class="moon-copy"><h2 id="day-moon-title"></h2><p id="day-moon-phase"></p><p class="gold" id="day-sun"></p></div>
           </section>
           <h2 class="eyebrow-title">Фокус дня</h2>
@@ -217,7 +217,7 @@
         <button class="chip-btn" type="button" id="person-switch">Переключить</button>
       </div>
       <div class="transcript" id="transcript" aria-live="polite">
-        <div class="msg msg-bot"><img src="/miniapp/assets/fortuna.webp" alt="" width="34" height="34" /><div class="bubble" id="chat-greeting">Здравствуйте. Я Фортуна и отвечаю по своей методике. Расскажите, что сейчас волнует. Выберите удобный формат.</div></div>
+        <div class="msg msg-bot" id="chat-welcome"><img src="/miniapp/assets/fortuna-avatar-v2.webp" alt="" width="34" height="34" /><div class="bubble" id="chat-greeting">Привет! Я Фортуна. Расскажи, что тебя волнует — вместе посмотрим на твою карту.</div></div>
         <section class="card chart-chip" id="chart-chip" hidden><p class="eyebrow" id="chart-chip-title">Моя карта</p><div class="chips" id="chart-chip-list"></div></section>
       </div>
       <div class="chat-actions" id="chat-actions">
@@ -226,8 +226,8 @@
         <button class="btn btn-line" type="button" id="chat-ideas">Что спросить у Фортуны</button>
       </div>
       <form class="composer" id="composer" hidden>
-        <label class="visually-hidden" for="chat-input">Ваш вопрос</label>
-        <textarea id="chat-input" rows="1" maxlength="600" placeholder="Напишите свой вопрос…"></textarea>
+        <label class="visually-hidden" for="chat-input">Твой вопрос</label>
+        <textarea id="chat-input" rows="1" maxlength="600" placeholder="Напиши свой вопрос…"></textarea>
         <button class="send" type="submit" aria-label="Отправить"><img src="/miniapp/assets/icon-send-dark.svg" alt="" width="20" height="20" /></button>
       </form>
       <p class="legal-line">Ответы носят информационный характер и не заменяют консультацию специалиста.</p>
@@ -235,7 +235,7 @@
 
     <!-- Подписка -->
     <section class="screen screen-narrow plan-screen screen-desk" data-screen="plan" hidden aria-labelledby="t-plan">
-      <div class="plan-photo" aria-hidden="true"><img src="/miniapp/assets/fortuna-portrait.webp" alt="" width="600" height="894" /></div>
+      <div class="plan-photo" aria-hidden="true"><img src="/miniapp/assets/fortuna-portrait-v2.webp" alt="" width="800" height="1200" /></div>
       <div class="plan-body">
       <button class="close-btn" type="button" data-back aria-label="Закрыть"></button>
       <h1 id="t-plan" class="title-lg">Подписка</h1>
@@ -244,7 +244,7 @@
       <section class="card block"><p class="eyebrow-caps">Что внутри</p><ul class="ticks" id="plan-features"></ul></section>
       <p class="form-note" data-note role="alert"></p>
       <button class="btn btn-gold" type="button" id="plan-buy">Купить</button>
-      <p class="legal-line">Автопродление включается только по вашей отметке.</p>
+      <p class="legal-line">Автопродление включается только с твоего согласия.</p>
       </div>
     </section>
 
@@ -343,6 +343,6 @@
 </div>
 <script src="/natal-wheel.js?v=3"></script>
 <script src="/pwa.js"></script>
-<script type="module" src="/miniapp/miniapp.js?v=4"></script>
+<script type="module" src="/miniapp/miniapp.js?v=5"></script>
 </body>
 </html>
