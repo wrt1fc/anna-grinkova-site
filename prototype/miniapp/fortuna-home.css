@@ -16,12 +16,26 @@
   .home-top { display: block; }
   .home-top .hero { display: none; }
   .home-top .ask-promo { width: 100%; min-height: clamp(520px, 40vw, 600px); }
-  .home-top .ask-promo-copy { min-height: clamp(520px, 40vw, 600px); max-width: min(62%, 700px); padding: 56px; }
+  .home-top .ask-promo-copy { min-height: clamp(520px, 40vw, 600px); max-width: min(62%, 700px); padding: 56px 56px 29px; }
+  /* Page 08, node 204:2: 589 × 883.5 portrait in a 1312 × 576 card.
+     Keep the asset's proportions and center the oversized portrait vertically. */
+  .home-top .ask-promo .ask-promo-photo {
+    inset: -26.692708% 0 auto auto;
+    height: 153.385417%;
+    width: auto;
+    object-fit: contain;
+    -webkit-mask-image: url('./assets/fortuna-home-mask-horizontal.svg'), url('./assets/fortuna-home-mask-vertical.svg');
+    mask-image: url('./assets/fortuna-home-mask-horizontal.svg'), url('./assets/fortuna-home-mask-vertical.svg');
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+  }
   .home-top .ask-promo .eyebrow { font-size: 26px; }
-  .home-top .ask-promo-title { font-size: clamp(52px, 5.28vw, 76px); line-height: 1.12; margin: 6px 0 12px; }
+  .home-top .ask-promo-title { font-size: clamp(52px, 5.28vw, 76px); font-weight: 800; line-height: 1.263158; margin: 13px 0 14px; }
   .home-top .ask-promo-text { font-size: 18px; line-height: 1.5; max-width: 460px; }
   .home-top .ask-promo .btn { width: 340px; min-height: 60px; font-size: 17px; }
-  .home-top .ask-promo-note { margin-top: 12px; font-size: 13px; }
+  .home-top .ask-promo-note { margin-top: 16px; font-size: 13px; line-height: 15px; }
   [data-screen='home'] .home-natal { min-height: 76px; }
 }
 @keyframes fortuna-sun-float {

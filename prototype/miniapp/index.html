@@ -20,7 +20,7 @@
   <link rel="stylesheet" href="/assets/fonts/fonts.css" />
   <link rel="stylesheet" href="/miniapp/miniapp.css?v=6" />
   <link rel="stylesheet" href="/miniapp/miniapp-desktop.css?v=3" />
-  <link rel="stylesheet" href="/miniapp/fortuna-home.css?v=4" />
+  <link rel="stylesheet" href="/miniapp/fortuna-home.css?v=5" />
   <link rel="stylesheet" href="/miniapp/card-day.css?v=1" />
   <link rel="stylesheet" href="/miniapp/chat-suggestions.css?v=1" />
 </head>
@@ -132,7 +132,10 @@
         <div class="hero-wheel" id="home-wheel" aria-hidden="true"></div>
       </section>
       <section class="card ask-promo" aria-label="Вопрос Фортуне">
-        <img class="ask-promo-photo" src="/miniapp/assets/fortuna-portrait-v2.webp" alt="" width="800" height="1200" fetchpriority="high" />
+        <picture class="ask-promo-portrait">
+          <source media="(min-width: 1000px)" srcset="/miniapp/assets/fortuna-home-desktop.png" />
+          <img class="ask-promo-photo" src="/miniapp/assets/fortuna-portrait-v2.webp" alt="" width="800" height="1200" fetchpriority="high" />
+        </picture>
         <div class="ask-promo-copy">
           <p class="eyebrow">Задай вопрос</p>
           <h1 id="t-home" class="ask-promo-title">Фортуне</h1>
