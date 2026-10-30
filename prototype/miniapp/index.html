@@ -22,6 +22,7 @@
   <link rel="stylesheet" href="/miniapp/miniapp-desktop.css?v=3" />
   <link rel="stylesheet" href="/miniapp/fortuna-home.css?v=4" />
   <link rel="stylesheet" href="/miniapp/card-day.css?v=1" />
+  <link rel="stylesheet" href="/miniapp/chat-suggestions.css?v=1" />
 </head>
 <body>
 <div class="app" id="app">
@@ -268,10 +269,27 @@
         <div class="msg msg-bot" id="chat-welcome"><img src="/miniapp/assets/fortuna-avatar-v2.webp" alt="" width="34" height="34" /><div class="bubble" id="chat-greeting">Привет! Я Фортуна. Расскажи, что тебя волнует — вместе посмотрим на твою карту.</div></div>
         <section class="card chart-chip" id="chart-chip" hidden><p class="eyebrow" id="chart-chip-title">Моя карта</p><div class="chips" id="chart-chip-list"></div></section>
       </div>
+      <details class="chat-suggestions" id="chat-suggestions" open>
+        <summary>Идеи вопросов <span aria-hidden="true">⌄</span></summary>
+        <div class="chat-suggestions-body">
+          <p class="suggestion-note" id="chat-suggestions-status" role="status">Подбираем вопросы…</p>
+          <button type="button" class="daily-question" id="chat-daily-question" hidden>
+            <span class="daily-question-label"><img src="/miniapp/assets/icons-3d/sun.webp" alt="" width="28" height="28" /><span id="chat-daily-label">Твой вопрос дня</span></span>
+            <strong id="chat-daily-text"></strong>
+            <small id="chat-daily-note">Личный вопрос · обновляется каждый день</small>
+          </button>
+          <div class="question-topics" role="group" aria-label="Тема вопросов">
+            <button type="button" data-question-topic="natal" aria-pressed="true">Натальная карта</button>
+            <button type="button" data-question-topic="day" aria-pressed="false">Карта дня</button>
+          </div>
+          <div class="question-list" id="chat-question-list"></div>
+          <p class="suggestion-note">Можно изменить перед отправкой</p>
+          <button class="more-questions" type="button" id="chat-ideas">Ещё вопросы <span aria-hidden="true">→</span></button>
+        </div>
+      </details>
       <div class="chat-actions" id="chat-actions">
         <button class="btn btn-gold" type="button" id="chat-ask">Задать вопрос</button>
         <button class="btn btn-line" type="button" id="chat-intro">Знакомство · первые вопросы бесплатно</button>
-        <button class="btn btn-line" type="button" id="chat-ideas">Что спросить у Фортуны</button>
       </div>
       <form class="composer" id="composer" hidden>
         <label class="visually-hidden" for="chat-input">Твой вопрос</label>
@@ -391,6 +409,6 @@
 </div>
 <script src="/natal-wheel.js?v=3"></script>
 <script src="/pwa.js"></script>
-<script type="module" src="/miniapp/miniapp.js?v=7"></script>
+<script type="module" src="/miniapp/miniapp.js?v=8"></script>
 </body>
 </html>

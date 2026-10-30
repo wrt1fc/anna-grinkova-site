@@ -9,6 +9,7 @@ import { profilesWithAccess } from './profiles.js';
 import { asksAboutCompatibility, chartContext, findMaterials } from '../chat-grounding.js';
 import { clientAddress } from '../traffic.js';
 import { fallbackReading, wrongCard } from '../tarot-guard.js';
+import { chatSuggestions } from '../chat-suggestions.js';
 
 const MAX_MESSAGE_CHARS = 600;
 // Seeds the personal tarot card for a partner/family profile apart from any account id.
@@ -267,6 +268,18 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
     if (path === '/api/tarot/reading' && req.method === 'POST') return await postChat(ctx, true), true;
     if (!path.startsWith('/api/chat/')) return false;
     if (!user) return json(res, 401, { error: 'login_required' }), true;
+    if (path === '/api/chat/suggestions' && req.method === 'GET') {
+      const query = new URL(req.url, 'http://localhost').searchParams;
+      const rawDraw = query.get('draw') ?? '0';
+      const rawProfile = query.get('profileId');
+      if (!/^[0-4]$/.test(rawDraw) || query.getAll('draw').length > 1
+        || query.getAll('profileId').length > 1 || (rawProfile !== null && (!/^[1-9]\d*$/.test(rawProfile) || !Number.isSafeInteger(Number(rawProfile))))) {
+        return json(res, 400, { error: 'invalid_suggestions', message: 'Не удалось выбрать тему вопроса.' }), true;
+      }
+      const chart = await chartFor(store, user, rawProfile === null ? null : Number(rawProfile));
+      if (chart.error) return json(res, ...chart.error), true;
+      return json(res, 200, chatSuggestions({ userId: user.id, profile: chart.profile, profileId: chart.profileId, draw: Number(rawDraw) })), true;
+    }
     if (path === '/api/chat/history' && req.method === 'GET') {
       const consent = await store.chatConsent(user.id) != null;
       return json(res, 200, { consent, messages: consent ? await store.listChatMessages(user.id) : [] }), true;

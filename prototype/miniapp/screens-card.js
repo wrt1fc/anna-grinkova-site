@@ -1,26 +1,15 @@
 // The five illustrated metaphor cards of the Moscow day, separate from the sky forecast.
 import { api, formatDate } from './api.js';
 import { $, app, birth, setNote } from './state.js';
-import { prepareCardQuestion } from './screens-chat.js?v=3';
+import { prepareCardQuestion } from './screens-chat.js?v=4';
 import { cardCopy } from './card-copy.js?v=1';
+import { remember, savedPosition } from './daily-card-choice.js?v=1';
 
 let current = null;
 let generation = 0;
 let controller = null;
 let choosing = false;
 const buttons = () => [...document.querySelectorAll('[data-day-card]')];
-const storageKey = (owner) => `fortuna:day-card:${owner}`;
-
-function remember(owner, date, position) {
-  try { localStorage.setItem(storageKey(owner), JSON.stringify({ date, position })); } catch { /* private browsing or full storage */ }
-}
-
-function savedPosition(owner, date) {
-  try {
-    const saved = JSON.parse(localStorage.getItem(storageKey(owner)));
-    return saved?.date === date && Number.isInteger(saved.position) && saved.position >= 0 && saved.position < 5 ? saved.position : null;
-  } catch { return null; }
-}
 
 function valid(data) {
   return /^\d{4}-\d{2}-\d{2}$/.test(data?.date) && Number.isInteger(data.card?.number)

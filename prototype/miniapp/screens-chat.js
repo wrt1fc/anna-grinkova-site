@@ -2,20 +2,21 @@
 import { api, readEvents } from './api.js';
 import { $, app, loadNatal, planLine, visitorName } from './state.js';
 import { closeSheet, node, openSheet } from './sheet.js';
+import { activeIdeaDraw, bindIdeas, refreshIdeas, resetIdeas, setIdeasBusy } from './chat-ideas.js?v=1';
 
 const MAX_CHARS = 600;
 const HISTORY_ITEMS = 6;
 // U+FE0E asks for the text glyph: without it Windows draws the signs as purple emoji tiles.
 const SIGN_GLYPHS = Object.fromEntries(Object.entries({ Овен: '♈', Телец: '♉', Близнецы: '♊', Рак: '♋', Лев: '♌', Дева: '♍', Весы: '♎', Скорпион: '♏', Стрелец: '♐', Козерог: '♑', Водолей: '♒', Рыбы: '♓' }).map(([sign, glyph]) => [sign, `${glyph}︎`]));
 const PLANET_GLYPHS = { sun: '☉', moon: '☽', pluto: '♇', saturn: '♄' };
-const IDEAS = ['Что главное в моей натальной карте?', 'Что означает мой Сатурн?', 'Что мне важно учесть на этой неделе?',
-  'Как мои отношения связаны с картой?', 'В какой сфере мне легче реализоваться?', 'Что говорят мои финансы по карте?'];
 const INTRO_QUESTION = 'Расскажи, как ты работаешь и с какими вопросами к тебе можно прийти.';
 
 let history = [];
 let busy = false;
 let personId = null;
 let people = null;
+let chatGeneration = 0;
+let replyController = null;
 
 const transcript = () => $('#transcript');
 const input = () => $('#chat-input');
@@ -46,8 +47,10 @@ async function drawChartChip() {
   const box = $('#chart-chip');
   box.hidden = true;
   if (personId) return;
+  const owner = app.me?.user?.id;
+  const ticket = chatGeneration;
   const natal = await loadNatal();
-  if (!natal) return;
+  if (!natal || personId || owner !== app.me?.user?.id || ticket !== chatGeneration) return;
   const items = ['sun', 'moon'].map((key) => natal.planets.find((planet) => planet.key === key)).filter(Boolean).map((planet) => chip(planet));
   const rest = natal.planets.find((planet) => planet.retrograde);
   if (rest) items.push(chip(rest, true));
@@ -61,12 +64,14 @@ export async function enterChat() {
   $('#person-note').textContent = personId ? $('#person-note').textContent : 'Моя карта';
   $('#chat-quota').textContent = planLine();
   drawChartChip();
+  refreshIdeas();
   if (app.pendingQuestion) {
     const question = app.pendingQuestion;
     app.pendingQuestion = '';
     showComposer(true);
     input().value = question;
     autosize();
+    $('#chat-suggestions').open = false;
   } else if (!history.length && !$('#composer').hidden) {
     showComposer(false);
   }
@@ -93,6 +98,11 @@ async function send(text) {
   const message = text.trim();
   if (busy || !message || message.length > MAX_CHARS) return;
   busy = true;
+  const ticket = chatGeneration;
+  replyController = new AbortController();
+  setIdeasBusy(true);
+  $('#person-switch').disabled = true;
+  $('#chat-suggestions').open = false;
   showComposer(true);
   say('user', message);
   input().value = '';
@@ -100,11 +110,12 @@ async function send(text) {
   $('#composer button').disabled = true;
   const bubble = say('bot', '', 'is-typing');
   try {
-    const response = await fetch('/api/chat', { method: 'POST', credentials: 'same-origin',
+    const response = await fetch('/api/chat', { method: 'POST', credentials: 'same-origin', signal: replyController.signal,
       headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
       body: JSON.stringify({ message, history: history.slice(-HISTORY_ITEMS), length: 'medium', tone: 'normal', profileId: personId,
-        draw: !personId && app.dayCardContext?.date === new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Moscow' }).format(new Date())
-          ? app.dayCardContext.position : 0 }) });
+        draw: !personId ? activeIdeaDraw() ?? (app.dayCardContext?.date === new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Moscow' }).format(new Date())
+          ? app.dayCardContext.position : 0) : 0 }) });
+    if (ticket !== chatGeneration) return;
     if (!(response.headers.get('content-type') || '').includes('text/event-stream')) {
       const data = await response.json();
       if (data.error === 'chat_daily_limit') { bubble.closest('.msg').remove(); limitSheet(); return; }
@@ -113,6 +124,7 @@ async function send(text) {
     }
     let final = null;
     for await (const { event, data } of readEvents(response)) {
+      if (ticket !== chatGeneration) return;
       if (event === 'delta') { bubble.classList.remove('is-typing'); bubble.textContent += data.text; bubble.scrollIntoView({ block: 'end' }); }
       else if (event === 'done') final = data;
       else if (event === 'error') throw new Error(data.message || 'Не удалось получить ответ.');
@@ -123,6 +135,7 @@ async function send(text) {
     history.push({ role: 'user', content: message }, { role: 'assistant', content: final.answer, signature: final.signature });
     history = history.slice(-HISTORY_ITEMS);
   } catch (error) {
+    if (ticket !== chatGeneration || error.name === 'AbortError') return;
     bubble.classList.remove('is-typing');
     bubble.classList.add('is-error');
     bubble.textContent = error.message || 'Не удалось получить ответ.';
@@ -131,20 +144,14 @@ async function send(text) {
     const actions = node('div', 'bubble-actions'); actions.append(retry);
     bubble.append(actions);
   } finally {
-    busy = false;
-    $('#composer button').disabled = false;
-    api('/api/plan').then(({ ok, data }) => { if (ok) { app.plan = data; $('#chat-quota').textContent = planLine(); } });
+    if (ticket === chatGeneration) {
+      busy = false;
+      setIdeasBusy(false);
+      $('#person-switch').disabled = false;
+      $('#composer button').disabled = false;
+      api('/api/plan').then(({ ok, data }) => { if (ok && ticket === chatGeneration) { app.plan = data; $('#chat-quota').textContent = planLine(); } }).catch(() => {});
+    }
   }
-}
-
-function ideasSheet() {
-  const list = node('div', 'idea-list');
-  for (const idea of IDEAS) {
-    const button = node('button', 'btn btn-line', idea); button.type = 'button';
-    button.addEventListener('click', () => { closeSheet(); showComposer(true); input().value = idea; autosize(); input().focus(); });
-    list.append(button);
-  }
-  openSheet('Что спросить у Фортуны', list);
 }
 
 async function peopleSheet() {
@@ -160,9 +167,13 @@ async function peopleSheet() {
     const button = node('button', 'btn btn-line', `${entry.label}${entry.id ? '' : ' · моя карта'}`); button.type = 'button';
     button.addEventListener('click', () => {
       personId = entry.id; history = []; app.dayCardContext = null;
+      chatGeneration++;
+      transcript().querySelectorAll('.msg:not(#chat-welcome)').forEach((row) => row.remove());
+      input().value = ''; showComposer(false);
+      $('#chat-suggestions').open = true;
       $('#person-name').textContent = entry.label;
       $('#person-note').textContent = entry.id ? 'Близкий человек' : 'Моя карта';
-      closeSheet(); drawChartChip();
+      closeSheet(); drawChartChip(); refreshIdeas();
     });
     list.append(button);
   }
@@ -170,6 +181,8 @@ async function peopleSheet() {
 }
 
 export function resetChat() { history = []; personId = null; people = null; app.dayCardContext = null;
+  chatGeneration++; replyController?.abort(); busy = false;
+  resetIdeas(); input().value = ''; $('#composer button').disabled = false; $('#person-switch').disabled = false;
   transcript().querySelectorAll('.msg:not(#chat-welcome)').forEach((row) => row.remove()); }
 
 export function prepareCardQuestion({ position, date, card }) {
@@ -184,7 +197,10 @@ export function prepareCardQuestion({ position, date, card }) {
 export function bindChat() {
   $('#chat-ask').addEventListener('click', () => showComposer(true));
   $('#chat-intro').addEventListener('click', () => { showComposer(true); input().value = INTRO_QUESTION; autosize(); });
-  $('#chat-ideas').addEventListener('click', ideasSheet);
+  bindIdeas(() => ({ owner: app.me?.user?.id, profileId: personId }), (question) => {
+    if (busy) return;
+    showComposer(true); input().value = question; autosize(); input().focus();
+  });
   $('#person-switch').addEventListener('click', peopleSheet);
   $('#composer').addEventListener('submit', (event) => { event.preventDefault(); send(input().value); });
   input().addEventListener('input', autosize);

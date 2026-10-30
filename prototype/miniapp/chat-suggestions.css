@@ -1,0 +1,27 @@
+.chat-suggestions { border: 1px solid var(--line); border-radius: 24px; background: var(--card); min-width: 0; }
+.chat-suggestions summary { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 18px 16px; cursor: pointer; list-style: none; font: 700 20px/1.25 var(--display); min-height: 56px; }
+.chat-suggestions summary::-webkit-details-marker { display: none; }
+.chat-suggestions summary span { color: var(--gold-light); transition: transform .2s; }
+.chat-suggestions[open] summary span { transform: rotate(180deg); }
+.chat-suggestions summary:focus-visible { outline: 2px solid var(--gold-light); outline-offset: 3px; border-radius: 24px; }
+.chat-suggestions-body { display: grid; gap: 14px; padding: 0 16px 18px; }
+.daily-question { display: grid; gap: 8px; width: 100%; padding: 16px; text-align: left; background: rgba(222,184,88,.09); border: 1px solid var(--gold); border-radius: 18px; }
+.daily-question-label { display: flex; align-items: center; gap: 8px; color: var(--gold-light); font: 700 13px/1.3 var(--display); }
+.daily-question-label img { flex: none; object-fit: contain; }
+.daily-question strong { font: 700 16px/1.4 var(--display); overflow-wrap: anywhere; }
+.daily-question small,.suggestion-note { margin: 0; color: var(--muted); font: 400 12px/1.5 var(--body); }
+.question-topics { display: flex; gap: 8px; }
+.question-topics button { flex: 1; min-width: 0; min-height: 46px; padding: 10px 8px; border: 1px solid var(--line); border-radius: 24px; font: 700 14px/1.25 var(--display); }
+.question-topics button[aria-pressed="true"] { color: var(--gold-light); border-color: var(--gold); background: rgba(222,184,88,.14); }
+.question-list { display: grid; gap: 10px; }
+.question-list button { min-height: 52px; padding: 14px; border: 1px solid var(--line); border-radius: 16px; text-align: left; font: 400 15px/1.45 var(--body); overflow-wrap: anywhere; }
+.more-questions { display: flex; align-items: center; gap: 12px; justify-self: start; min-height: 44px; color: var(--gold-light); font-size: 14px; }
+.chat-suggestions button:disabled { opacity: .55; cursor: wait; }
+.chat-suggestions button:not(:disabled):hover { border-color: var(--gold-light); }
+@media (min-width: 1000px) {
+  .chat-suggestions summary { padding: 20px 24px; font-size: 24px; }
+  .chat-suggestions-body { padding: 0 24px 24px; }
+  .daily-question strong { font-size: 20px; }
+  .question-list { grid-template-columns: repeat(3,minmax(0,1fr)); }
+}
+@media (prefers-reduced-motion: reduce) { .chat-suggestions summary span { transition: none; } }
