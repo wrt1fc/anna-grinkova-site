@@ -11,6 +11,19 @@
   mask-image: linear-gradient(90deg, transparent, #000 24%, #000 95%, transparent), linear-gradient(180deg, transparent, #000 10%, #000 88%, transparent);
   -webkit-mask-composite: source-in; mask-composite: intersect; }
 .ask-promo::after { display: none; }
+/* Desktop: the same chat-first hierarchy as mobile, with a taller portrait. */
+@media (min-width: 1000px) {
+  .home-top { display: block; }
+  .home-top .hero { display: none; }
+  .home-top .ask-promo { width: 100%; min-height: clamp(520px, 40vw, 600px); }
+  .home-top .ask-promo-copy { min-height: clamp(520px, 40vw, 600px); max-width: min(62%, 700px); padding: 56px; }
+  .home-top .ask-promo .eyebrow { font-size: 26px; }
+  .home-top .ask-promo-title { font-size: clamp(52px, 5.28vw, 76px); line-height: 1.12; margin: 6px 0 12px; }
+  .home-top .ask-promo-text { font-size: 18px; line-height: 1.5; max-width: 460px; }
+  .home-top .ask-promo .btn { width: 340px; min-height: 60px; font-size: 17px; }
+  .home-top .ask-promo-note { margin-top: 12px; font-size: 13px; }
+  [data-screen='home'] .home-natal { min-height: 76px; }
+}
 @keyframes fortuna-sun-float {
   0%, 100% { transform: translateY(0) rotate(-2deg); }
   50% { transform: translateY(-3px) rotate(2deg); }
