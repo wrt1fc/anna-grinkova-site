@@ -1,0 +1,59 @@
+/* Figma 08, mobile subscription 181:400. Keep prices and purchase state from the API. */
+@media (max-width: 599px) {
+  .app:has(.plan-screen:not([hidden])) {
+    background: linear-gradient(180deg, #0a0605, #0e0908 60%, #1a110c);
+  }
+  .app:has(.plan-screen:not([hidden])) .app-sky { display: none; }
+  .plan-screen { min-height: 900px; width: calc(100% - 40px); }
+  .plan-screen::before {
+    content: ''; position: absolute; inset: 0 -20px; pointer-events: none;
+    background: url('./assets/subscription-sky.png') center / cover; opacity: .04;
+  }
+  .plan-photo { inset: 0 -20px auto; height: 300px; background: var(--bg); }
+  .plan-photo picture { display: contents; }
+  .plan-photo img { position: absolute; top: -11.25%; width: 100%; height: 193.77%; object-fit: cover; }
+  .plan-photo::after { top: 110px; background: linear-gradient(180deg, transparent, var(--bg)); }
+  .plan-body { gap: 0; }
+  .plan-screen .close-btn {
+    top: 0; right: 0; width: 40px; height: 40px; border-radius: 20px;
+    border-color: rgba(222, 184, 88, .3);
+    background: url('./assets/subscription-close.svg') center / 18px 18px no-repeat,
+      linear-gradient(180deg, rgba(42, 28, 21, .78), rgba(26, 17, 13, .78));
+    box-shadow: 0 10px 24px rgba(0, 0, 0, .35);
+  }
+  .plan-screen .close-btn::before, .plan-screen .close-btn::after { display: none; }
+  .plan-screen .title-lg { margin-top: 276px; font-size: 28px; line-height: 35px; }
+  .plan-screen .lead { margin-top: 3px; font-size: 14px; line-height: 20px; }
+  .plan-list { margin-top: 16px; gap: 10px; }
+  .plan-screen .option {
+    min-height: 64px; padding: 10px 15px; gap: 12px; border-radius: 20px;
+    border-color: rgba(222, 184, 88, .3);
+    background: linear-gradient(180deg, rgba(42, 28, 21, .78), rgba(26, 17, 13, .78));
+    box-shadow: 0 10px 24px rgba(0, 0, 0, .35);
+  }
+  .plan-screen .option[aria-checked='true'] { border-color: rgba(222, 184, 88, .9); }
+  .plan-screen .radio { width: 20px; height: 20px; border: 0; background: url('./assets/subscription-radio.svg') center / contain no-repeat; }
+  .plan-screen .option[aria-checked='true'] .radio { background-image: url('./assets/subscription-radio-selected.svg'); }
+  .plan-screen .radio::after { display: none; }
+  .plan-screen .option-text strong { font-size: 16px; line-height: 22px; }
+  .plan-screen .option-price { gap: 3px; }
+  .plan-screen .option-price strong { color: var(--ink); font-size: 20px; line-height: 25px; }
+  .plan-screen .option[aria-checked='true'] .option-price strong { color: var(--gold-light); }
+  .plan-screen .option-price small { font-size: 11px; line-height: 14px; }
+  .plan-screen .block {
+    margin-top: 14px; min-height: 190px; padding: 13px 17px 20px; gap: 10px;
+    border-radius: 22px; border-color: rgba(222, 184, 88, .3);
+    background: linear-gradient(180deg, rgba(42, 28, 21, .78), rgba(26, 17, 13, .78));
+    box-shadow: 0 10px 24px rgba(0, 0, 0, .35);
+  }
+  .plan-screen .eyebrow-caps { margin: 0; font-size: 11px; font-weight: 700; line-height: 14px; letter-spacing: 0; }
+  .plan-screen .ticks { gap: 14px; }
+  .plan-screen .ticks li { gap: 12px; font-size: 15px; line-height: 20px; letter-spacing: -.01em; }
+  .plan-screen .ticks li::before {
+    width: 18px; height: 18px; margin: 0; border: 0; transform: none;
+    background: url('./assets/subscription-check.svg') center / contain no-repeat;
+  }
+  .plan-screen [data-note]:not(:empty) { margin-top: 14px; }
+  .plan-screen #plan-buy { margin-top: 20px; min-height: 52px; border-radius: 26px; box-shadow: 0 6px 20px rgba(222, 184, 88, .35); }
+  .plan-screen .legal-line { margin-top: 12px; font-size: 12px; line-height: 18px; }
+}

@@ -4,7 +4,7 @@ import { $, app, birth, planLine, refreshPlan, screenEl, setNote, visitorName } 
 import { closeSheet, node, openSheet } from './sheet.js';
 
 const PERIOD_LABEL = { 30: 'На месяц', 90: 'На 3 месяца' };
-const FEATURES = ['Прогноз на день', 'Больше вопросов Фортуне каждый день', 'Разбор натальной карты', 'Ответ по авторской методике'];
+const FEATURES = ['Прогноз на день и на неделю', 'Больше вопросов Фортуне каждый день', 'Разбор натальной карты', 'Ответ по методике Фортуны'];
 const PAY_HOST = 'payform.ru';
 const POLL_MS = 4000;
 const price = (value) => `${new Intl.NumberFormat('ru-RU').format(value)} ₽`;

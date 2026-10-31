@@ -23,6 +23,7 @@
   <link rel="stylesheet" href="/miniapp/fortuna-home.css?v=6" />
   <link rel="stylesheet" href="/miniapp/card-day.css?v=1" />
   <link rel="stylesheet" href="/miniapp/chat-suggestions.css?v=1" />
+  <link rel="stylesheet" href="/miniapp/subscription-mobile.css?v=1" />
 </head>
 <body>
 <div class="app" id="app">
@@ -304,7 +305,7 @@
 
     <!-- Подписка -->
     <section class="screen screen-narrow plan-screen screen-desk" data-screen="plan" hidden aria-labelledby="t-plan">
-      <div class="plan-photo" aria-hidden="true"><img src="/miniapp/assets/fortuna-portrait-v2.webp" alt="" width="800" height="1200" /></div>
+      <div class="plan-photo" aria-hidden="true"><picture><source media="(max-width: 599px)" srcset="/miniapp/assets/fortuna-home-desktop.png" /><img src="/miniapp/assets/fortuna-portrait-v2.webp" alt="" width="800" height="1200" /></picture></div>
       <div class="plan-body">
       <button class="close-btn" type="button" data-back aria-label="Закрыть"></button>
       <h1 id="t-plan" class="title-lg">Подписка</h1>
@@ -412,6 +413,6 @@
 </div>
 <script src="/natal-wheel.js?v=3"></script>
 <script src="/pwa.js"></script>
-<script type="module" src="/miniapp/miniapp.js?v=8"></script>
+<script type="module" src="/miniapp/miniapp.js?v=9"></script>
 </body>
 </html>
