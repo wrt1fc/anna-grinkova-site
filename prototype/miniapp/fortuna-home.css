@@ -96,3 +96,8 @@ img[src*='/icons-3d/'] { object-fit: contain; flex: none; }
 @media (min-width: 600px) and (max-width: 999px) {
   .ask-promo, .ask-promo-copy { min-height: 320px; }
 }
+
+/* Phone forecast shortcuts: compact height, with room for two-line labels. */
+@media (max-width: 599px) {
+  [data-screen='home'] .tile { min-height: 72px; padding: 10px 12px; }
+}
