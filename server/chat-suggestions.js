@@ -1,5 +1,5 @@
 import { natalChart, POINT_NAMES } from './astro-chart.js';
-import { SIGN_PREPOSITIONAL } from './anna-method.js';
+import { SIGN_PREPOSITIONAL, SIGN_RULERS } from './anna-method.js';
 import { moscowDate, tarotForDate } from './daily-forecast.js';
 
 const PLANETS = ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'pluto'];
@@ -56,6 +56,11 @@ export function chatSuggestions({ userId, profile = null, profileId = null, now 
   const natalQuestions = profileId
     ? ['Что главное в натальной карте этого человека?', 'Как его Венера проявляется в отношениях?', 'Какие сильные стороны видны в его карте?']
     : ['Что главное в моей натальной карте?', 'Как моя Венера проявляется в отношениях?', 'Какие сильные стороны видны в моей карте?'];
+  const seventh = natal?.cusps?.find((item) => item.house === 7);
+  if (seventh) {
+    const rulerKey = SIGN_RULERS[seventh.sign][0], ruler = natal.planets[rulerKey];
+    natalQuestions[1] = `В ${profileId ? 'его' : 'моей'} карте 7-й дом в ${SIGN_PREPOSITIONAL[seventh.sign]}, управитель — ${POINT_NAMES[rulerKey]} в ${ruler.house}-м доме. Как это проявляется в выборе партнёра?`;
+  }
   const cardQuestions = [`Что для ${profileId ? 'этого человека' : 'меня'} может значить сегодняшняя карта «${card.name}»?`,
     `На что ${profileId ? 'ему ' : ''}обратить внимание сегодня с картой «${card.name}»?`,
     `Какой небольшой шаг ${profileId ? 'он может' : 'можно'} сделать сегодня, опираясь на образ карты «${card.name}»?`];

@@ -30,6 +30,10 @@ async function paint(data, position, ticket, owner) {
   await preview.decode();
   if (ticket !== generation || owner !== app.me?.user?.id) return false;
   current = { ...data, position, owner: app.me.user.id };
+  const deck = $('#card-deck');
+  const before = deck.getBoundingClientRect();
+  document.querySelector('[data-screen="card"]').classList.add('has-card');
+  $('#card-reveal').hidden = false; $('#card-caption').hidden = false;
   const card = data.card;
   const image = $('#card-image');
   image.src = path;
@@ -47,6 +51,13 @@ async function paint(data, position, ticket, owner) {
   $('#card-date').textContent = formatDate(data.date);
   for (const button of buttons()) button.setAttribute('aria-pressed', String(Number(button.dataset.dayCard) === position));
   showFace(true);
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const after = deck.getBoundingClientRect();
+    if (before.width && after.width) deck.animate([
+      { transform: `translate(${before.x-after.x}px, ${before.y-after.y}px) scale(${before.width/after.width})` },
+      { transform: 'none' },
+    ], { duration: 450, easing: 'cubic-bezier(.2,.7,.2,1)' });
+  }
   return true;
 }
 
@@ -96,10 +107,12 @@ export function resetCard() {
   controller?.abort();
   controller = null; current = null; choosing = false;
   app.dayCardContext = null;
+  document.querySelector('[data-screen="card"]').classList.remove('has-card');
+  $('#card-reveal').hidden = true; $('#card-caption').hidden = true;
   $('#card-result').hidden = true;
   $('#card-empty').hidden = false;
   $('#card-personal').hidden = true;
-  $('#card-image').src = '/assets/card-back.svg';
+  $('#card-image').src = '/miniapp/assets/card-back-realistic.webp';
   $('#card-image').alt = '';
   $('#card-caption').textContent = 'Коснись карты, чтобы открыть её';
   showFace(false);
@@ -115,7 +128,8 @@ export async function enterCard() {
 }
 
 export function bindCard() {
-  $('#card-open').addEventListener('click', () => select(0));
+  $('#card-open').textContent = 'Выбрать из пяти карт';
+  $('#card-open').addEventListener('click', () => { $('#card-deck').scrollIntoView({ block: 'center', behavior: 'smooth' }); buttons()[0].focus({ preventScroll: true }); });
   $('#card-reveal').addEventListener('click', () => {
     if (current) showFace(!$('#card-reveal').classList.contains('is-open'));
     else select(0);

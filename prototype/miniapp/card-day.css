@@ -8,12 +8,15 @@
 .card-day-layout { display: grid; gap: 24px; align-items: start; }
 .card-day-visual { display: grid; justify-items: center; gap: 14px; min-width: 0; }
 .day-card-stage { position: relative; width: 228px; max-width: 100%; aspect-ratio: 176 / 272; margin: 14px 0; border-radius: 18px; perspective: 1000px; }
+.day-card-stage { box-shadow: 2px 4px 0 #795e32, 5px 9px 20px #0009; }
 .day-card-face { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; backface-visibility: hidden; -webkit-backface-visibility: hidden; transition: transform .5s ease; border: 1px solid var(--line); }
 .day-card-face img { width: 100%; height: 100%; object-fit: cover; }
-.day-card-face-back { transform: rotateY(0); }
-.day-card-face-front { transform: rotateY(180deg); }
-.day-card-stage.is-open .day-card-face-back { transform: rotateY(-180deg); }
-.day-card-stage.is-open .day-card-face-front { transform: rotateY(0); }
+.day-card-face-back { opacity: 1; visibility: visible; }
+.day-card-face-front { opacity: 0; visibility: hidden; }
+.day-card-stage.is-open .day-card-face-back { opacity: 0; visibility: hidden; }
+.day-card-stage.is-open .day-card-face-front { opacity: 1; visibility: visible; }
+.day-card-stage.is-open { animation: card-uncover .4s ease-out; }
+@keyframes card-uncover { from { opacity: .3; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: none; } }
 .day-card-stage:disabled { cursor: wait; }
 .day-card-caption, .day-card-refresh { margin: 0; text-align: center; color: var(--muted); font-size: 13px; }
 .day-card-stage.is-open + .day-card-caption { color: var(--gold-light); }
@@ -21,6 +24,13 @@
 .day-card-deck { width: min(100%, 390px); display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; padding-block: 6px; }
 .day-card-choice { display: grid; justify-items: center; gap: 6px; min-width: 44px; min-height: 44px; color: var(--gold-light); font-size: 12px; }
 .day-card-choice img { width: 100%; height: auto; border-radius: 5px; border: 1px solid transparent; }
+.day-card-choice img { box-shadow: 1px 2px 0 #795e32, 3px 5px 10px #0008; }
+.day-card-choice:hover:not(:disabled) img { transform: translateY(-4px); }
+.day-card-deck { transform-origin: top left; }
+[data-screen='card']:not(.has-card) .card-day-layout { display: flex; flex-direction: column; align-items: center; gap: 32px; }
+[data-screen='card']:not(.has-card) .card-day-visual { width: 100%; }
+[data-screen='card']:not(.has-card) .day-card-deck { width: min(100%, 800px); gap: clamp(8px, 2vw, 24px); padding-block: 20px; }
+[data-screen='card']:not(.has-card) .card-day-reading { width: min(100%, 740px); }
 .day-card-choice[aria-pressed='true'] img { border-color: var(--gold-light); box-shadow: 0 0 0 1px var(--gold-light); }
 .day-card-choice:disabled { cursor: wait; }
 .card-day-reading, .day-card-result { display: grid; gap: 18px; min-width: 0; }
@@ -57,4 +67,5 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .day-card-face { transition: none; }
+  .day-card-stage.is-open { animation: none; }
 }

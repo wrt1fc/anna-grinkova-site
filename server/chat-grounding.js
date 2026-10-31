@@ -3,6 +3,8 @@
 // and the training set builder, so the tuned model learns on exactly the prompt it is served with.
 import { asksAboutChart, chartForPrompt, chartSectionsFor, natalChart, POINT_NAMES } from './astro-chart.js';
 import { ELEMENT_NAMES, SIGN_PREPOSITIONAL, asksAboutMoney, elementOf, methodQueries, moneyForPrompt, moneyProfile } from './anna-method.js';
+import { isRelationshipQuestion } from './chat-topics.js';
+import { relationshipContext } from './relationship-context.js';
 
 // Natal chart, transits, directions and Anna's money method for chart and money questions only;
 // birth date, place and email never reach the model.
@@ -13,7 +15,7 @@ const COMPARED = ['sun', 'moon', 'venus', 'mars'];
 const COMPATIBILITY_TOPIC = /совместим|подходим ли|подходим друг|подходит ли (он|она) мне|(мы|нам) с (ним|ней|[А-ЯЁ]\p{L}+)|(у нас|наши|наша|наш) (пар|отношени|союз)|уживаться/iu;
 export function asksAboutCompatibility(message) { return COMPATIBILITY_TOPIC.test(message); }
 
-const chartOf = (profile) => natalChart({ birthUtc: profile.birthUtc, latitude: profile.birthLatitude, longitude: profile.birthLongitude });
+const chartOf = (profile) => natalChart({ birthUtc: profile.birthUtc, latitude: profile.birthLatitude, longitude: profile.birthLongitude, timeKnown: profile.birthTime !== null });
 
 // Planet by planet: the sign and element of each person and whether the elements match, so the reply compares
 // both charts instead of describing one of them.
@@ -35,6 +37,7 @@ export function chartContext(profile, message, now = new Date(), { partner = nul
   if (!profile?.birthUtc) return { chart: { missing: 'Данные рождения не заполнены в личном кабинете, натальная карта не рассчитана.' }, queries: [] };
   const natal = chartOf(profile);
   const chart = chartForPrompt(natal, now, { include: chartSectionsFor(message) });
+  if (isRelationshipQuestion(message)) chart.relationship = relationshipContext(natal);
   if (compatibility) {
     if (partner?.birthUtc) chart.partner = partnerForPrompt(natal, { ...partner, chart: chartOf(partner) });
     else chart.partnerMissing = 'Карты партнёра нет: для разбора совместимости добавь его или её в разделе «Близкие люди».';
