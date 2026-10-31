@@ -104,7 +104,10 @@ img[src*='/icons-3d/'] { object-fit: contain; flex: none; }
     border: 1px solid rgba(222,184,88,.3); border-radius: inherit; background: none; box-shadow: 0 10px 24px rgba(0,0,0,.35); }
   .ask-promo-portrait { top: -15.972222%; right: 0; height: 115.972222%; aspect-ratio: 590 / 668; }
   .ask-promo-crop { inset: 0; width: 100%; height: 100%; border-radius: 0;
-    -webkit-mask-image: url('./assets/figma-home-desktop-mask-top.svg'); mask-image: url('./assets/figma-home-desktop-mask-top.svg');
+    /* The shifted inner side mask extends past this crop. Fade at the actual
+       outer edge as well, so clipping cannot leave a vertical background seam. */
+    -webkit-mask-image: url('./assets/figma-home-desktop-mask-top.svg'),linear-gradient(to right,#000 calc(100% - 48px),transparent);
+    mask-image: url('./assets/figma-home-desktop-mask-top.svg'),linear-gradient(to right,#000 calc(100% - 48px),transparent);
     -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-position: 0 0; mask-position: 0 0; }
   .ask-promo-side { inset: auto; left: 13.220339%; top: -7.204301%; width: 90.169492%; height: 114.4086%;
     -webkit-mask-image: url('./assets/figma-home-desktop-mask-side.svg'); mask-image: url('./assets/figma-home-desktop-mask-side.svg');
