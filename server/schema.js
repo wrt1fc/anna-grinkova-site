@@ -101,6 +101,10 @@ const MIGRATIONS = [
   ALTER TABLE birth_profiles ADD COLUMN gender TEXT CHECK (gender IN ('female', 'male'));
   ALTER TABLE chart_profiles ADD COLUMN gender TEXT CHECK (gender IN ('female', 'male'));
   `,
+  // 4: operator-managed test entitlement; never writable through profile or registration APIs.
+  `
+  ALTER TABLE users ADD COLUMN chat_unlimited BOOLEAN NOT NULL DEFAULT FALSE;
+  `,
 ];
 
 const MIGRATION_LOCK = 71_412_026; // any constant shared by all app servers

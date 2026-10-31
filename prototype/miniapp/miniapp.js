@@ -1,12 +1,12 @@
 // The «Фортуна» mini-app: routes, sign-in and registration, birth data, help and install screens.
 import { api, formatDate } from './api.js';
-import { $, app, birth, refreshMe, screenEl, setNote } from './state.js';
+import { $, app, birth, refreshMe, screenEl, setNote } from './state.js?v=2';
 import { node } from './sheet.js';
 import { pickCity, pickDate, pickTime } from './pickers.js';
-import { bindInfo, enterDay, enterHome, enterNatal, enterWeek } from './screens-info.js?v=2';
-import { bindChat, enterChat, resetChat } from './screens-chat.js?v=4';
-import { bindCard, enterCard, resetCard } from './screens-card.js?v=4';
-import { bindPay, bindPeople, enterPay, enterPeople, enterPlan, enterProfile } from './screens-account.js?v=3';
+import { bindInfo, enterDay, enterHome, enterNatal, enterWeek } from './screens-info.js?v=3';
+import { bindChat, enterChat, resetChat } from './screens-chat.js?v=5';
+import { bindCard, enterCard, resetCard } from './screens-card.js?v=5';
+import { bindPay, bindPeople, enterPay, enterPeople, enterPlan, enterProfile } from './screens-account.js?v=4';
 
 const PUBLIC = new Set(['login', 'register', 'code', 'help', 'install']);
 const AUTH_SCREENS = new Set(['login', 'register', 'code']);

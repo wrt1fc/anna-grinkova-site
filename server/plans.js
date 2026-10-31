@@ -9,8 +9,10 @@ export function planFor(name) { return PLANS[name] ?? PLANS[DEFAULT_PLAN]; }
 export function extraProfileLimit(name) { return planFor(name).maxPeople - 1; }
 export function isPlan(name) { return Object.hasOwn(PLANS, name); }
 
-export function publicPlan(name) {
+export function publicPlan(name, user = null) {
   const plan = planFor(name);
   return { id: Object.hasOwn(PLANS, name) ? name : DEFAULT_PLAN, label: plan.label, maxPeople: plan.maxPeople,
-    dailyChatMessages: plan.dailyChatMessages, dailyTarotReadings: plan.dailyTarotReadings, relations: plan.relations };
+    dailyChatMessages: user?.chatUnlimited === true ? null : plan.dailyChatMessages,
+    ...(user?.chatUnlimited === true ? { unlimitedChat: true } : {}),
+    dailyTarotReadings: plan.dailyTarotReadings, relations: plan.relations };
 }

@@ -1,8 +1,8 @@
 // The chat with Fortuna: greeting, chart chips, the three starting buttons, the composer and the streamed answer.
 import { api, readEvents } from './api.js';
-import { $, app, loadNatal, planLine, visitorName } from './state.js';
+import { $, app, loadNatal, planLine, visitorName } from './state.js?v=2';
 import { closeSheet, node, openSheet } from './sheet.js';
-import { activeIdeaDraw, bindIdeas, refreshIdeas, resetIdeas, setIdeasBusy } from './chat-ideas.js?v=1';
+import { activeIdeaDraw, bindIdeas, refreshIdeas, resetIdeas, setIdeasBusy } from './chat-ideas.js?v=2';
 
 const MAX_CHARS = 600;
 const HISTORY_ITEMS = 6;

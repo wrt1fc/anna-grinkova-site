@@ -58,7 +58,7 @@ export function relationshipAnswerProblems(answer, chart, length = 'medium') {
   const ordinals = { первом: 1, втором: 2, третьем: 3, четвёртом: 4, четвертом: 4, пятом: 5, шестом: 6, седьмом: 7, восьмом: 8, девятом: 9, десятом: 10, одиннадцатом: 11, двенадцатом: 12 };
   const houseNumber = (s) => ordinals[s.toLowerCase()] ?? Number.parseInt(s, 10);
   const signs = Object.values(SIGN_PREPOSITIONAL).join('|');
-  if (!chart.partner) {
+  if (!chart.partner && r.requireOverview !== false) {
     if (r.seventhHouse) {
       const cuspClaim = new RegExp(`(?:7(?:-?(?:й|го|ого))?|седьм(?:ой|ого)) дом(?:а)?(?: у тебя)?(?: стоит| находится)? в ${SIGN_PREPOSITIONAL[r.seventhHouse.sign]}`, 'iu');
       if (!cuspClaim.test(answer)) return true;

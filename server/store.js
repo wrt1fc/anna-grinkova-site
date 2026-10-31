@@ -41,9 +41,10 @@ function createAccounts(q, transaction) {
   }
 
   async function userForSession(hash, now = Date.now()) {
-    const row = await q.one(`SELECT users.id, users.email, users.email_verified_at, users.display_name FROM sessions
+    const row = await q.one(`SELECT users.id, users.email, users.email_verified_at, users.display_name, users.chat_unlimited FROM sessions
       JOIN users ON users.id = sessions.user_id WHERE sessions.token_hash = $1 AND sessions.expires_at > $2`, [hash, now]);
-    return row ? { id: row.id, email: row.email, emailVerified: row.email_verified_at !== null, displayName: row.display_name } : null;
+    return row ? { id: row.id, email: row.email, emailVerified: row.email_verified_at !== null, displayName: row.display_name,
+      ...(row.chat_unlimited === true ? { chatUnlimited: true } : {}) } : null;
   }
 
   async function saveDisplayName(userId, name) {

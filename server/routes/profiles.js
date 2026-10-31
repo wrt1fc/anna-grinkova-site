@@ -26,10 +26,10 @@ function parseProfileBody(body, plan) {
 export async function handleProfileRoutes({ req, res, path, user, store, json, readJson }) {
   if (path === '/api/plan' && req.method === 'GET') {
     const plan = await store.getPlan(user.id);
-    return json(res, 200, { plan: publicPlan(plan), people: 1 + (await store.listChartProfiles(user.id)).length }), true;
+    return json(res, 200, { plan: publicPlan(plan, user), people: 1 + (await store.listChartProfiles(user.id)).length }), true;
   }
   if (path === '/api/profiles' && req.method === 'GET') {
-    return json(res, 200, { plan: publicPlan(await store.getPlan(user.id)), self: await store.getBirthProfile(user.id),
+    return json(res, 200, { plan: publicPlan(await store.getPlan(user.id), user), self: await store.getBirthProfile(user.id),
       profiles: await profilesWithAccess(store, user.id), relationLabels: RELATION_LABELS }), true;
   }
   if (path === '/api/profiles' && req.method === 'POST') {

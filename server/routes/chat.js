@@ -10,6 +10,7 @@ import { asksAboutCompatibility, chartContext, findMaterials } from '../chat-gro
 import { clientAddress } from '../traffic.js';
 import { fallbackReading, wrongCard } from '../tarot-guard.js';
 import { chatSuggestions } from '../chat-suggestions.js';
+import { groundingQuestion } from '../chat-topics.js';
 
 const MAX_MESSAGE_CHARS = 600;
 // Seeds the personal tarot card for a partner/family profile apart from any account id.
@@ -140,13 +141,14 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
       releaseGate();
     };
     const day = moscowDate();
+    const quotaCharged = tarot || user.chatUnlimited !== true;
     // Readings are counted apart from chat messages: spending one never uses up the other.
     const quotaKind = `${tarot ? 'tarot' : 'chat'}:${user.id}`;
     // A database failure here must still free the slot and the per-user lock, or chat would stay blocked.
     let plan, allowed, round = 0;
     try {
       plan = planFor(await store.getPlan(user.id));
-      allowed = await store.consumeDailyQuota(quotaKind, day, tarot ? plan.dailyTarotReadings : plan.dailyChatMessages);
+      allowed = !quotaCharged || await store.consumeDailyQuota(quotaKind, day, tarot ? plan.dailyTarotReadings : plan.dailyChatMessages);
       // Readings already given today; a failed one is given back, so its unseen cards are dealt again next time.
       if (allowed && tarot) round = (await store.dailyQuotaUsed(quotaKind, day)) - 1;
     } catch (error) { release(); throw error; }
@@ -159,6 +161,7 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
     }
 
     const message = body.message.trim();
+    const topicMessage = groundingQuestion(message, body.history ?? []);
     const draw = body.draw ?? 0;
     // Any failure while preparing the prompt frees the slot and gives the message back.
     let context, astro, materials, card;
@@ -175,14 +178,14 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
           ? personalForecastForDate(day, chart.profile, chart.profileId ? PROFILE_SEED_OFFSET + chart.profileId : user.id, general, draw)
           : general;
         context = chatForecastContext(forecast, chart.subject);
-        const pair = compatibilityPair(chart, message);
-        astro = chartContext(pair.primary, message, new Date(), { partner: pair.partner });
+        const pair = compatibilityPair(chart, topicMessage);
+        astro = chartContext(pair.primary, message, new Date(), { partner: pair.partner, history: body.history ?? [] });
         // Only the text goes to the model; file names and scores stay on the server.
         materials = findMaterials(knowledge, message, astro.queries);
       }
     } catch (error) {
       release();
-      await store.refundDailyQuota(quotaKind, day).catch(() => {});
+      if (quotaCharged) await store.refundDailyQuota(quotaKind, day).catch(() => {});
       throw error;
     }
     const streaming = String(req.headers.accept ?? '').includes('text/event-stream');
@@ -217,12 +220,12 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
         await store.appendChatMessages(user.id, chart.profileId, [{ role: 'user', content: message }, { role: 'assistant', content: answer }]);
       } catch (error) { console.error('Chat history not saved:', error.message); }
       const payload = { ...extra, answer, filtered, signature: historySigner.sign(answer),
-        context: { date: day, scope: context.scope, basis: astro.chart?.missing ? 'birth-data-missing' : astro.chart ? 'natal' : asksAboutDay(message) ? 'day' : 'general', subject: chart.subject } };
+        context: { date: day, scope: context.scope, basis: astro.chart?.missing ? 'birth-data-missing' : astro.chart ? 'natal' : asksAboutDay(topicMessage) ? 'day' : 'general', subject: chart.subject } };
       return streaming ? (send('done', payload), res.end()) : json(res, 200, payload);
     };
     try {
       const generate = (extra = {}) => chatWriter.answer({ message, history: tarot ? [] : historySigner.trusted(body.history ?? []),
-        forecast: tarot ? context : forecastForQuestion(context, message),
+        forecast: tarot ? context : forecastForQuestion(context, topicMessage),
         visitorName: user.displayName || null, visitorGender: chart.visitorGender ?? null, chart: astro.chart, ...(tarot ? { mode: TAROT_MODE } : {}),
         length: tarot ? 'medium' : body.length ?? DEFAULT_ANSWER_LENGTH, ...(!tarot && CHAT_TONES.includes(body.tone) ? { tone: body.tone } : {}), materials, signal: abort.signal, onDelta, ...extra });
       let reply = await generate();
@@ -249,7 +252,7 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
       // A message counts only when an answer reached the visitor. Leaving after part of the answer was shown keeps it
       // counted: otherwise reading a reply and closing the stream before its end would make the plan limit endless.
       const clientLeftAfterAnswer = abort.signal.aborted && sent > 0;
-      if (!clientLeftAfterAnswer) await store.refundDailyQuota(quotaKind, day);
+      if (quotaCharged && !clientLeftAfterAnswer) await store.refundDailyQuota(quotaKind, day);
       if (abort.signal.aborted) return undefined;
       metrics.count('chat_errors');
       console.warn(tarot ? 'Tarot reading failed:' : 'Local chat failed:', error.message);

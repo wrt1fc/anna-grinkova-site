@@ -3,7 +3,7 @@
 // and the training set builder, so the tuned model learns on exactly the prompt it is served with.
 import { asksAboutChart, chartForPrompt, chartSectionsFor, natalChart, POINT_NAMES } from './astro-chart.js';
 import { ELEMENT_NAMES, SIGN_PREPOSITIONAL, asksAboutMoney, elementOf, methodQueries, moneyForPrompt, moneyProfile } from './anna-method.js';
-import { isRelationshipQuestion } from './chat-topics.js';
+import { groundingQuestion, isPartnerPreferenceQuestion, isRelationshipQuestion } from './chat-topics.js';
 import { relationshipContext } from './relationship-context.js';
 
 // Natal chart, transits, directions and Anna's money method for chart and money questions only;
@@ -30,21 +30,23 @@ function partnerForPrompt(own, partner) {
     compare: COMPARED.map(line) };
 }
 
-export function chartContext(profile, message, now = new Date(), { partner = null } = {}) {
-  const money = asksAboutMoney(message);
-  const compatibility = asksAboutCompatibility(message);
-  if (!asksAboutChart(message) && !money && !compatibility) return { chart: null, queries: [] };
+export function chartContext(profile, message, now = new Date(), { partner = null, history = [] } = {}) {
+  const question = groundingQuestion(message, history);
+  const money = asksAboutMoney(question);
+  const compatibility = asksAboutCompatibility(question);
+  if (!asksAboutChart(question) && !money && !compatibility) return { chart: null, queries: [] };
   if (!profile?.birthUtc) return { chart: { missing: 'Данные рождения не заполнены в личном кабинете, натальная карта не рассчитана.' }, queries: [] };
   const natal = chartOf(profile);
-  const chart = chartForPrompt(natal, now, { include: chartSectionsFor(message) });
-  if (isRelationshipQuestion(message)) chart.relationship = relationshipContext(natal);
+  const chart = chartForPrompt(natal, now, { include: chartSectionsFor(question) });
+  if (isRelationshipQuestion(message)) chart.relationship = { ...relationshipContext(natal), requireOverview: isPartnerPreferenceQuestion(message) };
   if (compatibility) {
     if (partner?.birthUtc) chart.partner = partnerForPrompt(natal, { ...partner, chart: chartOf(partner) });
     else chart.partnerMissing = 'Карты партнёра нет: для разбора совместимости добавь его или её в разделе «Близкие люди».';
   }
   if (!money) return { chart, queries: [] };
   const profileMoney = moneyProfile(natal);
-  return { chart: { ...chart, money: moneyForPrompt(profileMoney) }, queries: methodQueries(profileMoney) };
+  chart.money = moneyForPrompt(profileMoney);
+  return { chart, queries: methodQueries(profileMoney) };
 }
 
 // Anna's slides that match this chart first (2nd house sign, its ruler, hard aspects, strategy), then the visitor's own words.

@@ -37,7 +37,7 @@ export async function refreshPlan() {
 
 export function planLine() {
   const plan = app.plan?.plan;
-  return plan ? `${plan.label} · ${plan.dailyChatMessages} вопросов в день` : '';
+  return plan ? `${plan.label} · ${plan.unlimitedChat ? 'безлимитные вопросы' : `${plan.dailyChatMessages} вопросов в день`}` : '';
 }
 
 // The natal chart of the account, calculated once per profile.

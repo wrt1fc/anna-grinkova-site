@@ -3,7 +3,7 @@
 // Everything is calculated locally; the chat receives only the compact result.
 import { SiderealTime, e_tilt, MakeTime } from 'astronomy-engine';
 import { chartAt } from './astro-personal.js';
-import { isRelationshipQuestion } from './chat-topics.js';
+import { isPersonalLifeQuestion } from './chat-topics.js';
 
 export const SIGNS = ['Овен', 'Телец', 'Близнецы', 'Рак', 'Лев', 'Дева', 'Весы', 'Скорпион', 'Стрелец', 'Козерог', 'Водолей', 'Рыбы'];
 export const POINT_NAMES = { sun: 'Солнце', moon: 'Луна', mercury: 'Меркурий', venus: 'Венера', mars: 'Марс', jupiter: 'Юпитер',
@@ -190,6 +190,8 @@ export function chartForPrompt(natal, instant = new Date(), { include = ['natal'
     planets: Object.entries(natal.planets).map(([name, p]) =>
       `${POINT_NAMES[name]} ${fmt(p)}${p.house ? `, ${p.house} дом` : ''}${p.retrograde && name !== 'node' ? ', ретроградный' : ''}`),
   };
+  // Exact facts for local output validation; non-enumerable, so the prompt keeps its compact public shape.
+  Object.defineProperty(out, 'calculated', { value: { positions: natal.planets, angles: natal.angles, houses: natal.cusps, aspects: natal.aspects } });
   if (natal.angles) out.angles = [`Асцендент ${fmt(natal.angles.asc)}`, `MC ${fmt(natal.angles.mc)}`];
   if (natal.cusps) out.houses = natal.cusps.map((c) => ({ house: c.house, sign: c.sign }));
   out.aspects = natal.aspects.slice(0, 12).map((a) => `${POINT_NAMES[a.first]} — ${POINT_NAMES[a.second]}: ${ASPECT_NAMES[a.aspect]} (орб ${a.orb}°)`);
@@ -206,10 +208,9 @@ export function chartForPrompt(natal, instant = new Date(), { include = ['natal'
   return out;
 }
 
-const CHART_TOPIC = /натал|карт[аеуы] рождени|гороскоп|асцендент|\bасц|\bmc\b|середин[аеу] неба|дом[аеу]?\b|\d+\s*дом|куспид|аспект|ретроград|транзит|дирекци|прогресси|солнечн(ая|ой) дуг|узл|лилит|(солнц|лун|меркури|венер|марс|юпитер|сатурн|уран|нептун|плутон)\S* в /i;
-const PERSONAL_TOPIC = /у меня|меня жд|мне |мо[йяёи]|со мной|будут обстоять|своего|свою|для себя/iu;
+const CHART_TOPIC = /натал|карт[аеуы] рождени|гороскоп|асцендент|(?<!\p{L})асц(?!\p{L})|\bmc\b|середин[аеу] неба|\d+(?:-?(?:й|го|м))?\s*дом|(?:перв|втор|треть|четв[её]рт|пят|шест|седьм|восьм|девят|десят|одиннадцат|двенадцат)[а-яё]*\s+дом|куспид|аспект|ретроград|транзит|дирекци|прогресси|солнечн(ая|ой) дуг|узл|лилит|(солнц|лун|меркури|венер|марс|юпитер|сатурн|уран|нептун|плутон)\S* в /iu;
 export function asksAboutChart(message) {
-  return CHART_TOPIC.test(message) || (isRelationshipQuestion(message) && PERSONAL_TOPIC.test(message));
+  return CHART_TOPIC.test(message) || isPersonalLifeQuestion(message);
 }
 export function chartSectionsFor(message) {
   const include = ['natal'];

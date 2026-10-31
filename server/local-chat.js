@@ -5,6 +5,8 @@ import { conversationalOpening, hasFormalAddress } from './chat-style.js';
 import { SAFE_FALLBACK_ANSWER } from './chat-safety.js';
 import { isRelationshipQuestion } from './chat-topics.js';
 import { groundedRelationshipAnswer, relationshipAnswerProblems } from './relationship-context.js';
+import { groundedNatalAnswer, wrongCalculatedClaim } from './chart-answer-check.js';
+import { groundingQuestion } from './chat-topics.js';
 
 const ENDPOINT = ollamaGenerateUrl();
 const MODEL_TIMEOUT_MS = 45_000;
@@ -72,6 +74,7 @@ function questionGuidance(message, chart, mode) {
   if (chart?.missing) return direct + ' Личных данных пока нет: коротко попроси добавить дату, время и город рождения в кабинете. Не перечисляй планеты. Затем задай один простой вопрос: человек сейчас в паре или хочет встретить партнёра?';
   if (chart?.partner) return direct + ' Это вопрос о паре: сравни карту человека из chart с картой партнёра из chart.partner по Луне, Венере, Марсу и стихиям. Без приговора паре и без обещаний исхода.';
   if (chart?.relationship) {
+    if (chart.relationship.requireOverview === false) return direct + ' Ответь именно на текущий вопрос, используя подходящие рассчитанные показатели chart.relationship и chart. Если вопрос о ревности, доверии или ссорах, объясни связь конкретного показателя с ситуацией и предложи один понятный шаг. Не превращай каждый такой ответ в портрет идеального партнёра или обязательное перечисление 7-го дома. Положения и аспекты не придумывай.';
     const r = chart.relationship, seventh = r.seventhHouse, ruler = seventh?.rulers[0];
     const anchor = seventh
       ? `7-й дом — знак ${seventh.sign}. Основной управитель — ${ruler.name}, ${ruler.house}-й дом. Эти два конкретных показателя обязательно назови в первом абзаце: «У тебя 7-й дом в [рассчитанном знаке]. Его управитель [рассчитанная планета] в [рассчитанном доме]».`
@@ -171,7 +174,7 @@ export function createLocalChat({ model, fetchImpl = fetch }) {
           system: systemFor(mode) + questionGuidance(message, chart, mode)
             + (history.length ? '\nПродолжай разговор без нового приветствия.' : '\nЭто первый ответ в разговоре. Начни с «Привет!», затем сразу ответь на вопрос.')
             + (styleRetry ? '\nИсправь обращение: только «ты», «тебе», «твой» и глаголы в единственном числе. Сохрани смысл и факты. Разговорный тон, без официальных приветствий и без цитирования этих правил.' : '') + (qualityRetry
-            ? '\nПовторная проверка ответа: не повторяй предложения. Положения планет в поле chart — уже рассчитанные факты; не исправляй их и не добавляй другие положения. ' + (chart?.relationship
+            ? '\nПовторная проверка ответа: не повторяй предложения. Положения планет в поле chart — уже рассчитанные факты; не исправляй их и не добавляй другие положения. Не меняй номера домов и знаки ASC/MC. Не добавляй аспектов, которых нет в chart.aspects; лучше объясни одно рассчитанное положение без аспекта. ' + (chart?.relationship
               ? 'Обязательно опирайся на рассчитанные 7-й дом, его основного управителя и Венеру или Луну. Назови реальные положения и свяжи их с качествами партнёра. Если точного времени нет, домов не называй.'
               : 'Возьми одно положение из chart и объясни его простыми словами.')
             : ''),
@@ -206,15 +209,21 @@ export function createLocalChat({ model, fetchImpl = fetch }) {
       if (hasFormalAddress(answer)) {
         if (!styleRetry) return createLocalChat({ model, fetchImpl }).answer({ message, history, forecast, visitorName, visitorGender,
           signal, length, materials, chart, mode, tone, onDelta, temperature: 0.15, qualityRetry, styleRetry: true });
-        answer = conversationalOpening(chart?.relationship && !chart.partner ? groundedRelationshipAnswer(chart, length) : SAFE_FALLBACK_ANSWER, history);
+        answer = conversationalOpening(chart?.relationship && !chart.partner ? groundedRelationshipAnswer(chart, length)
+          : chart?.calculated && !chart.partner ? groundedNatalAnswer(chart, groundingQuestion(message, history), length) : SAFE_FALLBACK_ANSWER, history);
         onDelta?.(answer, answer);
         return { answer, model, length, truncated: false, contextVersion: chatContext.version, styleFiltered: true };
       }
       const repeated = cleanRepeatedSentences(text).trim() !== text.trim();
-      if (wrongPlanetSign(answer, chart) || relationshipAnswerProblems(answer, chart, length) || (chart && repeated && !qualityRetry)) {
+      if (wrongPlanetSign(answer, chart) || wrongCalculatedClaim(answer, chart) || relationshipAnswerProblems(answer, chart, length) || (chart && repeated && !qualityRetry)) {
         if (qualityRetry) {
           if (chart?.relationship && !chart.partner) {
             answer = conversationalOpening(groundedRelationshipAnswer(chart, length), history);
+            onDelta?.(answer, answer);
+            return { answer, model: null, length, truncated: false, contextVersion: chatContext.version, groundedFallback: true };
+          }
+          if (chart?.calculated && !chart.partner) {
+            answer = conversationalOpening(groundedNatalAnswer(chart, groundingQuestion(message, history), length), history);
             onDelta?.(answer, answer);
             return { answer, model: null, length, truncated: false, contextVersion: chatContext.version, groundedFallback: true };
           }

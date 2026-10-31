@@ -1,6 +1,6 @@
 // Home, natal chart, day and week screens.
 import { api, formatDate, MONTHS_GEN, WEEKDAYS } from './api.js';
-import { $, app, birth, loadNatal, planLine, setNote, visitorName } from './state.js';
+import { $, app, birth, loadNatal, planLine, setNote, visitorName } from './state.js?v=2';
 import { node } from './sheet.js';
 import { drawWheel } from './wheel.js';
 

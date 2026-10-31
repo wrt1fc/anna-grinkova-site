@@ -1,6 +1,6 @@
 // Subscription, payment, profile and the list of close people.
 import { api, formatDate, MONTHS_GEN } from './api.js';
-import { $, app, birth, planLine, refreshPlan, screenEl, setNote, visitorName } from './state.js';
+import { $, app, birth, planLine, refreshPlan, screenEl, setNote, visitorName } from './state.js?v=2';
 import { closeSheet, node, openSheet } from './sheet.js';
 
 const PERIOD_LABEL = { 30: 'На месяц', 90: 'На 3 месяца' };
@@ -73,7 +73,7 @@ function watchPayment() {
     stop();
     await refreshPlan();
     $('#paid-text').textContent = plan.expiresAt ? `Подписка активна до ${new Date(plan.expiresAt).getDate()} ${MONTHS_GEN[new Date(plan.expiresAt).getMonth()]}` : 'Подписка активна';
-    $('#paid-count').textContent = String(plan.dailyChatMessages);
+    $('#paid-count').textContent = plan.unlimitedChat ? '∞' : String(plan.dailyChatMessages);
     app.go('paid');
   }, POLL_MS);
 }
@@ -99,7 +99,7 @@ export async function enterProfile() {
   const sub = await api('/api/billing/subscription');
   const until = sub.ok && sub.data.plan?.expiresAt && sub.data.plan.id !== 'free' ? `до ${formatDate(new Date(sub.data.plan.expiresAt).toISOString())}` : '';
   $('#profile-plan').textContent = [plan?.label, until].filter(Boolean).join(' · ');
-  $('#profile-quota').textContent = plan ? `${plan.dailyChatMessages} вопросов в день` : '';
+  $('#profile-quota').textContent = plan ? (plan.unlimitedChat ? 'Безлимитные вопросы' : `${plan.dailyChatMessages} вопросов в день`) : '';
   const profile = birth();
   $('#profile-chart').textContent = profile ? `${visitorName()} · ${formatDate(profile.birthDate)}, ${profile.birthPlace}` : 'Данные рождения пока не заполнены.';
 }
