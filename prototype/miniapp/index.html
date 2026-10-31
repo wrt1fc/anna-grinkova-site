@@ -20,7 +20,7 @@
   <link rel="stylesheet" href="/assets/fonts/fonts.css" />
   <link rel="stylesheet" href="/miniapp/miniapp.css?v=6" />
   <link rel="stylesheet" href="/miniapp/miniapp-desktop.css?v=3" />
-  <link rel="stylesheet" href="/miniapp/fortuna-home.css?v=7" />
+  <link rel="stylesheet" href="/miniapp/fortuna-home.css?v=8" />
   <link rel="stylesheet" href="/miniapp/card-day.css?v=2" />
   <link rel="stylesheet" href="/miniapp/chat-suggestions.css?v=1" />
   <link rel="stylesheet" href="/miniapp/subscription-mobile.css?v=2" />
@@ -133,15 +133,15 @@
         <div class="hero-wheel" id="home-wheel" aria-hidden="true"></div>
       </section>
       <section class="card ask-promo" aria-label="Вопрос Фортуне">
-        <picture class="ask-promo-portrait">
-          <img class="ask-promo-photo" src="/miniapp/assets/fortuna-portrait-v2.webp" alt="" width="800" height="1200" fetchpriority="high" />
-        </picture>
+        <div class="ask-promo-portrait" aria-hidden="true"><div class="ask-promo-crop"><div class="ask-promo-side">
+          <img class="ask-promo-photo" src="/miniapp/assets/fortuna-home-desktop.png" alt="" width="800" height="1200" fetchpriority="high" />
+        </div></div></div>
         <div class="ask-promo-copy">
           <p class="eyebrow">Задай вопрос</p>
           <h1 id="t-home" class="ask-promo-title">Фортуне</h1>
           <p class="ask-promo-text">Разберёмся в твоей карте вместе</p>
           <p class="ask-promo-detail">Отношения, работа, деньги или повторяющиеся сценарии — начни с того, что волнует сейчас. Фортуна свяжет вопрос с показателями твоей натальной карты и объяснит их простыми словами.</p>
-          <button class="btn btn-gold" type="button" data-go="chat">Задать вопрос Фортуне<img src="/miniapp/assets/icons-3d/send.webp" alt="" width="22" height="22" /></button>
+          <button class="btn btn-gold" type="button" data-go="chat"><span>Задать вопрос Фортуне</span><img src="/miniapp/assets/icons-3d/send.webp" alt="" width="28" height="28" /></button>
           <small class="ask-promo-note" id="home-promo-note"></small>
         </div>
       </section>

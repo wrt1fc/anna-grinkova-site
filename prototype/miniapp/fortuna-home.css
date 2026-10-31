@@ -5,39 +5,6 @@
 .tile-day img { width: 48px; height: 48px; object-fit: contain; flex: none; }
 .daily-sun img, .tile-day img { animation: fortuna-sun-float 6s ease-in-out infinite; }
 .screen[hidden] .daily-sun img, .screen[hidden] .tile-day img { animation: none; }
-.ask-promo .ask-promo-photo { position: absolute; inset: 0 0 0 auto; width: auto; height: 100%; max-width: none; aspect-ratio: 2 / 3;
-  object-fit: cover; object-position: center;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 24%, #000 95%, transparent), linear-gradient(180deg, transparent, #000 10%, #000 88%, transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 24%, #000 95%, transparent), linear-gradient(180deg, transparent, #000 10%, #000 88%, transparent);
-  -webkit-mask-composite: source-in; mask-composite: intersect; }
-.ask-promo::after { display: none; }
-/* Desktop: the same chat-first hierarchy as mobile, with a taller portrait. */
-@media (min-width: 1000px) {
-  .home-top { display: block; }
-  .home-top .hero { display: none; }
-  .home-top .ask-promo { width: 100%; min-height: clamp(520px, 40vw, 600px); }
-  .home-top .ask-promo-copy { min-height: clamp(520px, 40vw, 600px); max-width: min(62%, 700px); padding: 56px 56px 29px; }
-  /* Page 08, node 204:2: 589 × 883.5 portrait in a 1312 × 576 card.
-     Keep the asset's proportions and center the oversized portrait vertically. */
-  .home-top .ask-promo .ask-promo-photo {
-    inset: -26.692708% 0 auto auto;
-    height: 153.385417%;
-    width: auto;
-    object-fit: contain;
-    -webkit-mask-image: url('./assets/fortuna-home-mask-horizontal.svg'), url('./assets/fortuna-home-mask-vertical.svg');
-    mask-image: url('./assets/fortuna-home-mask-horizontal.svg'), url('./assets/fortuna-home-mask-vertical.svg');
-    -webkit-mask-size: 100% 100%;
-    mask-size: 100% 100%;
-    -webkit-mask-repeat: no-repeat;
-    mask-repeat: no-repeat;
-  }
-  .home-top .ask-promo .eyebrow { font-size: 26px; }
-  .home-top .ask-promo-title { font-size: clamp(52px, 5.28vw, 76px); font-weight: 800; line-height: 1.263158; margin: 13px 0 14px; }
-  .home-top .ask-promo-text { font-size: 18px; line-height: 1.5; max-width: 460px; }
-  .home-top .ask-promo .btn { width: 340px; min-height: 60px; font-size: 17px; }
-  .home-top .ask-promo-note { margin-top: 16px; font-size: 13px; line-height: 15px; }
-  [data-screen='home'] .home-natal { min-height: 76px; }
-}
 @keyframes fortuna-sun-float {
   0%, 100% { transform: translateY(0) rotate(-2deg); }
   50% { transform: translateY(-3px) rotate(2deg); }
@@ -49,13 +16,6 @@
   [data-screen='home'] { gap: 14px; }
   [data-screen='home'] .topbar { order: 0; }
   [data-screen='home'] .hero { display: none; }
-  .ask-promo { order: 1; position: relative; display: block; min-height: 260px; overflow: hidden; }
-  .ask-promo-copy { position: relative; z-index: 1; min-height: 260px; height: 100%; padding: 20px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
-  .ask-promo .eyebrow { font: 700 16px/1.35 var(--display); color: var(--ink); }
-  .ask-promo-title { margin: 0; font: 700 32px/1.35 var(--display); letter-spacing: 0; }
-  .ask-promo-text { margin: 0; width: 150px; max-width: 52%; color: var(--muted); font-size: 13px; line-height: 1.4; }
-  .ask-promo .btn { margin-top: auto; width: 198px; max-width: 100%; min-height: 46px; padding-inline: 8px; font-size: 13px; }
-  .ask-promo .btn img, .ask-promo-note { display: none; }
   [data-screen='home'] .tiles { order: 2; gap: 12px; }
   [data-screen='home'] .tile { display: flex; align-items: center; gap: 10px; min-height: 94px; padding: 12px; }
   [data-screen='home'] .tile strong { min-width: 0; font-size: 13px; line-height: 1.4; }
@@ -90,32 +50,81 @@ img[src*='/icons-3d/'] { object-fit: contain; flex: none; }
 .tile:not(.tile-day) > img { width: 48px; height: 48px; }
 .secure img { width: 22px; height: 22px; }
 
-@media (min-width: 400px) and (max-width: 999px) {
-  .ask-promo, .ask-promo-copy { min-height: 280px; }
-}
-@media (min-width: 600px) and (max-width: 999px) {
-  .ask-promo, .ask-promo-copy { min-height: 320px; }
-}
 
 /* Phone forecast shortcuts: compact height, with room for two-line labels. */
 @media (max-width: 599px) {
   [data-screen='home'] .tile { min-height: 72px; padding: 10px 12px; }
 }
 
-/* The portrait rises above the rounded surface; the existing portrait asset keeps its full crown. */
-.home-top .ask-promo { overflow: visible; isolation: isolate; }
-.ask-promo-portrait { pointer-events: none; }
-.home-top .ask-promo .ask-promo-photo {
-  inset: -16% 0 auto auto; height: 116%; width: auto; max-width: none; object-fit: contain;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 20%, #000 96%, transparent), linear-gradient(180deg, #000, #000 88%, transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 20%, #000 96%, transparent), linear-gradient(180deg, #000, #000 88%, transparent);
-  -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
-}
-.ask-promo-detail { margin: 22px 0 26px; color: var(--muted); font-size: 18px; line-height: 1.65; max-width: 460px; }
 .install-browser-note p { margin: 0; line-height: 1.6; }
-[data-screen='home'] .topbar { position: relative; z-index: 2; }
-@media (max-width: 999px) { .ask-promo-detail { display: none; } .home-top .ask-promo { margin-top: 12px; } }
+
+/* Current Figma 08: 224:13 / 224:14 (390) and 204:2 / 204:3 (1440).
+   The source photo already exists on the server; its SHA256 matches the Figma original. */
+[data-screen='home'] { padding-top: max(16px, env(safe-area-inset-top)); }
+[data-screen='home'] .topbar { position: relative; z-index: 2; height: 56px; min-height: 56px; padding: 8px; flex-shrink: 0; }
+[data-screen='home'] .avatar-btn, [data-screen='home'] .bell { position: relative; width: 38px; height: 38px; }
+[data-screen='home'] .avatar-btn::after, [data-screen='home'] .bell::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; }
+[data-screen='home'] .avatar-btn img, [data-screen='home'] .bell img { width: 28px; height: 28px; }
+[data-screen='home'] .topbar-text > span > span { display: block; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.home-top .ask-promo { --home-hero-h: 260px; position: relative; display: block; min-height: var(--home-hero-h); overflow: visible; isolation: isolate;
+  border: 1px solid rgba(222,184,88,.3); border-radius: 24px; background: linear-gradient(180deg,rgba(42,28,21,.78),rgba(26,17,13,.78)); box-shadow: none; }
+.ask-promo::after { display: none; }
+.ask-promo-portrait { position: absolute; top: -1px; right: -1px; height: calc(100% + 2px); width: auto; aspect-ratio: 172 / 260; pointer-events: none; z-index: 0; }
+.ask-promo-crop { position: absolute; top: .384615%; left: 0; width: 99.418605%; height: 99.230769%; overflow: hidden; border-radius: 0 23px 23px 0;
+  -webkit-mask-image: url('./assets/figma-home-mobile-mask-top.svg'),url('./assets/figma-home-mobile-mask-side.svg');
+  mask-image: url('./assets/figma-home-mobile-mask-top.svg'),url('./assets/figma-home-mobile-mask-side.svg');
+  -webkit-mask-size: 117.58304% 116.899225%; mask-size: 117.58304% 116.899225%;
+  -webkit-mask-position: 0 -1px,0 -1px; mask-position: 0 -1px,0 -1px;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-composite: source-in; mask-composite: intersect; }
+.ask-promo-side { position: absolute; inset: 0; }
+.ask-promo .ask-promo-photo { position: absolute; inset: -.39% auto auto 0; width: 117.58%; height: 116.9%; max-width: none; object-fit: fill; -webkit-mask-image: none; mask-image: none; }
+.ask-promo-copy { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+  min-height: var(--home-hero-h); padding: 20px; max-width: none; }
+.ask-promo-copy > * { flex-shrink: 0; }
+.ask-promo .eyebrow { margin: 0; width: 160px; font: 700 16px/1.35 var(--display); color: var(--ink); }
+.ask-promo-title { margin: 0; font: 700 32px/1.35 var(--display); letter-spacing: 0; }
+.ask-promo-text { margin: 0; width: 150px; max-width: 52%; color: var(--muted); font: 400 13px/1.35 var(--body); }
+.ask-promo-detail { display: none; }
+.ask-promo .btn { position: relative; margin-top: auto; width: 198px; max-width: 100%; min-height: 46px; padding: 0 6px; border-radius: 23px; font: 700 13px/1.35 var(--display); box-shadow: none; }
+.ask-promo .btn > span { display: block; width: 100%; }
+.ask-promo .btn img, .ask-promo-note { display: none; }
+@media (max-width: 999px) {
+  .home-top .ask-promo { margin-top: 12px; height: var(--home-hero-h); }
+  [data-screen='home'] .bell { border-color: transparent; background: none; }
+}
+@media (min-width: 400px) and (max-width: 999px) { .home-top .ask-promo { --home-hero-h: 280px; } }
+@media (min-width: 600px) and (max-width: 999px) { .home-top .ask-promo { --home-hero-h: 320px; } }
 @media (min-width: 1000px) {
-  .home-top { margin-top: 36px; }
-  .home-top .ask-promo-copy { max-width: 58%; }
+  .home-top { display: block; margin-top: 42px; }
+  .home-top .hero { display: none; }
+  .home-top .ask-promo { --home-hero-h: clamp(520px,40vw,600px); width: 100%; border: 0; border-radius: 28px;
+    background: linear-gradient(180deg,rgba(42,28,21,.8),rgba(26,17,13,.8)); }
+  .home-top .ask-promo::after { display: block; content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; width: auto; height: auto;
+    border: 1px solid rgba(222,184,88,.3); border-radius: inherit; background: none; box-shadow: 0 10px 24px rgba(0,0,0,.35); }
+  .ask-promo-portrait { top: -15.972222%; right: 0; height: 115.972222%; aspect-ratio: 590 / 668; }
+  .ask-promo-crop { inset: 0; width: 100%; height: 100%; border-radius: 0;
+    -webkit-mask-image: url('./assets/figma-home-desktop-mask-top.svg'); mask-image: url('./assets/figma-home-desktop-mask-top.svg');
+    -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-position: 0 0; mask-position: 0 0; }
+  .ask-promo-side { inset: auto; left: 13.220339%; top: -7.204301%; width: 90.169492%; height: 114.4086%;
+    -webkit-mask-image: url('./assets/figma-home-desktop-mask-side.svg'); mask-image: url('./assets/figma-home-desktop-mask-side.svg');
+    -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
+  .ask-promo .ask-promo-photo { inset: 0 auto auto -10.322559%; width: 116.344091%; height: 121.55689%; object-fit: contain; }
+  .home-top .ask-promo-copy { gap: 0; min-height: var(--home-hero-h); height: auto; padding: 56px 56px 29px; max-width: min(62%,700px); }
+  .ask-promo .eyebrow { width: 560px; max-width: 100%; font: italic 500 26px/35px var(--accent); color: var(--gold); }
+  .ask-promo-title { width: 620px; margin: 13px 0 14px; font: 800 clamp(52px,5.28vw,76px)/1.263158 var(--display); }
+  .ask-promo-text { width: 460px; max-width: 100%; font: 400 18px/21px var(--body); }
+  .ask-promo-detail { display: block; width: 460px; max-width: 100%; margin: 50px 0 0; color: var(--muted); font: 400 18px/21px var(--body); }
+  .ask-promo .btn { width: 340px; min-height: 60px; padding: 0 50px 0 0; border-radius: 28px; font: 700 17px/20px var(--display); box-shadow: 0 6px 20px rgba(222,184,88,.35); }
+  .ask-promo .btn img { display: block; position: absolute; right: 12px; top: 16px; width: 28px; height: 28px; }
+  .ask-promo-note { display: block; margin-top: 16px; color: #9a8878; font: 400 13px/15px var(--body); }
+  [data-screen='home'] .home-natal { min-height: 76px; }
+}
+@media (min-width: 1000px) and (max-width: 1279px) {
+  .home-top .ask-promo-copy { padding: 32px 32px 24px; }
+  .ask-promo .eyebrow { font-size: 22px; line-height: 30px; }
+  .ask-promo-title { margin: 8px 0 10px; }
+  .ask-promo-text, .ask-promo-detail { font-size: 16px; line-height: 22px; }
+  .ask-promo-detail { margin-top: 20px; }
+  .ask-promo-note { margin-top: 8px; }
 }
