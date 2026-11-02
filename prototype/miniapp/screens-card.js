@@ -1,7 +1,7 @@
 // The five illustrated metaphor cards of the Moscow day, separate from the sky forecast.
 import { api, formatDate } from './api.js';
 import { $, app, birth, setNote } from './state.js?v=3';
-import { prepareCardQuestion } from './screens-chat.js?v=6';
+import { prepareCardQuestion } from './screens-chat.js?v=7';
 import { cardCopy } from './card-copy.js?v=1';
 import { remember, savedPosition } from './daily-card-choice.js?v=1';
 

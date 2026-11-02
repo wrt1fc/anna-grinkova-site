@@ -116,6 +116,9 @@ async function send(text) {
     if (final.learning?.text && !final.filtered && !final.crisis) {
       const invitation = node('aside', 'learning-invitation');
       invitation.append(node('strong', '', final.learning.title), node('p', '', final.learning.text));
+      const learn = node('button', 'btn btn-line learning-button', 'Узнать об обучении');
+      learn.type = 'button'; learn.disabled = true;
+      invitation.append(learn);
       bubble.append(invitation);
     }
     history.push({ role: 'user', content: message }, { role: 'assistant', content: final.answer, signature: final.signature });
