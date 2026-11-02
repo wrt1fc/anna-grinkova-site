@@ -46,7 +46,7 @@ const trafficLimiter = createTrafficLimiter({
 const forecastWriter = process.env.FORECAST_LOCAL_MODEL
   ? createLocalForecastWriter({ model: process.env.FORECAST_LOCAL_MODEL }) : null;
 const chatModel = process.env.CHAT_LOCAL_MODEL || process.env.FORECAST_LOCAL_MODEL;
-const chatWriter = chatModel ? createLocalChat({ model: chatModel }) : null;
+const chatWriter = chatModel ? createLocalChat({ model: chatModel, learningSignals: process.env.CHAT_LEARNING_SIGNALS === '1' }) : null;
 const sotisVerifier = process.env.SOTIS_VERIFY === '0' ? null : createSotisVerifier();
 // Approved materials for retrieval live outside Git, like the recordings they come from.
 const knowledge = process.env.KNOWLEDGE_PATH ? loadKnowledge(resolve(process.env.KNOWLEDGE_PATH)) : null;

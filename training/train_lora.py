@@ -140,12 +140,17 @@ def main():
         print('Frozen token embedding: BF16 (full training examples retained)', flush=True)
     if args.eval_first and 'eval' in files:
         print('EVAL_BEFORE', trainer.evaluate(), flush=True)
-    trainer.train()
+    train_result = trainer.train()
+    final_eval = trainer.evaluate() if 'eval' in files else {}
     trainer.save_model(args.out)
     (Path(args.out) / 'anna-training.json').write_text(json.dumps({
         'base': args.base, 'train_examples': len(dataset['train']), 'epochs': args.epochs, 'lr': args.lr,
         'rank': args.rank, 'max_steps': args.max_steps, 'init_adapter': args.init_adapter,
         'frozen_embedding_bf16': args.frozen_embedding_bf16, 'half_embedding': args.half_embedding,
+        'max_length': args.max_length, 'seed': config.seed,
+        'processed_train_examples': len(trainer.train_dataset),
+        'training_metrics': train_result.metrics, 'final_eval_metrics': final_eval,
+        'best_eval_loss': trainer.state.best_metric,
     }, ensure_ascii=False, indent=2), encoding='utf-8')
     print(f'adapter saved to {args.out}')
 

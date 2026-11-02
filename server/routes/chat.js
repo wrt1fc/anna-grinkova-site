@@ -238,7 +238,7 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
       try {
         await store.appendChatMessages(user.id, chart.profileId, [{ role: 'user', content: message }, { role: 'assistant', content: answer }]);
       } catch (error) { console.error('Chat history not saved:', error.message); }
-      const learning = !filtered ? learningInvitation(message, historySigner.trusted(body.history ?? [])) : null;
+      const learning = !filtered ? learningInvitation(message, historySigner.trusted(body.history ?? []), extra.learningSuggested) : null;
       const payload = { ...extra, answer, filtered, ...(learning ? { learning } : {}), signature: historySigner.sign(answer),
         context: { date: day, scope: context.scope, basis: astro.chart?.missing ? 'birth-data-missing' : astro.chart ? 'natal' : asksAboutDay(topicMessage) ? 'day' : 'general', subject: chart.subject } };
       return streaming ? (send('done', payload), res.end()) : json(res, 200, payload);

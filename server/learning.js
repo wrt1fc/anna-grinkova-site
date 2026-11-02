@@ -15,8 +15,13 @@ export function isLearningQuestion(message, history = []) {
   return false;
 }
 
-export function learningInvitation(message, history = []) {
-  if (!isLearningQuestion(message, history)) return null;
+export function learningInvitation(message, history = [], modelSuggested = null) {
+  const learningCue = /изуч|обуч|науч|самостоят|самому|самой|сам[ау]?\s+|понять\s+(?:метод|принцип|логику|расч[её]т)|по\s+шагам/iu;
+  const recent = history.slice(-4).map(item => item.content).join('\n');
+  if (/не\s+(?:хочу|нужно|интерес\p{L}*|предлагай).*(?:учит|обуч|курс|наставнич)|без\s+(?:курс|обучени|реклам|наставнич)/iu.test(message)) return null;
+  const modelAllowed = modelSuggested === true && !SENSITIVE.test(message) && !SENSITIVE.test(recent)
+    && (!(PERSONAL.test(message) || /мужчин|женщин|партн[её]р|отношени|любов|работ|деньг|карьер/iu.test(message)) || learningCue.test(message));
+  if (typeof modelSuggested === 'boolean' ? !modelAllowed : !isLearningQuestion(message, history)) return null;
   return { title: 'Хочешь разобраться глубже?',
     text: 'Такие темы подробно разбирают на обучении по профессиональной астропсихологии в Институте прогрессивной психологии Анны Гриньковой. Если захочешь изучать карту самостоятельно, можно продолжить с наставником.' };
 }

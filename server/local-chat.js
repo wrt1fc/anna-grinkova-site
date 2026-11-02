@@ -8,6 +8,7 @@ import { groundedRelationshipAnswer, relationshipAnswerProblems } from './relati
 import { groundedNatalAnswer, wrongCalculatedClaim } from './chart-answer-check.js';
 import { groundingQuestion } from './chat-topics.js';
 import { isLearningQuestion } from './learning.js';
+import { extractLearningSignal, LEARNING_SIGNAL, LEARNING_SIGNAL_INSTRUCTION } from './learning-signals.js';
 
 const ENDPOINT = ollamaGenerateUrl();
 const MODEL_TIMEOUT_MS = 45_000;
@@ -152,13 +153,13 @@ export function wrongPlanetSign(answer, chart) {
   return false;
 }
 
-export function createLocalChat({ model, fetchImpl = fetch }) {
+export function createLocalChat({ model, fetchImpl = fetch, learningSignals = process.env.CHAT_LEARNING_SIGNALS === '1' }) {
   if (typeof model !== 'string' || !/^[\w./:-]{2,80}$/.test(model)) throw new Error('Invalid local model name');
   return {
     async answer({ message, history, forecast, visitorName = null, visitorGender = null, signal, length = DEFAULT_ANSWER_LENGTH, materials = [], chart = null, mode = null, tone = null, onDelta = null, temperature = 0.25, qualityRetry = false, styleRetry = false }) {
       const size = answerSize(mode, length);
       if (!size) throw new Error('Unknown answer length');
-      if (mode !== TAROT_MODE && chart?.missing && isRelationshipQuestion(message)) {
+      if (!learningSignals && mode !== TAROT_MODE && chart?.missing && isRelationshipQuestion(message)) {
         const answer = conversationalOpening('Чтобы разобрать твои отношения по натальной карте, добавь дату, время и город рождения в кабинете. А пока расскажи: ты сейчас в паре или хочешь встретить партнёра?', history);
         onDelta?.(answer, answer);
         return { answer, model: null, length, truncated: false, contextVersion: chatContext.version };
@@ -174,6 +175,7 @@ export function createLocalChat({ model, fetchImpl = fetch }) {
           // Fixed context size: Ollama reloads the model whenever num_ctx changes between requests.
           options: { temperature, num_predict: size.numPredict, num_ctx: 8192 },
           system: systemFor(mode) + questionGuidance(message, chart, mode, history)
+            + (learningSignals && mode !== TAROT_MODE ? LEARNING_SIGNAL_INSTRUCTION : '')
             + (history.length ? '\nПродолжай разговор без нового приветствия.' : '\nЭто первый ответ в разговоре. Начни с «Привет!», затем сразу ответь на вопрос.')
             + (styleRetry ? '\nИсправь обращение: только «ты», «тебе», «твой» и глаголы в единственном числе. Сохрани смысл и факты. Разговорный тон, без официальных приветствий и без цитирования этих правил.' : '') + (qualityRetry
             ? '\nПовторная проверка ответа: не повторяй предложения. Положения планет в поле chart — уже рассчитанные факты; не исправляй их и не добавляй другие положения. Не меняй номера домов и знаки ASC/MC. Не добавляй аспектов, которых нет в chart.aspects; лучше объясни одно рассчитанное положение без аспекта. ' + (chart?.relationship
@@ -192,14 +194,15 @@ export function createLocalChat({ model, fetchImpl = fetch }) {
         if (event.error) throw new Error(`Local chat error: ${event.error}`);
         if (typeof event.response === 'string' && event.response) {
           text += event.response;
-          if (text.length > size.maxChars) { doneReason = 'length'; break; }
+          if (text.length > size.maxChars + (learningSignals ? LEARNING_SIGNAL.length + 8 : 0)) { doneReason = 'length'; break; }
           // Hold the reply until address, greeting and calculated facts have all passed validation.
         }
         if (event.done) doneReason = event.done_reason ?? 'stop';
       }
       let truncated = doneReason === 'length';
       if (!truncated && doneReason !== 'stop') throw new Error('Local chat returned an incomplete response');
-      const cleaned = cleanRepeatedSentences(truncated ? lastFullSentence(text.slice(0, size.maxChars)) : text).trim()
+      const parsed = extractLearningSignal(text);
+      const cleaned = cleanRepeatedSentences(truncated ? lastFullSentence(parsed.answer.slice(0, size.maxChars)) : parsed.answer).trim()
         .replace(/(?<!\p{L})(?:Смотр|Смотрр|Смот),/giu, 'Смотри,');
       if (cleaned.length < MIN_ANSWER_CHARS) throw new Error('Local chat returned an invalid answer');
       let answer = conversationalOpening(cleaned, history);
@@ -209,14 +212,14 @@ export function createLocalChat({ model, fetchImpl = fetch }) {
         if (answer.length < MIN_ANSWER_CHARS) answer = conversationalOpening(SAFE_FALLBACK_ANSWER, history);
       }
       if (hasFormalAddress(answer)) {
-        if (!styleRetry) return createLocalChat({ model, fetchImpl }).answer({ message, history, forecast, visitorName, visitorGender,
+        if (!styleRetry) return createLocalChat({ model, fetchImpl, learningSignals }).answer({ message, history, forecast, visitorName, visitorGender,
           signal, length, materials, chart, mode, tone, onDelta, temperature: 0.15, qualityRetry, styleRetry: true });
         answer = conversationalOpening(chart?.relationship && !chart.partner ? groundedRelationshipAnswer(chart, length)
           : chart?.calculated && !chart.partner ? groundedNatalAnswer(chart, groundingQuestion(message, history), length) : SAFE_FALLBACK_ANSWER, history);
         onDelta?.(answer, answer);
         return { answer, model, length, truncated: false, contextVersion: chatContext.version, styleFiltered: true };
       }
-      const repeated = cleanRepeatedSentences(text).trim() !== text.trim();
+      const repeated = cleanRepeatedSentences(parsed.answer).trim() !== parsed.answer.trim();
       if (wrongPlanetSign(answer, chart) || wrongCalculatedClaim(answer, chart) || relationshipAnswerProblems(answer, chart, length) || (chart && repeated && !qualityRetry)) {
         if (qualityRetry) {
           if (chart?.relationship && !chart.partner) {
@@ -231,11 +234,12 @@ export function createLocalChat({ model, fetchImpl = fetch }) {
           }
           throw new Error('Local chat contradicted the calculated chart');
         }
-        return createLocalChat({ model, fetchImpl }).answer({ message, history, forecast, visitorName, visitorGender, signal,
+        return createLocalChat({ model, fetchImpl, learningSignals }).answer({ message, history, forecast, visitorName, visitorGender, signal,
           length, materials, chart, mode, tone, onDelta, temperature: 0.1, qualityRetry: true, styleRetry });
       }
       onDelta?.(answer, answer);
-      return { answer, model, length, truncated, contextVersion: chatContext.version };
+      return { answer, model, length, truncated, contextVersion: chatContext.version,
+        ...(learningSignals ? {learningSuggested: mode !== TAROT_MODE && parsed.learningSuggested} : {}) };
     },
   };
 }
