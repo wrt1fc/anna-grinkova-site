@@ -116,8 +116,9 @@ async function send(text) {
     if (final.learning?.text && !final.filtered && !final.crisis) {
       const invitation = node('aside', 'learning-invitation');
       invitation.append(node('strong', '', final.learning.title), node('p', '', final.learning.text));
-      const learn = node('button', 'btn btn-line learning-button', 'Узнать об обучении');
-      learn.type = 'button'; learn.disabled = true;
+      const learn = node('a', 'btn btn-line learning-button', 'Узнать об обучении');
+      learn.href = 'https://t.me/anna_grinkovaa?text=' + encodeURIComponent('привет! кодовое слово "фортуна"');
+      learn.target = '_blank'; learn.rel = 'noopener noreferrer';
       invitation.append(learn);
       bubble.append(invitation);
     }
