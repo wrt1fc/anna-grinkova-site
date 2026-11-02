@@ -25,8 +25,8 @@ test('only an operator-granted entitlement removes chat quota; identity and othe
     await store.q.run('UPDATE users SET chat_unlimited = TRUE WHERE id = $1',[tester.id]);
     for(const path of ['/api/plan','/api/profiles','/api/billing/subscription']){const data=(await request(path,cookie)).data;assert.equal(data.plan.unlimitedChat,true);assert.equal(data.plan.dailyChatMessages,null);assert.equal(data.plan.dailyTarotReadings,1);}
     const day=moscowDate();for(let n=0;n<5;n++)await store.consumeDailyQuota(`chat:${tester.id}`,day,5);
-    for(let n=0;n<5;n++)await store.consumeDailyQuota(`chat:${normal.id}`,day,5);
-    assert.equal((await request('/api/chat',normalCookie,{message:'Мой вопрос'})).status,429);
+    for(let n=0;n<3;n++){await store.consumeWelcomeQuestion(normal.id);await store.consumeWelcomeQuestion(tester.id);}
+    assert.equal((await request('/api/chat',normalCookie,{message:'Мой вопрос'})).status,402);
     await request('/api/profile',cookie,{birthDate:'1990-05-15',birthTime:'12:30',birthCityId:524901},'PUT');
     for(const message of ['Что означает мой Сатурн?','В чём мои сильные стороны?','Почему я ревную?','А что с работой?']){
       const reply=await request('/api/chat',cookie,{message,chatUnlimited:false});assert.equal(reply.status,200);assert.equal(reply.data.context.basis,'natal');assert.ok(seen.at(-1).chart.planets.length);
@@ -36,8 +36,8 @@ test('only an operator-granted entitlement removes chat quota; identity and othe
     assert.equal(await store.dailyQuotaUsed(`chat:${tester.id}`,day),5);
     fail=true;assert.equal((await request('/api/chat',cookie,{message:'Проверка ошибки'})).status,503);assert.equal(await store.dailyQuotaUsed(`chat:${tester.id}`,day),5);fail=false;
     // A request body cannot impersonate the operator grant.
-    assert.equal((await request('/api/chat',normalCookie,{message:'Мой вопрос',chatUnlimited:true})).status,429);
+    assert.equal((await request('/api/chat',normalCookie,{message:'Мой вопрос',chatUnlimited:true})).status,402);
     await store.q.run('UPDATE users SET chat_unlimited = FALSE WHERE id = $1',[tester.id]);
-    assert.equal((await request('/api/chat',cookie,{message:'Мой вопрос'})).status,429);
+    assert.equal((await request('/api/chat',cookie,{message:'Мой вопрос'})).status,402);
   }finally{await new Promise(r=>server.close(r));await store.close();}
 });

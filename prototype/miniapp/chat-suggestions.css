@@ -18,6 +18,9 @@
 .more-questions { display: flex; align-items: center; gap: 12px; justify-self: start; min-height: 44px; color: var(--gold-light); font-size: 14px; }
 .chat-suggestions button:disabled { opacity: .55; cursor: wait; }
 .chat-suggestions button:not(:disabled):hover { border-color: var(--gold-light); }
+.learning-invitation { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); white-space: normal; }
+.learning-invitation strong { display: block; color: var(--gold-light); font: 700 15px/1.4 var(--display); }
+.learning-invitation p { margin: 8px 0 0; color: var(--muted); font: 400 14px/1.6 var(--body); }
 @media (min-width: 1000px) {
   .chat-suggestions summary { padding: 20px 24px; font-size: 24px; }
   .chat-suggestions-body { padding: 0 24px 24px; }

@@ -3,6 +3,7 @@ import { openDatabase } from './db.js';
 import { migrate } from './schema.js';
 import { createExtras } from './store-extras.js';
 import { createBillingStore } from './store-billing.js';
+import { createWelcomeStore } from './store-welcome.js';
 import { DEFAULT_PLAN } from './plans.js';
 
 const CODE_LIFETIME = 10 * 60 * 1000;
@@ -207,6 +208,7 @@ function storeApi(q, transaction) {
     q,
     ...createAccounts(q, transaction),
     ...createExtras(q, transaction),
+    ...createWelcomeStore(q),
     ...billing,
     getPlan: async (userId, now) => (await billing.planState(userId, now)).plan,
     inTransaction: transaction,

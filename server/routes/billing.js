@@ -1,5 +1,5 @@
 import { BillingError } from '../billing/service.js';
-import { publicPlan } from '../plans.js';
+import { accountPlan } from '../plans.js';
 import { clientAddress } from '../traffic.js';
 
 const ORDER_PATH = /^\/api\/billing\/orders\/([0-9a-f-]{36})$/;
@@ -92,7 +92,7 @@ export function createBillingRoutes({ store, billing, trustProxy, metrics, proda
     }
     if (path === '/api/billing/subscription' && req.method === 'GET') {
       const state = await store.planState(user.id);
-      return json(res, 200, { plan: { ...publicPlan(state.plan, user), expiresAt: state.expiresAt, autoRenew: state.autoRenew },
+      return json(res, 200, { plan: { ...await accountPlan(store, state.plan, user), expiresAt: state.expiresAt, autoRenew: state.autoRenew },
         orders: (await store.listOrders(user.id)).map(publicOrder) }), true;
     }
     if (path === '/api/billing/autorenew' && req.method === 'DELETE') {

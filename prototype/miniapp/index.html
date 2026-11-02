@@ -22,7 +22,7 @@
   <link rel="stylesheet" href="/miniapp/miniapp-desktop.css?v=3" />
   <link rel="stylesheet" href="/miniapp/fortuna-home.css?v=9" />
   <link rel="stylesheet" href="/miniapp/card-day.css?v=2" />
-  <link rel="stylesheet" href="/miniapp/chat-suggestions.css?v=1" />
+  <link rel="stylesheet" href="/miniapp/chat-suggestions.css?v=2" />
   <link rel="stylesheet" href="/miniapp/subscription-mobile.css?v=2" />
 </head>
 <body>
@@ -43,6 +43,7 @@
         <p class="form-note" data-note role="alert"></p>
         <button class="btn btn-gold" type="submit">Войти</button>
         <button class="btn btn-line" type="button" data-go="register">Зарегистрироваться</button>
+        <button class="link-btn" type="button" data-go="home">Сначала посмотреть возможности</button>
       </form>
       <p class="legal-line">Продолжая, вы принимаете <a href="/legal/privacy-policy.pdf" target="_blank" rel="noopener">Политику конфиденциальности</a>.</p>
     </section>
@@ -53,7 +54,7 @@
       <div class="screen-center-block">
         <img class="logo-mark" src="/miniapp/assets/logo.svg" alt="" width="64" height="64" />
         <h1 id="t-register" class="title-lg">Создать аккаунт</h1>
-        <p class="lead">Сохраним ваши карты и вопросы, чтобы прогноз стал личным</p>
+        <p class="lead">Бонус FORTUNA3 включится автоматически: 3 вопроса и твоя натальная карта бесплатно. Дальше — по подписке.</p>
       </div>
       <form class="card form" id="form-register" novalidate>
         <label class="label" for="reg-email">Эл. почта</label>
@@ -264,13 +265,13 @@
     <!-- Чат -->
     <section class="screen screen-chat" data-screen="chat" hidden aria-labelledby="t-chat">
       <div class="bar"><button class="back back-round" type="button" data-back aria-label="Назад"><span class="back-label">Назад</span></button><h1 id="t-chat" class="visually-hidden">Чат с Фортуной</h1><span class="bar-note" id="chat-quota"></span></div>
-      <div class="card-line person-bar" id="person-bar">
+      <div class="card-line person-bar" id="person-bar" hidden>
         <span class="person-icon"><img src="/miniapp/assets/icons-3d/user.webp" alt="" width="22" height="22" /></span>
         <span class="person-text"><strong id="person-name">Моя карта</strong><small id="person-note">Моя карта</small></span>
         <button class="chip-btn" type="button" id="person-switch">Переключить</button>
       </div>
-      <div class="transcript" id="transcript" aria-live="polite">
-        <div class="msg msg-bot" id="chat-welcome"><img src="/miniapp/assets/fortuna-avatar-v2.webp" alt="" width="34" height="34" /><div class="bubble" id="chat-greeting">Привет! Я Фортуна. Расскажи, что тебя волнует — вместе посмотрим на твою карту.</div></div>
+      <div class="transcript" id="transcript" aria-live="polite" hidden>
+        <div class="msg msg-bot" id="chat-welcome" hidden><img src="/miniapp/assets/fortuna-avatar-v2.webp" alt="" width="34" height="34" /><div class="bubble" id="chat-greeting"></div></div>
         <section class="card chart-chip" id="chart-chip" hidden><p class="eyebrow" id="chart-chip-title">Моя карта</p><div class="chips" id="chart-chip-list"></div></section>
       </div>
       <details class="chat-suggestions" id="chat-suggestions" open>
@@ -291,11 +292,11 @@
           <button class="more-questions" type="button" id="chat-ideas">Ещё вопросы <span aria-hidden="true">→</span></button>
         </div>
       </details>
-      <div class="chat-actions" id="chat-actions">
+      <div class="chat-actions" id="chat-actions" hidden>
         <button class="btn btn-gold" type="button" id="chat-ask">Задать вопрос</button>
         <button class="btn btn-line" type="button" id="chat-intro">Знакомство · первые вопросы бесплатно</button>
       </div>
-      <form class="composer" id="composer" hidden>
+      <form class="composer" id="composer">
         <label class="visually-hidden" for="chat-input">Твой вопрос</label>
         <textarea id="chat-input" rows="1" maxlength="600" placeholder="Напиши свой вопрос…"></textarea>
         <button class="send" type="submit" aria-label="Отправить"><img src="/miniapp/assets/icons-3d/send.webp" alt="" width="20" height="20" /></button>
@@ -414,6 +415,6 @@
 </div>
 <script src="/natal-wheel.js?v=3"></script>
 <script src="/pwa.js"></script>
-<script type="module" src="/miniapp/miniapp.js?v=11"></script>
+<script type="module" src="/miniapp/miniapp.js?v=12"></script>
 </body>
 </html>

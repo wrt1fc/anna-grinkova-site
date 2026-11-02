@@ -16,3 +16,8 @@ export function publicPlan(name, user = null) {
     ...(user?.chatUnlimited === true ? { unlimitedChat: true } : {}),
     dailyTarotReadings: plan.dailyTarotReadings, relations: plan.relations };
 }
+
+export async function accountPlan(store, name, user) {
+  return { ...publicPlan(name, user), welcomeBonus: { ...await store.welcomeBonus(user.id),
+    active: name === DEFAULT_PLAN && user.chatUnlimited !== true } };
+}

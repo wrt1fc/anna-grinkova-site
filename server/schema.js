@@ -105,6 +105,10 @@ const MIGRATIONS = [
   `
   ALTER TABLE users ADD COLUMN chat_unlimited BOOLEAN NOT NULL DEFAULT FALSE;
   `,
+  // 5: one welcome allowance per account, independent of daily quota cleanup.
+  `
+  ALTER TABLE users ADD COLUMN welcome_questions_used INTEGER NOT NULL DEFAULT 0 CHECK (welcome_questions_used BETWEEN 0 AND 3);
+  `,
 ];
 
 const MIGRATION_LOCK = 71_412_026; // any constant shared by all app servers

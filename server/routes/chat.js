@@ -3,7 +3,8 @@ import { personalForecastForDate } from '../personal-forecast.js';
 import { ANSWER_LENGTHS, CHAT_TONES, DEFAULT_ANSWER_LENGTH, MAX_ANSWER_CHARS, TAROT_MODE, TAROT_QUESTION_MAX_CHARS, TAROT_QUESTION_MIN_CHARS,
   chatForecastContext, forecastForQuestion, tarotReadingContext, asksAboutDay } from '../local-chat.js';
 import { SAFE_FALLBACK_ANSWER, copiesMaterials, unsafeChatAnswer } from '../chat-safety.js';
-import { planFor } from '../plans.js';
+import { DEFAULT_PLAN, planFor } from '../plans.js';
+import { isLearningQuestion, learningInvitation } from '../learning.js';
 import { CRISIS_ANSWER, isCrisisMessage } from '../crisis.js';
 import { profilesWithAccess } from './profiles.js';
 import { asksAboutCompatibility, chartContext, findMaterials } from '../chat-grounding.js';
@@ -141,17 +142,34 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
       releaseGate();
     };
     const day = moscowDate();
-    const quotaCharged = tarot || user.chatUnlimited !== true;
-    // Readings are counted apart from chat messages: spending one never uses up the other.
+    // Paid daily reading/chat quotas stay separate; free question APIs share one welcome allowance.
     const quotaKind = `${tarot ? 'tarot' : 'chat'}:${user.id}`;
     // A database failure here must still free the slot and the per-user lock, or chat would stay blocked.
-    let plan, allowed, round = 0;
+    let plan, allowed, welcomeCharged = false, dailyCharged = false, round = 0;
+    const refundQuestion = async () => {
+      if (welcomeCharged) { await store.refundWelcomeQuestion(user.id); welcomeCharged = false; }
+      if (dailyCharged) { await store.refundDailyQuota(quotaKind, day); dailyCharged = false; }
+    };
     try {
-      plan = planFor(await store.getPlan(user.id));
-      allowed = !quotaCharged || await store.consumeDailyQuota(quotaKind, day, tarot ? plan.dailyTarotReadings : plan.dailyChatMessages);
+      const planId = await store.getPlan(user.id);
+      plan = planFor(planId);
+      // All question APIs share the lifetime bonus. Daily quota pruning, a new
+      // login or choosing a different answer length cannot replenish it.
+      if (planId === DEFAULT_PLAN && user.chatUnlimited !== true) {
+        welcomeCharged = await store.consumeWelcomeQuestion(user.id);
+        if (!welcomeCharged) {
+          release();
+          metrics.count('welcome_bonus_exhausted');
+          return json(res, 402, { error: 'subscription_required', message: 'Три бесплатных вопроса уже использованы. Чтобы продолжить разговор, оформи подписку. Твоя натальная карта остаётся доступной.' });
+        }
+      }
+      const dailyNeeded = tarot || (planId !== DEFAULT_PLAN && user.chatUnlimited !== true);
+      allowed = !dailyNeeded || await store.consumeDailyQuota(quotaKind, day, tarot ? plan.dailyTarotReadings : plan.dailyChatMessages);
+      dailyCharged = dailyNeeded && allowed;
+      if (!allowed) await refundQuestion();
       // Readings already given today; a failed one is given back, so its unseen cards are dealt again next time.
       if (allowed && tarot) round = (await store.dailyQuotaUsed(quotaKind, day)) - 1;
-    } catch (error) { release(); throw error; }
+    } catch (error) { release(); await refundQuestion().catch(() => {}); throw error; }
     if (!allowed) {
       release();
       metrics.count(tarot ? 'tarot_daily_limit' : 'chat_daily_limit');
@@ -179,13 +197,14 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
           : general;
         context = chatForecastContext(forecast, chart.subject);
         const pair = compatibilityPair(chart, topicMessage);
-        astro = chartContext(pair.primary, message, new Date(), { partner: pair.partner, history: body.history ?? [] });
+        astro = isLearningQuestion(message, historySigner.trusted(body.history ?? [])) ? { chart: null, queries: [] }
+          : chartContext(pair.primary, message, new Date(), { partner: pair.partner, history: body.history ?? [] });
         // Only the text goes to the model; file names and scores stay on the server.
         materials = findMaterials(knowledge, message, astro.queries);
       }
     } catch (error) {
       release();
-      if (quotaCharged) await store.refundDailyQuota(quotaKind, day).catch(() => {});
+      await refundQuestion().catch(() => {});
       throw error;
     }
     const streaming = String(req.headers.accept ?? '').includes('text/event-stream');
@@ -219,7 +238,8 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
       try {
         await store.appendChatMessages(user.id, chart.profileId, [{ role: 'user', content: message }, { role: 'assistant', content: answer }]);
       } catch (error) { console.error('Chat history not saved:', error.message); }
-      const payload = { ...extra, answer, filtered, signature: historySigner.sign(answer),
+      const learning = !filtered ? learningInvitation(message, historySigner.trusted(body.history ?? [])) : null;
+      const payload = { ...extra, answer, filtered, ...(learning ? { learning } : {}), signature: historySigner.sign(answer),
         context: { date: day, scope: context.scope, basis: astro.chart?.missing ? 'birth-data-missing' : astro.chart ? 'natal' : asksAboutDay(topicMessage) ? 'day' : 'general', subject: chart.subject } };
       return streaming ? (send('done', payload), res.end()) : json(res, 200, payload);
     };
@@ -252,7 +272,7 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
       // A message counts only when an answer reached the visitor. Leaving after part of the answer was shown keeps it
       // counted: otherwise reading a reply and closing the stream before its end would make the plan limit endless.
       const clientLeftAfterAnswer = abort.signal.aborted && sent > 0;
-      if (quotaCharged && !clientLeftAfterAnswer) await store.refundDailyQuota(quotaKind, day);
+      if (!clientLeftAfterAnswer) await refundQuestion();
       if (abort.signal.aborted) return undefined;
       metrics.count('chat_errors');
       console.warn(tarot ? 'Tarot reading failed:' : 'Local chat failed:', error.message);

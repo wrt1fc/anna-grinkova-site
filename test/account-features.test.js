@@ -175,6 +175,7 @@ test('a stream that turns unsafe is stopped and replaced with the fallback', asy
 test('the plan caps chat messages per day', async () => fixture(async ({ store, request, signIn }) => {
   const cookie = await signIn();
   const userId = await store.findUserIdByEmail('owner@example.com');
+  await store.setPlan(userId, 'individual');
   for (let i = 0; i < 30; i++) await store.consumeDailyQuota(`chat:${userId}`, (await import('../server/daily-forecast.js')).moscowDate(), 30);
   const limited = await request('/api/chat', { method: 'POST', body: { message: 'Ещё вопрос' }, cookie });
   assert.equal(limited.response.status, 429);

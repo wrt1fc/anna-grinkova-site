@@ -1,7 +1,7 @@
 // State shared by the screens: the signed-in account, its plan and birth profile, and a few helpers.
 import { api } from './api.js';
 
-export const app = { me: null, plan: null, natal: null, pendingQuestion: '', birthMode: null, relations: null, go: () => {}, redirect: () => {}, back: () => {} };
+export const app = { me: null, plan: null, natal: null, pendingQuestion: '', birthMode: null, relations: null, go: () => {}, redirect: () => {}, back: () => {}, requireRegistration: () => {} };
 
 export const $ = (selector, root = document) => root.querySelector(selector);
 export const screenEl = (name) => document.querySelector(`[data-screen="${name}"]`);
@@ -37,6 +37,8 @@ export async function refreshPlan() {
 
 export function planLine() {
   const plan = app.plan?.plan;
+  if (plan?.welcomeBonus?.active) return plan.welcomeBonus.remainingQuestions > 0
+    ? `Бонус · осталось ${plan.welcomeBonus.remainingQuestions} из 3 вопросов` : 'Бонус использован · нужна подписка';
   return plan ? `${plan.label} · ${plan.unlimitedChat ? 'безлимитные вопросы' : `${plan.dailyChatMessages} вопросов в день`}` : '';
 }
 

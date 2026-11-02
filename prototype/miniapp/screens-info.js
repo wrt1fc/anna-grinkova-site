@@ -1,6 +1,6 @@
 // Home, natal chart, day and week screens.
 import { api, formatDate, MONTHS_GEN, WEEKDAYS } from './api.js';
-import { $, app, birth, loadNatal, planLine, setNote, visitorName } from './state.js?v=2';
+import { $, app, birth, loadNatal, planLine, setNote, visitorName } from './state.js?v=3';
 import { node } from './sheet.js';
 import { drawWheel } from './wheel.js';
 
@@ -11,9 +11,11 @@ const inSign = (sign, body, planet) => (IN_SIGN[sign] ? `в ${GLYPH[sign]} ${IN_
 const IN_SIGN = { Овен: 'Овне', Телец: 'Тельце', Близнецы: 'Близнецах', Рак: 'Раке', Лев: 'Льве', Дева: 'Деве', Весы: 'Весах', Скорпион: 'Скорпионе', Стрелец: 'Стрельце', Козерог: 'Козероге', Водолей: 'Водолее', Рыбы: 'Рыбах' };
 
 export async function enterHome() {
-  $('#home-name').textContent = visitorName();
-  $('#home-plan').textContent = planLine() || 'Добро пожаловать';
-  $('#home-promo-note').textContent = planLine() || 'Первые вопросы бесплатно';
+  $('#home-name').textContent = app.me ? visitorName() : 'Фортуна';
+  $('#home-plan').textContent = planLine() || 'Посмотри возможности';
+  $('#home-promo-note').textContent = planLine() || '3 вопроса и натальная карта после регистрации';
+  $('.home-intro strong').textContent = app.me ? 'Знакомство с Фортуной' : 'Попробовать бесплатно';
+  $('#home-intro-note').textContent = app.me ? planLine() : 'После регистрации · бонус автоматически';
   drawWheel($('#home-wheel'), await loadNatal());
 }
 

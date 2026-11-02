@@ -1,5 +1,5 @@
 import { parseBirthInput } from '../birth-input.js';
-import { RELATION_LABELS, extraProfileLimit, planFor, publicPlan } from '../plans.js';
+import { RELATION_LABELS, extraProfileLimit, planFor, accountPlan } from '../plans.js';
 
 const PROFILE_PATH = /^\/api\/profiles\/(\d{1,12})$/;
 // Labels reach the model prompt, so they stay short plain names: letters, digits, spaces, dots, hyphens.
@@ -26,10 +26,10 @@ function parseProfileBody(body, plan) {
 export async function handleProfileRoutes({ req, res, path, user, store, json, readJson }) {
   if (path === '/api/plan' && req.method === 'GET') {
     const plan = await store.getPlan(user.id);
-    return json(res, 200, { plan: publicPlan(plan, user), people: 1 + (await store.listChartProfiles(user.id)).length }), true;
+    return json(res, 200, { plan: await accountPlan(store, plan, user), people: 1 + (await store.listChartProfiles(user.id)).length }), true;
   }
   if (path === '/api/profiles' && req.method === 'GET') {
-    return json(res, 200, { plan: publicPlan(await store.getPlan(user.id), user), self: await store.getBirthProfile(user.id),
+    return json(res, 200, { plan: await accountPlan(store, await store.getPlan(user.id), user), self: await store.getBirthProfile(user.id),
       profiles: await profilesWithAccess(store, user.id), relationLabels: RELATION_LABELS }), true;
   }
   if (path === '/api/profiles' && req.method === 'POST') {

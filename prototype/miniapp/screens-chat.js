@@ -1,16 +1,11 @@
-// The chat with Fortuna: greeting, chart chips, the three starting buttons, the composer and the streamed answer.
+// The chat opens with examples and the composer; replies appear only after a question.
 import { api, readEvents } from './api.js';
-import { $, app, loadNatal, planLine, visitorName } from './state.js?v=2';
+import { $, app, planLine, visitorName } from './state.js?v=3';
 import { closeSheet, node, openSheet } from './sheet.js';
-import { activeIdeaDraw, bindIdeas, refreshIdeas, resetIdeas, setIdeasBusy } from './chat-ideas.js?v=2';
+import { activeIdeaDraw, bindIdeas, refreshIdeas, resetIdeas, setIdeasBusy } from './chat-ideas.js?v=3';
 
 const MAX_CHARS = 600;
 const HISTORY_ITEMS = 6;
-// U+FE0E asks for the text glyph: without it Windows draws the signs as purple emoji tiles.
-const SIGN_GLYPHS = Object.fromEntries(Object.entries({ Овен: '♈', Телец: '♉', Близнецы: '♊', Рак: '♋', Лев: '♌', Дева: '♍', Весы: '♎', Скорпион: '♏', Стрелец: '♐', Козерог: '♑', Водолей: '♒', Рыбы: '♓' }).map(([sign, glyph]) => [sign, `${glyph}︎`]));
-const PLANET_GLYPHS = { sun: '☉', moon: '☽', pluto: '♇', saturn: '♄' };
-const INTRO_QUESTION = 'Расскажи, как ты работаешь и с какими вопросами к тебе можно прийти.';
-
 let history = [];
 let busy = false;
 let personId = null;
@@ -26,54 +21,33 @@ function say(role, text, className = '') {
   if (role !== 'user') { const avatar = node('img'); avatar.src = '/miniapp/assets/fortuna-avatar-v2.webp'; avatar.alt = ''; avatar.width = 34; avatar.height = 34; row.append(avatar); }
   const bubble = node('div', `bubble ${className}`.trim(), text);
   row.append(bubble);
+  transcript().hidden = false;
   transcript().append(row);
   row.scrollIntoView({ block: 'end', behavior: 'smooth' });
   return bubble;
 }
 
-function showComposer(show = true) {
+function showComposer(show = true, focus = true) {
   $('#composer').hidden = !show;
   $('#chat-actions').hidden = show;
-  if (show) input().focus();
-}
-
-function chip(planet, red = false) {
-  const item = node('span', red ? 'chip is-red' : 'chip', `${PLANET_GLYPHS[planet.key] ?? ''} ${planet.degree}° ${SIGN_GLYPHS[planet.sign] ?? planet.sign}`.trim());
-  item.setAttribute('aria-label', `${planet.name ?? ''} ${planet.degree}° ${planet.sign}`.trim());
-  return item;
-}
-
-async function drawChartChip() {
-  const box = $('#chart-chip');
-  box.hidden = true;
-  if (personId) return;
-  const owner = app.me?.user?.id;
-  const ticket = chatGeneration;
-  const natal = await loadNatal();
-  if (!natal || personId || owner !== app.me?.user?.id || ticket !== chatGeneration) return;
-  const items = ['sun', 'moon'].map((key) => natal.planets.find((planet) => planet.key === key)).filter(Boolean).map((planet) => chip(planet));
-  const rest = natal.planets.find((planet) => planet.retrograde);
-  if (rest) items.push(chip(rest, true));
-  $('#chart-chip-title').textContent = `Моя карта · ${visitorName()}`;
-  $('#chart-chip-list').replaceChildren(...items);
-  box.hidden = false;
+  if (show && focus) input().focus();
 }
 
 export async function enterChat() {
   $('#person-name').textContent = personId ? ($('#person-name').textContent || '') : visitorName();
   $('#person-note').textContent = personId ? $('#person-note').textContent : 'Моя карта';
-  $('#chat-quota').textContent = planLine();
-  drawChartChip();
+  $('#chat-quota').textContent = planLine() || '3 вопроса бесплатно после регистрации';
+  $('#person-bar').hidden = true;
+  $('#chat-welcome').hidden = true;
+  $('#chart-chip').hidden = true;
+  transcript().hidden = !history.length;
+  showComposer(true, false);
   refreshIdeas();
   if (app.pendingQuestion) {
     const question = app.pendingQuestion;
     app.pendingQuestion = '';
-    showComposer(true);
     input().value = question;
     autosize();
-    $('#chat-suggestions').open = false;
-  } else if (!history.length && !$('#composer').hidden) {
-    showComposer(false);
   }
 }
 
@@ -83,9 +57,11 @@ function autosize() {
   field.style.height = `${Math.min(field.scrollHeight, 140)}px`;
 }
 
-function limitSheet() {
+function limitSheet(subscriptionRequired = false) {
   const body = node('div');
-  body.append(node('p', 'sheet-text', 'На сегодня вопросы закончились. Новые появятся завтра, а по подписке их больше.'));
+  body.append(node('p', 'sheet-text', subscriptionRequired
+    ? 'Три бесплатных вопроса использованы. Чтобы продолжить разговор, оформи подписку. Натальная карта остаётся доступной.'
+    : 'На сегодня вопросы по подписке закончились. Новые появятся завтра.'));
   const subscribe = node('button', 'btn btn-gold', 'Оформить подписку'); subscribe.type = 'button';
   subscribe.addEventListener('click', () => { closeSheet(); app.go('plan'); });
   const later = node('button', 'btn btn-line', 'Понятно'); later.type = 'button';
@@ -97,6 +73,7 @@ function limitSheet() {
 async function send(text) {
   const message = text.trim();
   if (busy || !message || message.length > MAX_CHARS) return;
+  if (!app.me) { app.pendingQuestion = message; app.requireRegistration('chat'); return; }
   busy = true;
   const ticket = chatGeneration;
   replyController = new AbortController();
@@ -104,7 +81,7 @@ async function send(text) {
   $('#person-switch').disabled = true;
   $('#chat-suggestions').open = false;
   showComposer(true);
-  say('user', message);
+  const userBubble = say('user', message);
   input().value = '';
   autosize();
   $('#composer button').disabled = true;
@@ -118,7 +95,11 @@ async function send(text) {
     if (ticket !== chatGeneration) return;
     if (!(response.headers.get('content-type') || '').includes('text/event-stream')) {
       const data = await response.json();
-      if (data.error === 'chat_daily_limit') { bubble.closest('.msg').remove(); limitSheet(); return; }
+      if (['chat_daily_limit','subscription_required'].includes(data.error)) {
+        bubble.closest('.msg').remove(); userBubble.closest('.msg').remove();
+        transcript().hidden = !history.length; input().value = message; autosize();
+        limitSheet(data.error === 'subscription_required'); return;
+      }
       if (response.status === 401) { app.go('login'); return; }
       throw new Error(data.message || 'Ответ сейчас недоступен.');
     }
@@ -132,6 +113,11 @@ async function send(text) {
     if (!final) throw new Error('Ответ прервался. Попробуй ещё раз.');
     bubble.classList.remove('is-typing');
     bubble.textContent = final.answer;
+    if (final.learning?.text && !final.filtered && !final.crisis) {
+      const invitation = node('aside', 'learning-invitation');
+      invitation.append(node('strong', '', final.learning.title), node('p', '', final.learning.text));
+      bubble.append(invitation);
+    }
     history.push({ role: 'user', content: message }, { role: 'assistant', content: final.answer, signature: final.signature });
     history = history.slice(-HISTORY_ITEMS);
   } catch (error) {
@@ -169,11 +155,11 @@ async function peopleSheet() {
       personId = entry.id; history = []; app.dayCardContext = null;
       chatGeneration++;
       transcript().querySelectorAll('.msg:not(#chat-welcome)').forEach((row) => row.remove());
-      input().value = ''; showComposer(false);
+      input().value = ''; showComposer(true, false);
       $('#chat-suggestions').open = true;
       $('#person-name').textContent = entry.label;
       $('#person-note').textContent = entry.id ? 'Близкий человек' : 'Моя карта';
-      closeSheet(); drawChartChip(); refreshIdeas();
+      closeSheet(); refreshIdeas();
     });
     list.append(button);
   }
@@ -196,7 +182,6 @@ export function prepareCardQuestion({ position, date, card }) {
 
 export function bindChat() {
   $('#chat-ask').addEventListener('click', () => showComposer(true));
-  $('#chat-intro').addEventListener('click', () => { showComposer(true); input().value = INTRO_QUESTION; autosize(); });
   bindIdeas(() => ({ owner: app.me?.user?.id, profileId: personId }), (question) => {
     if (busy) return;
     showComposer(true); input().value = question; autosize(); input().focus();

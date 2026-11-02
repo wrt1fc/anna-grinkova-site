@@ -1,7 +1,7 @@
 // The five illustrated metaphor cards of the Moscow day, separate from the sky forecast.
 import { api, formatDate } from './api.js';
-import { $, app, birth, setNote } from './state.js?v=2';
-import { prepareCardQuestion } from './screens-chat.js?v=5';
+import { $, app, birth, setNote } from './state.js?v=3';
+import { prepareCardQuestion } from './screens-chat.js?v=6';
 import { cardCopy } from './card-copy.js?v=1';
 import { remember, savedPosition } from './daily-card-choice.js?v=1';
 
@@ -29,7 +29,7 @@ async function paint(data, position, ticket, owner) {
   const preview = new Image(); preview.src = path;
   await preview.decode();
   if (ticket !== generation || owner !== app.me?.user?.id) return false;
-  current = { ...data, position, owner: app.me.user.id };
+  current = { ...data, position, owner: app.me?.user?.id };
   const deck = $('#card-deck');
   const before = deck.getBoundingClientRect();
   document.querySelector('[data-screen="card"]').classList.add('has-card');
@@ -64,7 +64,6 @@ async function paint(data, position, ticket, owner) {
 async function select(position, initial = false) {
   if (choosing) return;
   const owner = app.me?.user?.id;
-  if (!owner) return;
   const ticket = ++generation;
   controller?.abort();
   controller = new AbortController();
@@ -136,6 +135,7 @@ export function bindCard() {
   });
   for (const button of buttons()) button.addEventListener('click', () => select(Number(button.dataset.dayCard)));
   $('#card-discuss').addEventListener('click', () => {
+    if (!app.me) { app.requireRegistration('chat'); return; }
     if (!current || choosing || current.owner !== app.me?.user?.id) return;
     if (!prepareCardQuestion(current)) setNote('card', 'Дождись текущего ответа Фортуны и попробуй ещё раз.');
   });

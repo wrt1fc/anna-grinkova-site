@@ -1,6 +1,6 @@
 // Subscription, payment, profile and the list of close people.
 import { api, formatDate, MONTHS_GEN } from './api.js';
-import { $, app, birth, planLine, refreshPlan, screenEl, setNote, visitorName } from './state.js?v=2';
+import { $, app, birth, planLine, refreshPlan, screenEl, setNote, visitorName } from './state.js?v=3';
 import { closeSheet, node, openSheet } from './sheet.js';
 
 const PERIOD_LABEL = { 30: 'На месяц', 90: 'На 3 месяца' };
@@ -99,7 +99,8 @@ export async function enterProfile() {
   const sub = await api('/api/billing/subscription');
   const until = sub.ok && sub.data.plan?.expiresAt && sub.data.plan.id !== 'free' ? `до ${formatDate(new Date(sub.data.plan.expiresAt).toISOString())}` : '';
   $('#profile-plan').textContent = [plan?.label, until].filter(Boolean).join(' · ');
-  $('#profile-quota').textContent = plan ? (plan.unlimitedChat ? 'Безлимитные вопросы' : `${plan.dailyChatMessages} вопросов в день`) : '';
+  $('#profile-quota').textContent = plan?.welcomeBonus?.active ? planLine()
+    : plan ? (plan.unlimitedChat ? 'Безлимитные вопросы' : `${plan.dailyChatMessages} вопросов в день`) : '';
   const profile = birth();
   $('#profile-chart').textContent = profile ? `${visitorName()} · ${formatDate(profile.birthDate)}, ${profile.birthPlace}` : 'Данные рождения пока не заполнены.';
 }

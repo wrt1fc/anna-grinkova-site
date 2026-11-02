@@ -4,7 +4,7 @@
     "free": {
       "label": "Бесплатный",
       "maxPeople": 1,
-      "dailyChatMessages": 5,
+      "dailyChatMessages": 0,
       "dailyTarotReadings": 1,
       "relations": []
     },

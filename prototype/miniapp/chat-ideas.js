@@ -1,5 +1,5 @@
 import { api } from './api.js';
-import { $, app } from './state.js?v=2';
+import { $, app } from './state.js?v=3';
 import { closeSheet, node, openSheet } from './sheet.js';
 import { savedPosition } from './daily-card-choice.js?v=1';
 
@@ -51,7 +51,12 @@ function render() {
 // The server supplies the date, so device timezone/clock cannot select yesterday's card.
 export async function refreshIdeas() {
   const selected = context();
-  if (!selected.owner) return;
+  if (!selected.owner) {
+    generation++; controller?.abort(); clearTimeout(timer);
+    data = null; expiresAt = 0; loading = false;
+    $('#chat-suggestions-status').textContent = 'Выбери пример или напиши свой вопрос. После регистрации получишь 3 ответа бесплатно.';
+    render(); return;
+  }
   const ticket = ++generation;
   controller?.abort(); clearTimeout(timer);
   controller = new AbortController();

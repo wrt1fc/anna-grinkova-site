@@ -1,14 +1,14 @@
 // The «Фортуна» mini-app: routes, sign-in and registration, birth data, help and install screens.
 import { api, formatDate } from './api.js';
-import { $, app, birth, refreshMe, screenEl, setNote } from './state.js?v=2';
+import { $, app, birth, refreshMe, screenEl, setNote } from './state.js?v=3';
 import { node } from './sheet.js';
 import { pickCity, pickDate, pickTime } from './pickers.js';
-import { bindInfo, enterDay, enterHome, enterNatal, enterWeek } from './screens-info.js?v=3';
-import { bindChat, enterChat, resetChat } from './screens-chat.js?v=5';
-import { bindCard, enterCard, resetCard } from './screens-card.js?v=5';
-import { bindPay, bindPeople, enterPay, enterPeople, enterPlan, enterProfile } from './screens-account.js?v=4';
+import { bindInfo, enterDay, enterHome, enterNatal, enterWeek } from './screens-info.js?v=4';
+import { bindChat, enterChat, resetChat } from './screens-chat.js?v=6';
+import { bindCard, enterCard, resetCard } from './screens-card.js?v=6';
+import { bindPay, bindPeople, enterPay, enterPeople, enterPlan, enterProfile } from './screens-account.js?v=5';
 
-const PUBLIC = new Set(['login', 'register', 'code', 'help', 'install']);
+const PUBLIC = new Set(['home', 'day', 'week', 'card', 'chat', 'login', 'register', 'code', 'help', 'install']);
 const AUTH_SCREENS = new Set(['login', 'register', 'code']);
 const TAB_OF = { home: 'home', natal: 'home', day: 'home', card: 'home', week: 'home', install: 'home', chat: 'chat', profile: 'profile', people: 'profile', help: 'help' };
 const SCREEN_NAMES = [...document.querySelectorAll('[data-screen]')].map((item) => item.dataset.screen);
@@ -29,6 +29,7 @@ let challenge = null;
 let registered = null;
 let resendTimer = 0;
 let installEvent = null;
+let initialRender = true;
 let birthForm = { name: '', date: '', time: '', city: null, place: '' };
 
 // The old site addresses open the matching screen of the app.
@@ -54,8 +55,9 @@ function show(name) {
 
 async function render() {
   let name = currentName();
-  if (!SCREEN_NAMES.includes(name)) name = app.me ? 'home' : 'login';
-  if (!app.me && !PUBLIC.has(name)) { nextScreen = name; name = 'login'; }
+  if (!SCREEN_NAMES.includes(name)) name = 'home';
+  if (!app.me && !PUBLIC.has(name)) { nextScreen = name; name = initialRender ? 'home' : name === 'profile' ? 'login' : 'register'; }
+  initialRender = false;
   if (app.me && AUTH_SCREENS.has(name)) name = 'home';
   if (location.hash !== `#/${name}` || location.pathname !== '/') history.replaceState({ idx: history.state?.idx ?? 0 }, '', address(name));
   show(name);
@@ -65,7 +67,8 @@ async function render() {
 app.go = (name) => { history.pushState({ idx: (history.state?.idx ?? 0) + 1 }, '', address(name)); render(); };
 // A redirect replaces the current history entry, so the back button never returns to the screen that sent the visitor away.
 app.redirect = (name) => { history.replaceState({ idx: history.state?.idx ?? 0 }, '', address(name)); render(); };
-app.back = () => { if ((history.state?.idx ?? 0) > 0) history.back(); else app.go(app.me ? 'home' : 'login'); };
+app.requireRegistration = (name = 'home') => { nextScreen = name; app.go('register'); };
+app.back = () => { if ((history.state?.idx ?? 0) > 0) history.back(); else app.go('home'); };
 
 function busy(form, on) { for (const button of form.querySelectorAll('button[type="submit"]')) button.disabled = on; }
 const emailOk = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value);
@@ -246,13 +249,13 @@ function bindShell() {
     event.preventDefault();
     if (target.hasAttribute('data-back')) { app.back(); return; }
     if (target.dataset.go === 'birth') app.birthMode = null;
-    if (target.dataset.intro) { app.pendingQuestion = 'Расскажи, как ты работаешь и с какими вопросами к тебе можно прийти.'; }
+    if (target.dataset.intro && !app.me) { app.requireRegistration('birth'); return; }
     app.go(target.dataset.go);
   });
   $('#profile-out').addEventListener('click', async () => {
     try { await api('/api/auth/logout', { method: 'POST', body: {} }); } catch { /* the page still signs out locally */ }
     app.me = null; app.plan = null; app.natal = null; resetChat(); resetCard();
-    app.go('login');
+    app.go('home');
   });
   $('#home-bell').addEventListener('click', () => app.go('profile'));
   window.addEventListener('popstate', render);
