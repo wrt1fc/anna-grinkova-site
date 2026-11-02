@@ -15,7 +15,8 @@ const checks={learningRecall:s.recall>=.9,learningPrecision:s.precision>=.95,noS
  learningNotWorse:s.recall>=b.recall&&s.precision>=b.precision,natalNotWorse:natalCandidate.pass>=natalBase.pass,chatAllPassed:chatCandidate.pass===chatCandidate.total&&chatCandidate.pass>=chatBase.pass,lossFinite:true,allExamplesRetained:true};
 const recommended=Object.values(checks).every(Boolean),status=recommended?'CHECKS_COMPLETE_PASS':'CHECKS_COMPLETE_REVIEW_REQUIRED';
 const result={status,checks,baseline:b,candidate:s,natalBase,natalCandidate,chatBase,chatCandidate,training,productionModelUnchanged:'anna-v10',backup:'/home/ubuntu/model-backups/anna-v10-before-learning-v11-20261102'};
-const sample=candidate.rows.filter(r=>r.expected&&!r.errors.length).slice(0,10).concat(candidate.rows.filter(r=>!r.expected).slice(0,5));
+// Keep failures visible in the human review, rather than selecting only good answers.
+const sample=candidate.rows.filter(r=>r.expected).slice(0,10).concat(candidate.rows.filter(r=>!r.expected).sort((a,b)=>Number(b.errors.length>0)-Number(a.errors.length>0)).slice(0,5));
 const report=['# anna-v11: учебные вопросы и приглашение к обучению','',`Статус: ${status}. Рабочая модель сайта остаётся anna-v10; новая версия автоматически не включалась.`,'',
  'Резервная копия: '+result.backup,'Файл GGUF и адаптер скопированы физически и проверены SHA256; исходная anna-v10 не перезаписывалась.','',
  '## Проверки','',JSON.stringify({checks,baseline:b,candidate:s,natalBase,natalCandidate,chatBase,chatCandidate},null,2),'',
