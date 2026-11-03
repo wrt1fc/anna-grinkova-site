@@ -31,7 +31,8 @@ class StepTiming(TrainerCallback):
     def on_step_end(self, args, state, control, **kwargs):
         torch.cuda.synchronize()
         print('STEP', state.global_step, 'seconds', round(time.perf_counter() - self.started, 2),
-              'peak_GiB', round(torch.cuda.max_memory_allocated() / 2**30, 2), flush=True)
+              'peak_GiB', round(torch.cuda.max_memory_allocated() / 2**30, 2),
+              'reserved_GiB', round(torch.cuda.max_memory_reserved() / 2**30, 2), flush=True)
 
 
 def main():
@@ -158,6 +159,8 @@ def main():
         'processed_train_examples': len(trainer.train_dataset),
         'training_metrics': train_result.metrics, 'final_eval_metrics': final_eval,
         'best_eval_loss': trainer.state.best_metric,
+        'peak_cuda_allocated_gib': torch.cuda.max_memory_allocated() / 2**30,
+        'peak_cuda_reserved_gib': torch.cuda.max_memory_reserved() / 2**30,
     }, ensure_ascii=False, indent=2), encoding='utf-8')
     print(f'adapter saved to {args.out}')
 

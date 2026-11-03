@@ -16,12 +16,14 @@ const checks={learningAll:learning.summary.errors===0,learningRecall:learning.su
  freshAll:fresh.summary.errors===0,freshRecall:fresh.summary.recall===1,freshPrecision:fresh.summary.precision===1,
  noSensitiveSignals:learning.summary.sensitiveOffers===0&&fresh.summary.sensitiveOffers===0,noSensitiveButtons:learning.summary.sensitiveButtons===0&&fresh.summary.sensitiveButtons===0,
  factsChecks:learning.summary.meaningFailures===0&&fresh.summary.meaningFailures===0,
- natalNotWorse:natal.pass>=Math.max(32,baseNatal.pass),chatAll:chat.pass===chat.total&&chat.pass>=baseChat.pass,metadata:true};
+ natalNotWorse:natal.pass>=Math.max(32,baseNatal.pass),chatAll:chat.pass===chat.total&&chat.pass>=baseChat.pass,
+ tokenLimit:train.max_length===3400&&train.reject_truncation===true,metadata:true};
 const pass=Object.values(checks).every(Boolean);
 const row={model,status:pass?'CHECKS_COMPLETE_PASS':'CHECKS_COMPLETE_REVIEW_REQUIRED',checks,learning:learning.summary,fresh:fresh.summary,natal,chat,training:train,
  score:learning.summary.passed+fresh.summary.passed+natal.pass+chat.pass-10*(learning.summary.sensitiveOffers+fresh.summary.sensitiveOffers)};
 const summaryPath=join(root,'reports/series-summary.json');
 const summary=existsSync(summaryPath)?read(summaryPath):{baseline:{model:'anna-v10',learning:b,fresh:freshBase,natal:baseNatal,chat:baseChat},attempts:[],maxAttempts:3,productionModel:'anna-v10',automaticDeployment:false};
+if(existsSync(join(root,'reports/memory-smoke-result.json')))summary.memorySmoke=read(join(root,'reports/memory-smoke-result.json'));
 if(summary.attempts.some(a=>a.model===model))throw Error('Attempt already reported; refusing duplicate');
 summary.attempts.push(row);summary.best=[...summary.attempts].sort((a,b)=>Number(b.status==='CHECKS_COMPLETE_PASS')-Number(a.status==='CHECKS_COMPLETE_PASS')||b.score-a.score)[0].model;
 summary.status=pass?'CHECKS_COMPLETE_PASS':final==='yes'?'ATTEMPT_LIMIT_REVIEW_REQUIRED':'RUNNING next-attempt';
@@ -29,7 +31,7 @@ summary.updatedAt=new Date().toISOString();
 const samples=[...learning.rows.filter(r=>r.expected).slice(0,10),...learning.rows.filter(r=>!r.expected).sort((a,b)=>Number(b.errors.length>0)-Number(a.errors.length>0)).slice(0,5)];
 const text=['# Повторное обучение Фортуны: anna-v12–v14','',`Статус: ${summary.status}. Лучшая из проверенных попыток: ${summary.best}. На сайте остаётся anna-v10.`,
  'Веса v10 и их проверенная резервная копия не изменяются. Включение новой версии требует отдельного согласия.','',
- '## Что изменено','Инструкции обучения совпадают с первым запросом реального чата; явные положительное и отрицательное решения, 80 прежних натальных примеров и больше отрицательных примеров. 327 train, 41 validation, 20 дополнительных проверок. Все новые ответы — синтетические черновики, не одобрены Анной.',
+ '## Что изменено','Для изолированного кандидата используются краткие служебные инструкции и при обучении, и при проверке чата. Поля вопросов, данные карт и ответы сохранены. Полный пример ограничен 3400 токенами, переполнение блокируется до загрузки весов; перед обучением выполняется 10-шаговая GPU-проверка на двух самых длинных примерах. Явные положительное и отрицательное решения, 80 прежних натальных примеров и больше отрицательных примеров. 327 train, 41 validation, 20 дополнительных проверок. Все новые ответы — синтетические черновики, не одобрены Анной.',
  'Ранее известные 41 вопрос служат диагностикой/валидацией. Дополнительные 20 вопросов не входят в SFT-обучение или выбор лучшей эпохи. Повторное использование контроля при выборе параметров ограничивает обобщаемость результата: это не доказательство безошибочности.',
  'Порог: без ошибок на известных учебных и дополнительных вопросах, без лишних сигналов в чувствительных темах, натальные проверки не хуже v10 и минимум 32/34, весь общий чат. Не более трёх попыток; каждая начинается от v10, не от ухудшившейся v11. При технической ошибке конвейер останавливается и возвращает Ollama.','',
  '## Сравнение','',JSON.stringify(summary,null,2),'',

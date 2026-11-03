@@ -1,7 +1,7 @@
 #!/bin/bash
 # Bounded autonomous experiments. Never edits site.env or enables a candidate.
 set -Eeuo pipefail
-ROOT=/home/ubuntu/learning-training-series-v12
+ROOT=${LEARNING_RUN_ROOT:-/home/ubuntu/learning-training-series-v12-r2}
 BACKUP=/home/ubuntu/model-backups/anna-v10-before-learning-v11-20261102
 PY=/home/ubuntu/natal-bench/venv/bin/python
 KNOWLEDGE=/home/ubuntu/natal-training-v4/knowledge
@@ -23,13 +23,16 @@ stage() { STAGE=$1; printf 'RUNNING %s %s\n' "$STAGE" "$(date -Is)" > "$ROOT/rep
 run_check() { local code=0; "$@" || code=$?; test "$code" -le 1; }
 export HF_HOME=/home/ubuntu/natal-bench/hf HF_HUB_OFFLINE=1 PYTHONUNBUFFERED=1 OMP_NUM_THREADS=4
 export CHAT_LEARNING_SIGNALS=1
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 test -s "$BACKUP/BACKUP_COMPLETE"
 test "$(sha256sum /home/ubuntu/natal-training-v10/anna-v10/adapter_model.safetensors | cut -d' ' -f1)" = 99568d4c1cc1ef9669d565e058301e056b5b3e771e9f6a05fd76fdb43f48741f
 test ! -e "$ROOT/reports/series-summary.json"
 test "$(df --output=avail -BG "$ROOT" | tail -1 | tr -dc 0-9)" -ge 70
 cd "$ROOT/eval-code"
 stage token-preflight
-"$PY" training/count-learning-tokens.py "$ROOT/data" "$ROOT/reports/token-counts.json" "$MAX_LENGTH" > "$ROOT/reports/token-preflight.log" 2>&1
+USE_TORCH=0 "$PY" training/count-learning-tokens.py "$ROOT/data" "$ROOT/reports/token-counts.json" "$MAX_LENGTH" > "$ROOT/reports/token-preflight.log" 2>&1
+stage memory-smoke-plan
+USE_TORCH=0 "$PY" training/prepare-memory-smoke.py "$ROOT/data" "$ROOT/smoke-data" > "$ROOT/reports/memory-smoke-plan.json" 2>&1
 stage baseline-learning
 run_check node training/eval-learning.mjs anna-v10 "$ROOT/cards.jsonl" "$ROOT/reports/baseline-learning" > "$ROOT/reports/baseline-learning.log" 2>&1
 stage baseline-fresh
@@ -40,6 +43,14 @@ stage baseline-chat
 run_check node training/eval-chat.js anna-v10 "$ROOT/reports/baseline-chat.md" > "$ROOT/reports/baseline-chat.log" 2>&1
 stage backup-check
 (cd "$BACKUP" && sha256sum -c SHA256SUMS) > "$ROOT/reports/backup-check.log" 2>&1
+stage memory-smoke
+sudo -n systemctl stop ollama
+sleep 3
+test -z "$(nvidia-smi --query-compute-apps=pid --format=csv,noheader)"
+"$PY" training/train_lora.py --base Qwen/Qwen3.5-4B --data "$ROOT/smoke-data" --out "$ROOT/smoke-adapter" \
+ --init-adapter /home/ubuntu/natal-training-v10/anna-v10 --max-steps 10 --lr 1e-5 --max-length "$MAX_LENGTH" \
+ --reject-truncation --grad-accum 1 --half-embedding --timing --logging-steps 1 > "$ROOT/reports/memory-smoke.log" 2>&1
+"$PY" training/check-memory-smoke.py "$ROOT/smoke-adapter/anna-training.json" > "$ROOT/reports/memory-smoke-result.json"
 for VERSION in v12 v13 v14; do
  ATTEMPT="$ROOT/attempt-$VERSION"
  test ! -e "$ATTEMPT"

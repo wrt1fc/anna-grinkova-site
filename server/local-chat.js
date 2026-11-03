@@ -1,5 +1,6 @@
 import chatContext from '../config/chat-context.json' with { type: 'json' };
 import tarotReading from '../config/tarot-reading.json' with { type: 'json' };
+import learningSystem from '../config/chat-learning-system.json' with { type: 'json' };
 import { ollamaGenerateUrl } from './ollama.js';
 import { conversationalOpening, hasFormalAddress } from './chat-style.js';
 import { SAFE_FALLBACK_ANSWER } from './chat-safety.js';
@@ -90,7 +91,8 @@ export function questionGuidance(message, chart, mode, history = []) {
 
 // Shared with training: a different system instruction teaches a different task.
 export function firstPassSystem({message, chart = null, mode = null, history = [], learningSignals = false}) {
-  return systemFor(mode) + questionGuidance(message, chart, mode, history)
+  const base = learningSignals && mode !== TAROT_MODE ? learningSystem.instructions.join(' ') : systemFor(mode);
+  return base + questionGuidance(message, chart, mode, history)
     + (learningSignals && mode !== TAROT_MODE ? LEARNING_SIGNAL_INSTRUCTION : '')
     + (history.length ? '\nПродолжай разговор без нового приветствия.' : '\nЭто первый ответ в разговоре. Начни с «Привет!», затем сразу ответь на вопрос.');
 }

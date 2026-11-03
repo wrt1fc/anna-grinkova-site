@@ -2,6 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createLocalChat,firstPassSystem} from '../server/local-chat.js';
 import {learningInvitation} from '../server/learning.js';
+import {systemFor} from '../server/local-chat.js';
 
 test('training and inference share the actual first-pass system, including question guidance',async()=>{
  const message='Что такое управитель?',history=[],forecast={date:'2026-11-02',scope:'general'};
@@ -13,6 +14,16 @@ test('training and inference share the actual first-pass system, including quest
  await chat.answer({message,history,forecast});
  assert.equal(sent.system,firstPassSystem({message,history,learningSignals:true}));
  assert.match(sent.system,/Сначала дай простое и точное объяснение/);
+});
+
+test('only the isolated learning candidate gets compact instructions; core safeguards remain',()=>{
+ const message='Что такое управитель?',history=[];
+ const compact=firstPassSystem({message,history,learningSignals:true});
+ const original=firstPassSystem({message,history,learningSignals:false});
+ assert.ok(compact.length<original.length);
+ assert.ok(original.startsWith(systemFor(null)));
+ for(const word of ['chart.money','chart.partner','не придумывай','Не ставь диагнозы','visitorGender','materials','LEARNING_NONE'])assert.ok(compact.includes(word),word);
+ assert.ok(firstPassSystem({message,history,mode:'tarot',learningSignals:true}).startsWith(systemFor('tarot')));
 });
 
 test('grief inflections cannot turn a learned signal into a course invitation',()=>{

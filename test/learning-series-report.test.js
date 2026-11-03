@@ -20,7 +20,7 @@ test('series report blocks a fluent candidate with false sensitive signals and p
    for(const name of ['learning','fresh'])json(join(folder,`reports/${name}.json`),{summary:metrics,rows});
    writeFileSync(join(folder,`reports/eval-natal-anna-${version}.md`),'Прошли 32 из 34');
    writeFileSync(join(folder,`reports/eval-chat-anna-${version}.md`),'Прошли 19 из 19');
-   json(join(folder,`anna-${version}/anna-training.json`),{processed_train_examples:327,training_metrics:{train_loss:1.1},final_eval_metrics:{eval_loss:1.5}});
+   json(join(folder,`anna-${version}/anna-training.json`),{processed_train_examples:327,max_length:3400,reject_truncation:true,training_metrics:{train_loss:1.1},final_eval_metrics:{eval_loss:1.5}});
    writeFileSync(join(folder,`anna-${version}-q8_0.gguf`),'fixture only');
    execFileSync(process.execPath,[resolve('training/report-learning-series.mjs'),root,'anna-'+version],{stdio:'pipe'});
    const result=JSON.parse(readFileSync(join(root,'reports/series-summary.json')));
