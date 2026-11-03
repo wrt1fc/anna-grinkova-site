@@ -5,6 +5,7 @@ ROOT=/home/ubuntu/learning-training-series-v12
 BACKUP=/home/ubuntu/model-backups/anna-v10-before-learning-v11-20261102
 PY=/home/ubuntu/natal-bench/venv/bin/python
 KNOWLEDGE=/home/ubuntu/natal-training-v4/knowledge
+MAX_LENGTH=3400
 exec 9>"$ROOT/reports/pipeline.lock"
 flock -n 9 || exit 73
 exec 8>/home/ubuntu/anna-training-gpu.lock
@@ -28,7 +29,7 @@ test ! -e "$ROOT/reports/series-summary.json"
 test "$(df --output=avail -BG "$ROOT" | tail -1 | tr -dc 0-9)" -ge 70
 cd "$ROOT/eval-code"
 stage token-preflight
-"$PY" training/count-learning-tokens.py "$ROOT/data" "$ROOT/reports/token-counts.json" > "$ROOT/reports/token-preflight.log" 2>&1
+"$PY" training/count-learning-tokens.py "$ROOT/data" "$ROOT/reports/token-counts.json" "$MAX_LENGTH" > "$ROOT/reports/token-preflight.log" 2>&1
 stage baseline-learning
 run_check node training/eval-learning.mjs anna-v10 "$ROOT/cards.jsonl" "$ROOT/reports/baseline-learning" > "$ROOT/reports/baseline-learning.log" 2>&1
 stage baseline-fresh
@@ -54,7 +55,7 @@ for VERSION in v12 v13 v14; do
  test -z "$(nvidia-smi --query-compute-apps=pid --format=csv,noheader)"
  cd "$ATTEMPT/eval-code"
  "$PY" training/train_lora.py --base Qwen/Qwen3.5-4B --data "$ATTEMPT/data" --out "$ATTEMPT/anna-$VERSION" \
-  --init-adapter /home/ubuntu/natal-training-v10/anna-v10 --epochs "$EPOCHS" --lr "$LR" --max-length 4608 --grad-accum 8 \
+  --init-adapter /home/ubuntu/natal-training-v10/anna-v10 --epochs "$EPOCHS" --lr "$LR" --max-length "$MAX_LENGTH" --reject-truncation --grad-accum 8 \
   --half-embedding --timing --eval-first --logging-steps 1 > "$ATTEMPT/reports/train.log" 2>&1
  stage "$VERSION-export-and-regression"
  bash training/server/export-eval.sh "$VERSION" "$KNOWLEDGE" natal-plan.json > "$ATTEMPT/reports/export.log" 2>&1

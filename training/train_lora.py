@@ -18,6 +18,7 @@ from datasets import load_dataset
 from peft import LoraConfig, PeftModel, prepare_model_for_kbit_training
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig, TrainerCallback
 from trl import SFTConfig, SFTTrainer
+from token_budget import inspect_budget, require_budget
 
 
 class StepTiming(TrainerCallback):
@@ -42,6 +43,8 @@ def main():
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--rank', type=int, default=16)
     parser.add_argument('--max-length', type=int, default=2048)
+    parser.add_argument('--reject-truncation', action='store_true',
+                        help='check every full prompt and completion before loading model weights; never silently cut answers')
     parser.add_argument('--batch', type=int, default=1)
     parser.add_argument('--grad-accum', type=int, default=8)
     parser.add_argument('--max-steps', type=int, default=-1)
@@ -67,6 +70,9 @@ def main():
     dataset = load_dataset('json', data_files=files)
 
     tokenizer = AutoTokenizer.from_pretrained(args.base)
+    if args.reject_truncation:
+        budget = {split: inspect_budget(tokenizer, rows, args.max_length) for split, rows in dataset.items()}
+        require_budget(budget)
     model = AutoModelForCausalLM.from_pretrained(
         args.base,
         quantization_config=BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type='nf4',
@@ -148,6 +154,7 @@ def main():
         'rank': args.rank, 'max_steps': args.max_steps, 'init_adapter': args.init_adapter,
         'frozen_embedding_bf16': args.frozen_embedding_bf16, 'half_embedding': args.half_embedding,
         'max_length': args.max_length, 'seed': config.seed,
+        'reject_truncation': args.reject_truncation,
         'processed_train_examples': len(trainer.train_dataset),
         'training_metrics': train_result.metrics, 'final_eval_metrics': final_eval,
         'best_eval_loss': trainer.state.best_metric,
