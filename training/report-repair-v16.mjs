@@ -1,0 +1,18 @@
+import {readFileSync,writeFileSync} from 'node:fs';
+import {join} from 'node:path';
+import evalSet from './eval-questions.json' with {type:'json'};
+import {assessRepairRun} from './repair-v16-gates.mjs';
+const [root]=process.argv.slice(2);if(!root)throw Error('Expected isolated v16 run root');
+const read=path=>JSON.parse(readFileSync(join(root,path),'utf8'));
+const cards=path=>readFileSync(join(root,path),'utf8').trim().split(/\r?\n/).map(JSON.parse);
+const preparation=read('preparation.json'),manifest=read('data/manifest.json');
+if(preparation.train!==499||preparation.eval!==89||preparation.fresh!==30||manifest.train!==preparation.train||manifest.eval!==preparation.eval)throw Error('Unexpected v16 data contract');
+const baseline=read('reports/baseline-learning.json'),candidate=read('reports/learning.json'),freshBase=read('reports/baseline-fresh.json'),fresh=read('reports/fresh.json');
+const natalBase=read('reports/baseline-natal.json'),natal=read('reports/eval-natal-anna-v16.json'),chatBase=read('reports/baseline-chat.json'),chat=read('reports/eval-chat-anna-v16.json');
+if([natalBase,natal,chatBase,chat].some(report=>report.day!=='2026-11-02'))throw Error('Baseline/candidate evaluation dates differ from the frozen training context');
+const meta=read('anna-v16/anna-training.json'),smoke=read('reports/memory-smoke-result.json');
+const assessment=assessRepairRun({baseline,candidate,freshBase,fresh,natalBase,natal,chatBase,chat,meta,smoke,expected:{train:manifest.train,learning:cards('cards.jsonl').filter(c=>c.split==='eval').map(c=>c.id),fresh:cards('holdout.jsonl').map(c=>c.id),natal:read('natal-plan.json').filter(c=>c.split==='eval').map(c=>c.id),chat:evalSet.questions.map(c=>c.id)}});
+const result={...assessment,model:'anna-v16',preparation,training:meta,memorySmoke:smoke,baseline:{model:'anna-v10',learning:baseline.summary,fresh:freshBase.summary,natal:natalBase.summary,chat:chatBase.summary},candidate:{learning:candidate.summary,fresh:fresh.summary,natal:natal.summary,chat:chat.summary},automaticDeployment:false,productionModelUnchanged:'anna-v10'};
+const text=['# anna-v16: исправления после проверки v15','',`Статус: ${result.status}. Кандидат не подключён к сайту.`,'',JSON.stringify(result,null,2),'','## Ограничения','Прежние v15 validation/fresh — открытые регрессионные данные. Новые формулировки проверяют уже изучаемые понятия, а не неизвестные концепции. Совпадение ключевых фрагментов не доказывает полную правильность ответа. Даже 100% на конечном наборе не гарантирует отсутствие ошибок. Новые синтетические draft не одобрены Анной. Production остаётся anna-v10; включение кандидата и CHAT_LEARNING_SIGNALS требует отдельного согласия.',''].join('\n');
+for(const ext of ['json','md','txt'])writeFileSync(join(root,'reports/after-train-anna-v16.'+ext),ext==='json'?JSON.stringify(result,null,2):ext==='txt'?text.replace(/^#+\s*/gmu,''):text);
+writeFileSync(join(root,'reports/status.txt'),result.status+'\n');console.log(JSON.stringify({status:result.status,checks:result.checks,regressions:result.regressions}));

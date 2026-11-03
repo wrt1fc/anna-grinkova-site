@@ -2,6 +2,7 @@
 // and a check that an answer does not contradict the calculated chart. Used by natal-plan.mjs, natal-worksheet.mjs,
 // import-natal.mjs and eval-natal.js.
 import { SIGNS, ASPECT_NAMES, POINT_NAMES, natalChart } from '../server/astro-chart.js';
+import {wrongCalculatedClaim} from '../server/chart-answer-check.js';
 
 // Sign in the locative case ("в Раке"), the way a person asks about their chart.
 export const SIGN_LOCATIVE = { Овен: 'в Овне', Телец: 'в Тельце', Близнецы: 'в Близнецах', Рак: 'в Раке', Лев: 'во Льве', Дева: 'в Деве',
@@ -116,6 +117,7 @@ const ASPECT_WORD = { соединение: 'conjunction', секстиль: 'se
 // Statements about the chart that can be checked against the calculation; everything else is the writer's interpretation.
 export function chartClaimProblems(answer, natal) {
   const problems = [];
+  if(wrongCalculatedClaim(answer,{calculated:{positions:natal.planets,angles:natal.angles,aspects:natal.aspects}}))problems.push('явное положение или аспект противоречит полному расчёту');
   const text = answer.replace(/\s+/g, ' ');
   const shown = natal.aspects.slice(0, 12);
   // "Луна в Раке" / "Луна у вас в Раке"

@@ -14,7 +14,7 @@ if (!model) {
   process.exit(2);
 }
 const chat = createLocalChat({ model });
-const day = moscowDate();
+const day = process.env.ANNA_EVAL_DATE || moscowDate();
 const forecast = chatForecastContext(forecastForDate(day));
 const rows = [];
 for (const item of evalSet.questions) {
@@ -41,5 +41,6 @@ if (reportPath) {
     ...rows.flatMap(({ item, answer, problems, ms }) => [`## ${problems.length ? '✖' : '✔'} ${item.question}`, '',
       `Режим: ${item.length}; ${ms} мс${problems.length ? `; проблемы: ${problems.join('; ')}` : ''}`, '', `> ${answer || '—'}`, ''])];
   writeFileSync(reportPath, report.join('\n'));
+  writeFileSync(reportPath.replace(/\.md$/u,'')+'.json', JSON.stringify({model,day,rows:rows.map(({item,answer,problems,ms})=>({id:item.id,question:item.question,answer,problems,ms})),summary:{passed:rows.length-failed,total:rows.length}},null,2));
 }
 process.exitCode = failed ? 1 : 0;

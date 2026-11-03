@@ -17,7 +17,7 @@ for(const c of cards){const started=performance.now();let r={},errors=[];try{
  r=await chat.answer({message:c.question,history,forecast:forecastForQuestion(forecast,c.question),chart:astro.chart,length:c.length??'medium'});
  if(unsafeChatAnswer(r.answer,'2026-11-02')||hasFormalAddress(r.answer))errors.push('safety/style');
  if(/\[\[LEARN/.test(r.answer))errors.push('internal marker leaked');
- if(r.answer.length<(c.scope==='offtopic'||c.scope==='service'?30:150)||r.answer.length>ANSWER_LENGTHS[c.length??'medium'].maxChars)errors.push('answer length');
+ if(r.answer.length<(c.minAnswerChars??(c.scope==='offtopic'||c.scope==='service'?30:150))||r.answer.length>ANSWER_LENGTHS[c.length??'medium'].maxChars)errors.push('answer length');
  errors.push(...learningAnswerProblems(r.answer,c));
  if(!!r.learningSuggested!==c.learning)errors.push('learned decision mismatch');
  if(!!learningInvitation(c.question,history,r.learningSuggested===true)!==c.learning)errors.push('button decision mismatch');

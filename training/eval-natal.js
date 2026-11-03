@@ -31,7 +31,7 @@ const knowledge = knowledgeDir ? loadKnowledge(resolve(knowledgeDir)) : null;
 // shows how often the raw model went wrong; it is shown for every answer and in the summary.
 let requests = 0;
 const chat = createLocalChat({ model, fetchImpl: (...fetchArgs) => { requests += 1; return fetch(...fetchArgs); } });
-const day = moscowDate();
+const day = process.env.ANNA_EVAL_DATE || moscowDate();
 const forecast = chatForecastContext(forecastForDate(day));
 const rows = [];
 for (const row of plan) {
@@ -65,5 +65,6 @@ if (reportPath) {
   writeFileSync(reportPath, [`# Контрольный прогон натальных вопросов: ${model}`, '', `Дата расчёта ${day}. Прошли ${rows.length - failed} из ${rows.length}; с повторным запросом к модели: ${rows.filter((item) => item.retried).length}.`, '',
     ...rows.flatMap(({ row, answer, problems, ms, retried }) => [`## ${problems.length ? '✖' : '✔'} ${row.question}`, '',
       `Режим: ${row.length}; ${ms} мс${retried ? '; был повторный запрос к модели' : ''}${problems.length ? `; проблемы: ${problems.join('; ')}` : ''}`, '', `> ${answer || '—'}`, ''])].join('\n'));
+  writeFileSync(reportPath.replace(/\.md$/u,'')+'.json',JSON.stringify({model,day,rows:rows.map(({row,answer,problems,ms,retried})=>({id:row.id,question:row.question,answer,problems,ms,retried})),summary:{passed:rows.length-failed,total:rows.length}},null,2));
 }
 process.exitCode = failed ? 1 : 0;

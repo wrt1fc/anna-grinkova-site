@@ -9,6 +9,7 @@ import {chartContext} from '../server/chat-grounding.js';
 import {unsafeChatAnswer} from '../server/chat-safety.js';
 import {LEARNING_SIGNAL,LEARNING_NONE} from '../server/learning-signals.js';
 import {learningAnswerProblems} from './learning-quality.mjs';
+import {hasFormalAddress} from '../server/chat-style.js';
 const [input,out]=process.argv.slice(2);if(!input||!out)throw Error('Expected cards.jsonl and output directory');
 const cards=readFileSync(input,'utf8').split(/\r?\n/).filter(Boolean).map(s=>JSON.parse(s)),split={train:[],eval:[]},families=new Map(),ids=new Set();
 const forecast=chatForecastContext(forecastForDate('2026-11-02'));
@@ -18,6 +19,7 @@ for(const c of cards){
  if(unsafeChatAnswer(c.answer,'2026-11-02')||c.answer.includes('[[LEARNING_')||c.answer.length>900)throw Error('Unsafe or overlong answer '+c.id);
  if(c.scope==='offtopic'&&(c.learning||c.sensitive))throw Error('Offtopic cards must not offer learning or replace crisis support: '+c.id);
  if(c.scope&&learningAnswerProblems(c.answer,c).some(p=>p.startsWith('scope:')))throw Error('Scope policy mismatch in teacher answer '+c.id);
+ if(c.qualityVersion===16&&(hasFormalAddress(c.answer)||learningAnswerProblems(c.answer,c).length))throw Error('Invalid v16 teacher answer '+c.id+': '+learningAnswerProblems(c.answer,c).join('; '));
  const history=c.history??[],profile=c.chartFor?{birthUtc:c.chartFor.birthUtc,birthLatitude:c.chartFor.latitude,birthLongitude:c.chartFor.longitude}:null;
  const astro=c.learning?{chart:null}:chartContext(profile,c.question,new Date('2026-11-02T09:00:00Z'),{history});
  const prompt=chatPrompt({message:c.question,history:historyForQuestion(history,c.question),forecast:forecastForQuestion(forecast,c.question),chart:astro.chart,length:c.length??'medium',tone:c.tone??null,materials:[]});
