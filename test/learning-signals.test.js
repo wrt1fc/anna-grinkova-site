@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {extractLearningSignal, LEARNING_SIGNAL} from '../server/learning-signals.js';
+import {extractLearningSignal, LEARNING_SIGNAL, LEARNING_NONE} from '../server/learning-signals.js';
 import {learningInvitation} from '../server/learning.js';
 import {createLocalChat} from '../server/local-chat.js';
 
 test('model signal is separate from visible text; malformed or embedded signals cannot request an invitation',()=>{
+ assert.deepEqual(extractLearningSignal('Ответ без рекламы.\n'+LEARNING_NONE),{answer:'Ответ без рекламы.',learningSuggested:false});
+ assert.equal(extractLearningSignal('Ответ.\n'+LEARNING_SIGNAL+'\n'+LEARNING_NONE).learningSuggested,false);
  assert.deepEqual(extractLearningSignal('Понятное объяснение.\n'+LEARNING_SIGNAL),{answer:'Понятное объяснение.',learningSuggested:true});
  for(const raw of ['Обычный ответ.','Текст [[LEARNING_OFFER','[[LEARNING_OFFER]] Внутри ответа.']){
   const result=extractLearningSignal(raw);assert.equal(result.learningSuggested,false);assert.doesNotMatch(result.answer,/\[\[LEARN/);

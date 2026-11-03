@@ -70,7 +70,7 @@ export function systemFor(mode) {
   return (mode === TAROT_MODE ? [...chatContext.systemInstructions, ...tarotReading.systemInstructions] : chatContext.systemInstructions).join(' ');
 }
 
-function questionGuidance(message, chart, mode, history = []) {
+export function questionGuidance(message, chart, mode, history = []) {
   if (mode !== TAROT_MODE && isLearningQuestion(message, history)) return '\nЭто вопрос о понятии или способе расчёта. Сначала дай простое и точное объяснение термина и один короткий пример. Например, управитель знака — связанная с ним планета; управитель дома определяется по знаку на его куспиде. Не подменяй объяснение личным прогнозом. Приглашение к обучению интерфейс покажет отдельно после ответа: не выдумывай контакты, ссылки, цены, расписание и не вставляй рекламу в сам ответ.';
   if (mode === TAROT_MODE || !isRelationshipQuestion(message)) return '';
   const direct = '\nДля текущего вопроса: отвечай об отношениях, без вступления «Смотри» и без отказа «я не могу предсказывать». Не обсуждай прежнюю карту дня и не отправляй на консультацию вместо ответа.';
@@ -86,6 +86,13 @@ function questionGuidance(message, chart, mode, history = []) {
   }
   if (chart) return direct + ' Выбери не больше двух показателей из chart и объясни, что они могут означать в обычной жизни. Без списка планет и без обещаний исхода.';
   return direct + ' Если вопрос о Луне и любви без слов «сегодня» или «транзит», объясни смысл натальной Луны: потребность в заботе, близости и безопасности. Не приписывай ежедневные перемены настроения движению Луны. Без личной карты не называй положения и аспекты человека.';
+}
+
+// Shared with training: a different system instruction teaches a different task.
+export function firstPassSystem({message, chart = null, mode = null, history = [], learningSignals = false}) {
+  return systemFor(mode) + questionGuidance(message, chart, mode, history)
+    + (learningSignals && mode !== TAROT_MODE ? LEARNING_SIGNAL_INSTRUCTION : '')
+    + (history.length ? '\nПродолжай разговор без нового приветствия.' : '\nЭто первый ответ в разговоре. Начни с «Привет!», затем сразу ответь на вопрос.');
 }
 
 // A complete new question about relationships should not inherit the preceding day-card exercise.
@@ -174,9 +181,7 @@ export function createLocalChat({ model, fetchImpl = fetch, learningSignals = pr
           think: false,
           // Fixed context size: Ollama reloads the model whenever num_ctx changes between requests.
           options: { temperature, num_predict: size.numPredict, num_ctx: 8192 },
-          system: systemFor(mode) + questionGuidance(message, chart, mode, history)
-            + (learningSignals && mode !== TAROT_MODE ? LEARNING_SIGNAL_INSTRUCTION : '')
-            + (history.length ? '\nПродолжай разговор без нового приветствия.' : '\nЭто первый ответ в разговоре. Начни с «Привет!», затем сразу ответь на вопрос.')
+          system: firstPassSystem({message, chart, mode, history, learningSignals})
             + (styleRetry ? '\nИсправь обращение: только «ты», «тебе», «твой» и глаголы в единственном числе. Сохрани смысл и факты. Разговорный тон, без официальных приветствий и без цитирования этих правил.' : '') + (qualityRetry
             ? '\nПовторная проверка ответа: не повторяй предложения. Положения планет в поле chart — уже рассчитанные факты; не исправляй их и не добавляй другие положения. Не меняй номера домов и знаки ASC/MC. Не добавляй аспектов, которых нет в chart.aspects; лучше объясни одно рассчитанное положение без аспекта. ' + (chart?.relationship
               ? 'Обязательно опирайся на рассчитанные 7-й дом, его основного управителя и Венеру или Луну. Назови реальные положения и свяжи их с качествами партнёра. Если точного времени нет, домов не называй.'
