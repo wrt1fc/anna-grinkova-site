@@ -1,6 +1,7 @@
 import chatContext from '../config/chat-context.json' with { type: 'json' };
 import tarotReading from '../config/tarot-reading.json' with { type: 'json' };
 import learningSystem from '../config/chat-learning-system.json' with { type: 'json' };
+import scopePolicy from '../config/chat-scope.json' with { type: 'json' };
 import { ollamaGenerateUrl } from './ollama.js';
 import { conversationalOpening, hasFormalAddress } from './chat-style.js';
 import { SAFE_FALLBACK_ANSWER } from './chat-safety.js';
@@ -94,6 +95,7 @@ export function firstPassSystem({message, chart = null, mode = null, history = [
   const base = learningSignals && mode !== TAROT_MODE ? learningSystem.instructions.join(' ') : systemFor(mode);
   return base + questionGuidance(message, chart, mode, history)
     + (learningSignals && mode !== TAROT_MODE ? LEARNING_SIGNAL_INSTRUCTION : '')
+    + (learningSignals && mode !== TAROT_MODE ? '\n'+scopePolicy.instruction+' Для посторонней темы ответь дословно, независимо от length: «'+scopePolicy.reply+'». Служебное решение — [[LEARNING_NONE]].' : '')
     + (history.length ? '\nПродолжай разговор без нового приветствия.' : '\nЭто первый ответ в разговоре. Начни с «Привет!», затем сразу ответь на вопрос.');
 }
 

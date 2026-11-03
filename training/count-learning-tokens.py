@@ -12,7 +12,11 @@ result = {}
 for split in ('train', 'eval'):
     rows = [json.loads(line) for line in (data / (split + '.jsonl')).read_text().splitlines() if line.strip()]
     result[split] = inspect_budget(tokenizer, rows, max_length)
-assert result['train']['count'] == 327, result
+manifest_path = data / 'manifest.json'
+if manifest_path.exists():
+    manifest = json.loads(manifest_path.read_text(encoding='utf-8-sig'))
+    for split in result:
+        assert result[split]['count'] == manifest[split], 'Split count differs from manifest'
 report.write_text(json.dumps(result, indent=2))
 print(json.dumps({name: {k: v for k, v in stats.items() if k != 'violations'} | {'over_budget': len(stats['violations'])}
                   for name, stats in result.items()}))
