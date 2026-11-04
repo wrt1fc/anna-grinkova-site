@@ -6,6 +6,7 @@ import style19 from '../config/chat-style-v19.json' with {type:'json'};
 import scopePolicy from '../config/chat-scope.json' with { type: 'json' };
 import {astroReference} from './astro-reference.js';
 import {methodicReference} from './methodic-reference.js';
+import {astroFactProblems} from './astro-fact-guard.js';
 import { ollamaGenerateUrl } from './ollama.js';
 import { conversationalOpening, hasFormalAddress } from './chat-style.js';
 import { SAFE_FALLBACK_ANSWER } from './chat-safety.js';
@@ -178,11 +179,12 @@ export function wrongPlanetSign(answer, chart) {
 
 export function createLocalChat({ model, fetchImpl = fetch, learningSignals = process.env.CHAT_LEARNING_SIGNALS === '1', onTrace = null }) {
   if (typeof model !== 'string' || !/^[\w./:-]{2,80}$/.test(model)) throw new Error('Invalid local model name');
+  const signalProtocol=learningSignals||process.env.CHAT_MODEL_PROTOCOL==='19';
   return {
-    async answer({ message, history, forecast, visitorName = null, visitorGender = null, signal, length = DEFAULT_ANSWER_LENGTH, materials = [], chart = null, mode = null, tone = null, onDelta = null, temperature = 0.25, qualityRetry = false, styleRetry = false }) {
+    async answer({ message, history, forecast, visitorName = null, visitorGender = null, signal, length = DEFAULT_ANSWER_LENGTH, materials = [], chart = null, mode = null, tone = null, onDelta = null, temperature = 0.25, qualityRetry = false, styleRetry = false, factRetry = false, factCorrection = '' }) {
       const size = answerSize(mode, length);
       if (!size) throw new Error('Unknown answer length');
-      if (!learningSignals && mode !== TAROT_MODE && chart?.missing && isRelationshipQuestion(message)) {
+      if (!signalProtocol && mode !== TAROT_MODE && chart?.missing && isRelationshipQuestion(message)) {
         const answer = conversationalOpening('Чтобы разобрать твои отношения по натальной карте, добавь дату, время и город рождения в кабинете. А пока расскажи: ты сейчас в паре или хочешь встретить партнёра?', history);
         onDelta?.(answer, answer);
         return { answer, model: null, length, truncated: false, contextVersion: chatContext.version };
@@ -197,7 +199,7 @@ export function createLocalChat({ model, fetchImpl = fetch, learningSignals = pr
           think: false,
           // Fixed context size: Ollama reloads the model whenever num_ctx changes between requests.
           options: { temperature, num_predict: size.numPredict, num_ctx: 8192 },
-          system: firstPassSystem({message, chart, mode, history, learningSignals})
+          system: firstPassSystem({message, chart, mode, history, learningSignals:signalProtocol})+(factRetry?'\nИсправь конкретную ошибку предыдущего ответа. Проверенный факт: '+factCorrection+' Сохрани вопрос и рассчитанные данные, не цитируй это указание.':'')
             + (styleRetry ? '\nИсправь обращение: только «ты», «тебе», «твой» и глаголы в единственном числе. Сохрани смысл и факты. Разговорный тон, без официальных приветствий и без цитирования этих правил.' : '') + (qualityRetry
             ? '\nПовторная проверка ответа: не повторяй предложения. Положения планет в поле chart — уже рассчитанные факты; не исправляй их и не добавляй другие положения. Не меняй номера домов и знаки ASC/MC. Не добавляй аспектов, которых нет в chart.aspects; лучше объясни одно рассчитанное положение без аспекта. ' + (chart?.relationship
               ? 'Обязательно опирайся на рассчитанные 7-й дом, его основного управителя и Венеру или Луну. Назови реальные положения и свяжи их с качествами партнёра. Если точного времени нет, домов не называй.'
@@ -217,13 +219,13 @@ export function createLocalChat({ model, fetchImpl = fetch, learningSignals = pr
         if(typeof event.thinking==='string')thinking+=event.thinking;
         if (typeof event.response === 'string' && event.response) {
           text += event.response;
-          if (text.length > size.maxChars + (learningSignals ? LEARNING_SIGNAL.length + 8 : 0)) { doneReason = 'length'; break; }
+          if (text.length > size.maxChars + (signalProtocol ? LEARNING_SIGNAL.length + 8 : 0)) { doneReason = 'length'; break; }
           // Hold the reply until address, greeting and calculated facts have all passed validation.
         }
         if (event.done) doneReason = event.done_reason ?? 'stop';
       }
       let truncated = doneReason === 'length';
-      onTrace?.({rawText:text,thinking,doneReason,qualityRetry,styleRetry,signal:learningSignalDiagnostics(text)});
+      onTrace?.({rawText:text,thinking,doneReason,qualityRetry,styleRetry,factRetry,signal:learningSignalDiagnostics(text)});
       if (!truncated && doneReason !== 'stop') throw new Error('Local chat returned an incomplete response');
       const parsed = extractLearningSignal(text);
       const cleaned = cleanRepeatedSentences(truncated ? lastFullSentence(parsed.answer.slice(0, size.maxChars)) : parsed.answer).trim()
@@ -237,11 +239,19 @@ export function createLocalChat({ model, fetchImpl = fetch, learningSignals = pr
       }
       if (hasFormalAddress(answer)) {
         if (!styleRetry) return createLocalChat({ model, fetchImpl, learningSignals, onTrace }).answer({ message, history, forecast, visitorName, visitorGender,
-          signal, length, materials, chart, mode, tone, onDelta, temperature: 0.15, qualityRetry, styleRetry: true });
+          signal, length, materials, chart, mode, tone, onDelta, temperature: 0.15, qualityRetry, styleRetry: true, factRetry, factCorrection });
         answer = conversationalOpening(chart?.relationship && !chart.partner ? groundedRelationshipAnswer(chart, length)
           : chart?.calculated && !chart.partner ? groundedNatalAnswer(chart, groundingQuestion(message, history), length) : SAFE_FALLBACK_ANSWER, history);
         onDelta?.(answer, answer);
         return { answer, model, length, truncated: false, contextVersion: chatContext.version, styleFiltered: true };
+      }
+      const factIssues=process.env.CHAT_FACT_GUARD==='1'&&mode!==TAROT_MODE?astroFactProblems(answer,{question:message,chart}):[];
+      if(factIssues.length){
+        const correction=factIssues.slice(0,2).map(x=>x.correction).join(' ');
+        if(!factRetry)return createLocalChat({model,fetchImpl,learningSignals,onTrace}).answer({message,history,forecast,visitorName,visitorGender,signal,length,materials,chart,mode,tone,onDelta,temperature:0.1,qualityRetry,styleRetry,factRetry:true,factCorrection:correction});
+        let fixed=conversationalOpening(correction,history);if(fixed.length>size.maxChars)fixed=lastFullSentence(fixed.slice(0,size.maxChars));
+        onDelta?.(fixed,fixed);
+        return {answer:fixed,model:null,length,truncated:false,contextVersion:chatContext.version,groundedFallback:true,factFiltered:true,learningSuggested:false};
       }
       const repeated = cleanRepeatedSentences(parsed.answer).trim() !== parsed.answer.trim();
       if (wrongPlanetSign(answer, chart) || wrongCalculatedClaim(answer, chart) || relationshipAnswerProblems(answer, chart, length) || (chart && repeated && !qualityRetry)) {
@@ -259,7 +269,7 @@ export function createLocalChat({ model, fetchImpl = fetch, learningSignals = pr
           throw new Error('Local chat contradicted the calculated chart');
         }
         return createLocalChat({ model, fetchImpl, learningSignals, onTrace }).answer({ message, history, forecast, visitorName, visitorGender, signal,
-          length, materials, chart, mode, tone, onDelta, temperature: 0.1, qualityRetry: true, styleRetry });
+          length, materials, chart, mode, tone, onDelta, temperature: 0.1, qualityRetry: true, styleRetry, factRetry, factCorrection });
       }
       onDelta?.(answer, answer);
       return { answer, model, length, truncated, contextVersion: chatContext.version,
