@@ -16,7 +16,7 @@ stage() { STAGE=$1; printf 'RUNNING %s %s\n' "$STAGE" "$(date -Is)" > "$ROOT/rep
 run_check() { local code=0; "$@" || code=$?; test "$code" -le 1; }
 export HF_HOME=/home/ubuntu/natal-bench/hf HF_HUB_OFFLINE=1 PYTHONUNBUFFERED=1 OMP_NUM_THREADS=4
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True CHAT_LEARNING_SIGNALS=1 ANNA_EVAL_DATE=2026-11-02 ANNA_TRAINING_PROMPT_VERSION=18 ANNA_REFERENCE_KNOWLEDGE=19
-export ANNA_METHODICS_FILE="$ROOT/methodics.json" ANNA_METHODICS_SHA256=b81c9b842b2986e5864853234f6d043773612334f1ec8d2b205d611608792a3b
+export ANNA_METHODICS_FILE="$ROOT/methodics.json" ANNA_METHODICS_SHA256=16089c6fb654a2e81c451094b5d85eda65d6692002dcbf281a1ea90f918de06e
 test ! -e "$ROOT/anna-v19/adapter_model.safetensors"
 test -s "$BACKUP/BACKUP_COMPLETE"
 test "$(df --output=avail -BG "$ROOT" | tail -1 | tr -dc 0-9)" -ge 30

@@ -14,7 +14,7 @@ export function loadMethodics(){
  if(document.version!==19||!Array.isArray(document.entries)||!document.entries.length)throw Error('Invalid curated methodic snapshot');
  const ids=new Set();
  for(const e of document.entries){
-  if(ids.has(e.id)||!e.id||!e.sourceId||!e.question||!e.answer||e.answer.length>800||e.status!=='reviewed-adaptation-draft-not-Anna-approved')throw Error('Unreviewed methodic entry');
+  if(ids.has(e.id)||!e.id||!e.sourceId||!e.question||!e.answer||e.answer.length>800||typeof e.reference!=='string'||e.reference.length<20||e.reference.length>500||e.reference===e.answer||e.status!=='reviewed-adaptation-draft-not-Anna-approved')throw Error('Unreviewed methodic entry');
   ids.add(e.id);
  }
  cached={path,expected,entries:document.entries};return cached.entries;
@@ -26,10 +26,10 @@ export function methodicReference(message,history=[]){
  if(!query.length)return null;
  const entries=loadMethodics();
  const ranked=entries.map(e=>{
-  const title=words(e.question+' '+e.evalQuestion),content=words(e.answer);
+  const title=words(e.question+' '+e.evalQuestion),content=words(e.reference);
   const overlap=query.filter(w=>title.includes(w));
   const score=overlap.length/Math.sqrt(Math.max(1,title.length))+query.filter(w=>content.includes(w)).length*.04;
   return {e,score,overlap:overlap.length};
  }).filter(r=>r.overlap>=2&&r.score>=.6).sort((a,b)=>b.score-a.score||a.e.id.localeCompare(b.e.id)).slice(0,2);
- return ranked.length?{version:19,kind:'curated-author-method-not-calculated-chart',entries:ranked.map(({e})=>({id:e.id,sourceId:e.sourceId,paragraphs:[e.paragraphStart,e.paragraphEnd],text:e.answer}))}:null;
+ return ranked.length?{version:19,kind:'curated-author-method-not-calculated-chart',entries:ranked.map(({e})=>({id:e.id,sourceId:e.sourceId,paragraphs:[e.paragraphStart,e.paragraphEnd],text:e.reference}))}:null;
 }

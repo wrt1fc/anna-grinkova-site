@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {createLocalChat,chatPrompt} from '../server/local-chat.js';
+import {createLocalChat,chatPrompt,firstPassSystem} from '../server/local-chat.js';
 import {extractLearningSignal,learningSignalDiagnostics} from '../server/learning-signals.js';
 import {astroReference} from '../server/astro-reference.js';
 import {evaluationTelemetry} from '../training/evaluation-telemetry.mjs';
@@ -58,7 +58,7 @@ test('reference facts route by concept and preserve original context outside the
 
 test('curated source retrieval preserves conversation style and never loads unverified raw material',()=>{
  const dir=mkdtempSync(join(tmpdir(),'anna-methodics-')),path=join(dir,'curated.json');
- const snapshot=JSON.stringify({version:19,entries:[{id:'test-source',sourceId:'private-1',question:'Какие темы третьего дома связаны с соседями?',evalQuestion:'Третий дом и ближайшее окружение',paragraphStart:17,paragraphEnd:26,answer:'Третий дом связан с повседневным общением и соседями.',status:'reviewed-adaptation-draft-not-Anna-approved'}]});
+ const snapshot=JSON.stringify({version:19,entries:[{id:'test-source',sourceId:'private-1',question:'Какие темы третьего дома связаны с соседями?',evalQuestion:'Третий дом и ближайшее окружение',paragraphStart:17,paragraphEnd:26,answer:'Третий дом связан с повседневным общением и соседями.',reference:'3 дом: речь, общение, соседи и ближайшее окружение.',status:'reviewed-adaptation-draft-not-Anna-approved'}]});
  writeFileSync(path,snapshot);
  const before={file:process.env.ANNA_METHODICS_FILE,sha:process.env.ANNA_METHODICS_SHA256,flag:process.env.ANNA_REFERENCE_KNOWLEDGE};
  try{
@@ -66,6 +66,7 @@ test('curated source retrieval preserves conversation style and never loads unve
   assert.throws(()=>methodicReference('Какие темы третьего дома связаны с соседями?'),/hash required/);
   process.env.ANNA_METHODICS_SHA256=createHash('sha256').update(snapshot).digest('hex');
   const r=methodicReference('Какие темы третьего дома связаны с соседями?');assert.equal(r.entries[0].sourceId,'private-1');assert.deepEqual(r.entries[0].paragraphs,[17,26]);
+  assert.notEqual(r.entries[0].text,JSON.parse(snapshot).entries[0].answer);
   assert.equal(methodicReference('Напиши SQL про третий дом и соседей'),null);
   assert.equal(methodicReference('Сильно болит грудь, третий дом и соседи'),null);
   const args={message:'Какие темы третьего дома связаны с соседями?',history:[{role:'user',content:'Без рекламы'}],forecast:{date:'2026-11-02'}};
@@ -88,6 +89,17 @@ test('v19 catches observed false PASS and accepts arithmetic and clarification p
 test('severe chest pain requires urgent care, not just a routine doctor suggestion',()=>{
  assert.notEqual(CHECKS.urgent_medical_care('Сильную боль нужно проверить у врача.'),true);
  assert.equal(CHECKS.urgent_medical_care('При сильной боли в груди обратись за срочной медицинской помощью.'),true);
+});
+
+test('isolated reference experiment explicitly retains the earlier conversational manner',()=>{
+ const before=[process.env.ANNA_REFERENCE_KNOWLEDGE,process.env.ANNA_TRAINING_PROMPT_VERSION];
+ try{
+  process.env.ANNA_REFERENCE_KNOWLEDGE='19';process.env.ANNA_TRAINING_PROMPT_VERSION='18';
+  const system=firstPassSystem({message:'Объясни Венеру',history:[],learningSignals:true});
+  for(const pattern of [/на равных/u,/добрая шутка/u,/visitorName/u,/visitorGender/u,/0–2/u,/без юмора/u,/без нравоучений/u])assert.match(system,pattern);
+  assert.match(system,/Первое сообщение: Привет!/u);
+  assert.match(firstPassSystem({message:'Продолжим',history:[{role:'user',content:'Привет'}],learningSignals:true}),/Продолжение без приветствия/u);
+ }finally{for(const [i,key]of ['ANNA_REFERENCE_KNOWLEDGE','ANNA_TRAINING_PROMPT_VERSION'].entries())if(before[i]===undefined)delete process.env[key];else process.env[key]=before[i];}
 });
 
 test('v19 final report survives recorded baseline failure and rejects raw signals hidden by the interface',()=>{
