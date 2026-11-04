@@ -1,6 +1,7 @@
 import chatContext from '../config/chat-context.json' with { type: 'json' };
 import tarotReading from '../config/tarot-reading.json' with { type: 'json' };
 import learningSystem from '../config/chat-learning-system.json' with { type: 'json' };
+import learningSystem18 from '../config/chat-learning-system-v18.json' with { type: 'json' };
 import scopePolicy from '../config/chat-scope.json' with { type: 'json' };
 import { ollamaGenerateUrl } from './ollama.js';
 import { conversationalOpening, hasFormalAddress } from './chat-style.js';
@@ -92,6 +93,12 @@ export function questionGuidance(message, chart, mode, history = []) {
 
 // Shared with training: a different system instruction teaches a different task.
 export function firstPassSystem({message, chart = null, mode = null, history = [], learningSignals = false}) {
+  // Opt-in for isolated training/evaluation only; production keeps its existing prompt.
+  if (learningSignals && mode !== TAROT_MODE && process.env.ANNA_TRAINING_PROMPT_VERSION === '18') {
+    return learningSystem18.instructions.join(' ') + '\nПосторонние задачи (код, рецепты, покупки, перевод, общая физика): только «'
+      + scopePolicy.reply + '» и [[LEARNING_NONE]], без решения задачи.'
+      + (history.length ? '\nПродолжение без приветствия.' : '\nПервое сообщение: Привет!');
+  }
   const base = learningSignals && mode !== TAROT_MODE ? learningSystem.instructions.join(' ') : systemFor(mode);
   return base + questionGuidance(message, chart, mode, history)
     + (learningSignals && mode !== TAROT_MODE ? LEARNING_SIGNAL_INSTRUCTION : '')

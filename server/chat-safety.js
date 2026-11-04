@@ -69,7 +69,9 @@ export function copiesMaterials(answer, materials = []) {
 }
 
 export function unsafeChatAnswer(answer, forecastDate) {
-  if (UNSAFE_PATTERNS.some((pattern) => pattern.test(answer))) return true;
+  // A denied promise is not a promise: keep all other checks on the original text.
+  const promiseText=answer.replace(/не (?:обещаю|утверждаю),? что [^.!?\n]{0,60}?гарантир\p{L}*/giu,'');
+  if (UNSAFE_PATTERNS.slice(0,-1).some((pattern) => pattern.test(answer)) || UNSAFE_PATTERNS.at(-1).test(promiseText)) return true;
   const [year, month, day] = String(forecastDate).split('-').map(Number);
   for (const match of answer.matchAll(/(?<!\d)((?:19|20)\d{2})(?!\d)/gu)) {
     if (Number(match[1]) !== year) return true;

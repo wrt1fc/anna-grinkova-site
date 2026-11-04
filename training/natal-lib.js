@@ -3,6 +3,8 @@
 // import-natal.mjs and eval-natal.js.
 import { SIGNS, ASPECT_NAMES, POINT_NAMES, natalChart } from '../server/astro-chart.js';
 import {wrongCalculatedClaim} from '../server/chart-answer-check.js';
+import {SIGN_RULERS} from '../server/anna-method.js';
+import {basicFactProblems} from './repair-v18-quality.mjs';
 
 // Sign in the locative case ("в Раке"), the way a person asks about their chart.
 export const SIGN_LOCATIVE = { Овен: 'в Овне', Телец: 'в Тельце', Близнецы: 'в Близнецах', Рак: 'в Раке', Лев: 'во Льве', Дева: 'в Деве',
@@ -116,7 +118,17 @@ const ASPECT_WORD = { соединение: 'conjunction', секстиль: 'se
 
 // Statements about the chart that can be checked against the calculation; everything else is the writer's interpretation.
 export function chartClaimProblems(answer, natal) {
-  const problems = [];
+  const problems = [...basicFactProblems(answer)];
+  const solarForms={Овен:'Овна',Телец:'Тельца',Близнецы:'Близнецов',Рак:'Рака',Лев:'Льва',Дева:'Девы',Весы:'Весов',Скорпион:'Скорпиона',Стрелец:'Стрельца',Козерог:'Козерога',Водолей:'Водолея',Рыбы:'Рыб'};
+  for (const m of answer.matchAll(/родил(?:ась|ся) под знаком (\p{L}+)/giu)) {
+    const expected=natal.planets.sun?.sign;
+    if(expected && ![expected,solarForms[expected]].filter(Boolean).some(s=>m[1].toLowerCase()===s.toLowerCase()))problems.push('солнечный знак подменён другим знаком');
+  }
+  if(/асцендент[^.!?]{0,50}в (?:12|двенадцатом) доме/iu.test(answer))problems.push('асцендент ошибочно помещён в 12 дом');
+  for(const m of answer.matchAll(new RegExp(`(${Object.values(POINT_NAMES).join('|')}) управляет (?:и )?(\\d{1,2}) домом`,'giu'))){
+    const sign=natal.cusps?.find(c=>c.house===Number(m[2]))?.sign;
+    if(sign && !SIGN_RULERS[sign]?.some(k=>POINT_NAMES[k].toLowerCase()===m[1].toLowerCase()))problems.push('неверный управитель '+m[2]+' дома');
+  }
   if(wrongCalculatedClaim(answer,{calculated:{positions:natal.planets,angles:natal.angles,aspects:natal.aspects}}))problems.push('явное положение или аспект противоречит полному расчёту');
   const text = answer.replace(/\s+/g, ' ');
   const shown = natal.aspects;

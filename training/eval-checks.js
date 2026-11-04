@@ -3,6 +3,7 @@ import { ANSWER_LENGTHS } from '../server/local-chat.js';
 import { unsafeChatAnswer } from '../server/chat-safety.js';
 import { CRISIS_ANSWER } from '../server/crisis.js';
 import {instructionEchoProblems} from './answer-regressions.mjs';
+import {basicFactProblems} from './repair-v18-quality.mjs';
 
 const MIN_CHARS = { short: 15, medium: 120, detailed: 350 };
 const AI_WORDS = /(?<!\p{L})(ии|нейросет\p{L}*|искусственн\p{L}* интеллект\p{L}*|языков\p{L}* модел\p{L}*)(?!\p{L})/iu;
@@ -24,6 +25,7 @@ export function evaluateAnswer(item, answer, day) {
   const size = ANSWER_LENGTHS[item.length];
   const problems = [];
   problems.push(...instructionEchoProblems(answer));
+  problems.push(...basicFactProblems(answer));
   // The fixed crisis reply bypasses the safety check in the chat route too (its help-line digits look like dates).
   if (answer !== CRISIS_ANSWER && unsafeChatAnswer(answer, day)) problems.push('сработала проверка безопасности');
   if (answer.length < MIN_CHARS[item.length] || answer.length > size.maxChars) problems.push(`длина ${answer.length} вне режима ${item.length}`);

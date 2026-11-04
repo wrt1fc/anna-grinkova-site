@@ -10,12 +10,12 @@ function rowsFor(report,expectedIds,field,model){
  }
  return report.rows;
 }
-export function assessRepairRun({baseline,candidate,freshBase,fresh,natalBase,natal,chatBase,chat,expected,meta,smoke,candidateModel='anna-v16'}){
+export function assessRepairRun({baseline,candidate,freshBase,fresh,natalBase,natal,chatBase,chat,expected,meta,smoke,candidateModel='anna-v16',baselineModel='anna-v10'}){
  for(const key of ['learning','fresh','natal','chat']){const value=expected[key];if(!Array.isArray(value)||!value.length||new Set(value).size!==value.length)throw Error('Invalid expected row IDs: '+key);}
- const a=rowsFor(baseline,expected.learning,'errors','anna-v10'),b=rowsFor(candidate,expected.learning,'errors',candidateModel);
- const c=rowsFor(freshBase,expected.fresh,'errors','anna-v10'),d=rowsFor(fresh,expected.fresh,'errors',candidateModel);
- const nb=rowsFor(natalBase,expected.natal,'problems','anna-v10'),n=rowsFor(natal,expected.natal,'problems',candidateModel);
- const cb=rowsFor(chatBase,expected.chat,'problems','anna-v10'),ch=rowsFor(chat,expected.chat,'problems',candidateModel);
+ const a=rowsFor(baseline,expected.learning,'errors',baselineModel),b=rowsFor(candidate,expected.learning,'errors',candidateModel);
+ const c=rowsFor(freshBase,expected.fresh,'errors',baselineModel),d=rowsFor(fresh,expected.fresh,'errors',candidateModel);
+ const nb=rowsFor(natalBase,expected.natal,'problems',baselineModel),n=rowsFor(natal,expected.natal,'problems',candidateModel);
+ const cb=rowsFor(chatBase,expected.chat,'problems',baselineModel),ch=rowsFor(chat,expected.chat,'problems',candidateModel);
  if(!Number.isInteger(meta.processed_train_examples)||meta.processed_train_examples!==expected.train||meta.max_length!==3400||meta.reject_truncation!==true||![meta.training_metrics?.train_loss,meta.final_eval_metrics?.eval_loss].every(v=>Number.isFinite(v)&&v>=0))throw Error('Invalid training metadata');
  const regressed=(base,rows,field)=>base.filter(r=>!r[field].length&&rows.find(c=>c.id===r.id)[field].length).map(r=>r.id);
  const regressions={learning:regressed(a,b,'errors'),fresh:regressed(c,d,'errors'),natal:regressed(nb,n,'problems'),chat:regressed(cb,ch,'problems')};

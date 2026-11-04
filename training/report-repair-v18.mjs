@@ -1,0 +1,32 @@
+import {readFileSync,writeFileSync} from 'node:fs';
+import {join} from 'node:path';
+import assert from 'node:assert/strict';
+import evalSet from './eval-questions.json' with {type:'json'};
+import {assessRepairRun} from './repair-v16-gates.mjs';
+const [root]=process.argv.slice(2);if(!root)throw Error('Expected experiment root');
+const read=p=>JSON.parse(readFileSync(join(root,p),'utf8'));
+const rows=p=>readFileSync(join(root,p),'utf8').trim().split(/\r?\n/u).map(JSON.parse);
+const preparation=read('preparation.json'),manifest=read('data/manifest.json'),meta=read('anna-v18/anna-training.json'),smoke=read('reports/memory-smoke-result.json'),mask=read('reports/completion-mask-audit.json');
+assert.equal(preparation.version,'repair-v18');assert.equal(preparation.train,749);assert.equal(preparation.eval,151);assert.equal(preparation.fresh,34);
+assert.equal(preparation.initAdapter,'anna-v17');assert.equal(manifest.promptVersion,18);assert.equal(manifest.train,749);assert.equal(manifest.eval,151);
+assert.equal(meta.epochs,2);assert.equal(meta.lr,5e-6);assert.match(meta.init_adapter,/natal-training-v17\/anna-v17$/u);
+assert.equal(meta.completion_only_loss,true);assert.equal(meta.require_prefix_match,true);assert.equal(mask.status,'PASS');
+for(const [split,count]of [['train',749],['eval',151]]){
+ assert.equal(mask.splits[split].count,count);assert.equal(mask.splits[split].prefix_mismatches,0);
+ assert.equal(meta.completion_mask_audit[split].count,count);assert.equal(meta.completion_mask_audit[split].prompt_labels_masked,true);
+ assert.ok(meta.completion_mask_audit[split].supervised_tokens>0);
+}
+const expected={train:749,learning:rows('cards.jsonl').filter(c=>c.split==='eval').map(c=>c.id),fresh:rows('holdout.jsonl').map(c=>c.id),natal:read('natal-plan.json').filter(c=>c.split==='eval').map(c=>c.id),chat:evalSet.questions.map(q=>q.id)};
+const candidate={candidate:read('reports/learning.json'),fresh:read('reports/fresh.json'),natal:read('reports/eval-natal-anna-v18.json'),chat:read('reports/eval-chat-anna-v18.json')};
+const baseline=prefix=>({baseline:read(`reports/${prefix}-learning.json`),freshBase:read(`reports/${prefix}-fresh.json`),natalBase:read(`reports/${prefix}-natal.json`),chatBase:read(`reports/${prefix}-chat.json`)});
+const base=baseline('baseline'),parent=baseline('parent');
+for(const r of [candidate.natal,candidate.chat,base.natalBase,base.chatBase,parent.natalBase,parent.chatBase])assert.equal(r.day,'2026-11-02');
+const assess=(b,model)=>assessRepairRun({...candidate,...b,expected,meta,smoke,candidateModel:'anna-v18',baselineModel:model});
+const v10=assess(base,'anna-v10'),v17=assess(parent,'anna-v17');
+const checks={...v10.checks,noParentIndividualRegression:v17.checks.noIndividualRegression};
+const status=Object.values(checks).every(Boolean)?'CHECKS_COMPLETE_PASS':'CHECKS_COMPLETE_REVIEW_REQUIRED';
+const summaries=b=>({learning:b.baseline.summary,fresh:b.freshBase.summary,natal:b.natalBase.summary,chat:b.chatBase.summary});
+const result={status,model:'anna-v18',checks,regressions:{v10:v10.regressions,v17:v17.regressions},failures:v10.failures,preparation,training:meta,memorySmoke:smoke,completionMaskAudit:mask,baseline:summaries(base),parent:summaries(parent),candidate:{learning:candidate.candidate.summary,fresh:candidate.fresh.summary,natal:candidate.natal.summary,chat:candidate.chat.summary},automaticDeployment:false,productionModelUnchanged:'anna-v10'};
+const text=['# anna-v18: исправление v17','',`Статус: ${status}. Кандидат к сайту не подключён.`,'',JSON.stringify(result,null,2),'','Ограничения: все v15/v16/v17 контрольные вопросы открыты; новые формулировки проверяют изученные понятия. Новый шаблон требует новых baseline v10 и v17; старые проценты несопоставимы напрямую. Проверки фактов ограничены, ручной обзор обязателен даже при 100%. Synthetic drafts не одобрены Анной. Production остаётся v10; подключение кандидата и learning signals требует отдельного согласия после результатов.',''].join('\n');
+for(const ext of ['json','md','txt'])writeFileSync(join(root,'reports/after-train-anna-v18.'+ext),ext==='json'?JSON.stringify(result,null,2):ext==='txt'?text.replace(/^#+\s*/gmu,''):text);
+writeFileSync(join(root,'reports/status.txt'),status+'\n');console.log(JSON.stringify({status,checks,regressions:result.regressions}));
