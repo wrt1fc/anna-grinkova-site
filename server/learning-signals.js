@@ -9,5 +9,14 @@ export function extractLearningSignal(text) {
   let answer = text.replaceAll(LEARNING_SIGNAL, '').replaceAll(LEARNING_NONE, '').trim();
   const at = answer.lastIndexOf('[[');
   if (at >= 0 && [LEARNING_SIGNAL,LEARNING_NONE].some(marker=>marker.startsWith(answer.slice(at)))) answer = answer.slice(0, at).trimEnd();
+  // Malformed control markers must never be visible; diagnostics retain the raw text.
+  answer = answer.replace(/\[\[LEARN[^\]\n]*(?:\]\]|$)/gu,'').trim();
   return {answer, learningSuggested};
+}
+
+export function learningSignalDiagnostics(text) {
+  const markers=text.match(/\[\[LEARNING_(?:OFFER|NONE)\]\]/gu)??[];
+  const malformed=/\[\[LEARN/gu.test(text.replaceAll(LEARNING_SIGNAL,'').replaceAll(LEARNING_NONE,''));
+  const formatValid=markers.length===1&&!malformed&&text.trimEnd().endsWith(markers[0]);
+  return {formatValid,malformed,markerCount:markers.length,rawSuggested:markers.length===1&&markers[0]===LEARNING_SIGNAL};
 }

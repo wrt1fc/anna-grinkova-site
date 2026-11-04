@@ -1,0 +1,35 @@
+import {readFileSync,writeFileSync} from 'node:fs';
+import {join} from 'node:path';
+import {createHash} from 'node:crypto';
+import assert from 'node:assert/strict';
+import evalSet from './eval-questions.json' with {type:'json'};
+import {assessRepairRun} from './repair-v16-gates.mjs';
+const [root]=process.argv.slice(2);if(!root)throw Error('Expected experiment root');
+const read=p=>JSON.parse(readFileSync(join(root,p),'utf8'));
+const rows=p=>readFileSync(join(root,p),'utf8').trim().split(/\r?\n/u).map(JSON.parse);
+const p=read('preparation.json'),m=read('data/manifest.json'),meta=read('anna-v19/anna-training.json'),smoke=read('reports/memory-smoke-result.json'),mask=read('reports/completion-mask-audit.json');
+assert.equal(p.version,'repair-v19');assert.equal(p.train,931);assert.equal(p.eval,246);assert.equal(p.fresh,32);assert.equal(p.sourceTrain,122);assert.equal(p.repairTrain,48);assert.equal(p.styleTrain,12);assert.equal(p.initAdapter,'anna-v18');
+assert.equal(m.train,p.train);assert.equal(m.eval,p.eval);assert.equal(m.promptVersion,18);assert.equal(m.referenceVersion,19);
+assert.equal(meta.epochs,1);assert.equal(meta.lr,5e-6);assert.match(meta.init_adapter,/natal-training-v18\/anna-v18$/u);
+assert.equal(meta.prompt_version,'18');assert.equal(meta.reference_version,'19');
+const sourceSha=createHash('sha256').update(readFileSync(join(root,'methodics.json'))).digest('hex');
+for(const v of [p.methodicsSha256,m.methodicsSha256,meta.methodics_sha256])assert.equal(v,sourceSha);
+assert.equal(meta.completion_only_loss,true);assert.equal(meta.require_prefix_match,true);assert.equal(mask.status,'PASS');
+for(const [split,count]of [['train',p.train],['eval',p.eval]]){
+ assert.equal(mask.splits[split].count,count);assert.equal(mask.splits[split].prefix_mismatches,0);
+ assert.equal(meta.completion_mask_audit[split].count,count);assert.equal(meta.completion_mask_audit[split].prompt_labels_masked,true);assert.ok(meta.completion_mask_audit[split].supervised_tokens>0);
+}
+const expected={train:p.train,learning:rows('cards.jsonl').filter(c=>c.split==='eval').map(c=>c.id),fresh:rows('holdout.jsonl').map(c=>c.id),natal:read('natal-plan.json').filter(c=>c.split==='eval').map(c=>c.id),chat:evalSet.questions.map(q=>q.id)};
+const candidate={candidate:read('reports/learning.json'),fresh:read('reports/fresh.json'),natal:read('reports/eval-natal-anna-v19.json'),chat:read('reports/eval-chat-anna-v19.json')};
+const base=prefix=>({baseline:read(`reports/${prefix}-learning.json`),freshBase:read(`reports/${prefix}-fresh.json`),natalBase:read(`reports/${prefix}-natal.json`),chatBase:read(`reports/${prefix}-chat.json`)});
+const baseline=base('baseline'),parent=base('parent');
+for(const r of [candidate.natal,candidate.chat,baseline.natalBase,baseline.chatBase,parent.natalBase,parent.chatBase])assert.equal(r.day,'2026-11-02');
+const assess=(b,model)=>assessRepairRun({...candidate,...b,expected,meta,smoke,candidateModel:'anna-v19',baselineModel:model,requireTelemetry:true});
+const v10=assess(baseline,'anna-v10'),v18=assess(parent,'anna-v18');
+const checks={...v10.checks,parentAnswersPresent:v18.checks.baselineAnswersPresent,noParentIndividualRegression:v18.checks.noIndividualRegression};
+const status=Object.values(checks).every(Boolean)?'CHECKS_COMPLETE_PASS':'CHECKS_COMPLETE_REVIEW_REQUIRED';
+const summary=b=>({learning:b.baseline.summary,fresh:b.freshBase.summary,natal:b.natalBase.summary,chat:b.chatBase.summary});
+const result={status,model:'anna-v19',checks,regressions:{v10:v10.regressions,v18:v18.regressions},failures:v10.failures,preparation:p,training:meta,memorySmoke:smoke,completionMaskAudit:mask,baseline:summary(baseline),parent:summary(parent),candidate:{learning:candidate.candidate.summary,fresh:candidate.fresh.summary,natal:candidate.natal.summary,chat:candidate.chat.summary},sourceOpenBook:true,manualReviewRequired:true,automaticDeployment:false,productionModelUnchanged:'anna-v10'};
+const text=['# anna-v19: источники, факты и прежняя манера общения','',`Статус: ${status}. Кандидат к сайту не подключён. Нужен ручной обзор всех ответов.`,'',JSON.stringify(result,null,2),'','Ограничения: только выбранные разделы 61 методички, а не полное освоение всех абзацев. Проверки с доступным справочником не измеряют запоминание без него. Все прежние контрольные вопросы открыты; новые32 — иные формулировки известных понятий, не независимый экзамен. Смысловые признаки ограничены; даже PASS не доказывает безошибочность. Подготовленные адаптации и новые synthetic drafts не одобрены Анной. Роль короткого system, справочника и новых весов отдельно не измерена. Production v10 и флаги сайта не менялись.',''].join('\n');
+for(const ext of ['json','md','txt'])writeFileSync(join(root,'reports/after-train-anna-v19.'+ext),ext==='json'?JSON.stringify(result,null,2):ext==='txt'?text.replace(/^#+\s*/gmu,''):text);
+writeFileSync(join(root,'reports/status.txt'),status+'\n');console.log(JSON.stringify({status,checks,regressions:result.regressions}));

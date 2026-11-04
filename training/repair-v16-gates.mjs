@@ -4,18 +4,21 @@ function rowsFor(report,expectedIds,field,model){
  if(!Array.isArray(report.rows)||report.rows.length!==expectedIds.length)throw Error('Incomplete evaluation rows');
  const expected=new Set(expectedIds),seen=new Set();
  for(const row of report.rows){
-  if(!expected.has(row.id)||seen.has(row.id)||!Array.isArray(row[field])||typeof row.answer!=='string'||!row.answer.trim())throw Error('Invalid evaluation row '+row.id);
+  if(!expected.has(row.id)||seen.has(row.id)||!Array.isArray(row[field])||typeof row.answer!=='string'||row[field].some(e=>typeof e!=='string'||!e.trim())||(!row.answer.trim()&&!row[field].length))throw Error('Invalid evaluation row '+row.id);
   if(field==='errors'&&(!['offtopic','astrology','safety','service','mixed'].includes(row.scope)||['expected','suggested','button','sensitive','styleFiltered','groundedFallback'].some(key=>typeof row[key]!=='boolean')))throw Error('Incomplete learning decision '+row.id);
   seen.add(row.id);
  }
  return report.rows;
 }
-export function assessRepairRun({baseline,candidate,freshBase,fresh,natalBase,natal,chatBase,chat,expected,meta,smoke,candidateModel='anna-v16',baselineModel='anna-v10'}){
+export function assessRepairRun({baseline,candidate,freshBase,fresh,natalBase,natal,chatBase,chat,expected,meta,smoke,candidateModel='anna-v16',baselineModel='anna-v10',requireTelemetry=false}){
  for(const key of ['learning','fresh','natal','chat']){const value=expected[key];if(!Array.isArray(value)||!value.length||new Set(value).size!==value.length)throw Error('Invalid expected row IDs: '+key);}
  const a=rowsFor(baseline,expected.learning,'errors',baselineModel),b=rowsFor(candidate,expected.learning,'errors',candidateModel);
  const c=rowsFor(freshBase,expected.fresh,'errors',baselineModel),d=rowsFor(fresh,expected.fresh,'errors',candidateModel);
  const nb=rowsFor(natalBase,expected.natal,'problems',baselineModel),n=rowsFor(natal,expected.natal,'problems',candidateModel);
  const cb=rowsFor(chatBase,expected.chat,'problems',baselineModel),ch=rowsFor(chat,expected.chat,'problems',candidateModel);
+ if(requireTelemetry)for(const row of [...a,...b,...c,...d,...nb,...n,...cb,...ch]){
+  if(!['styleFiltered','groundedFallback'].every(k=>typeof row[k]==='boolean')||!Array.isArray(row.rawAttempts)||!['string','object'].includes(typeof row.generationError))throw Error('Missing evaluation telemetry '+row.id);
+ }
  if(!Number.isInteger(meta.processed_train_examples)||meta.processed_train_examples!==expected.train||meta.max_length!==3400||meta.reject_truncation!==true||![meta.training_metrics?.train_loss,meta.final_eval_metrics?.eval_loss].every(v=>Number.isFinite(v)&&v>=0))throw Error('Invalid training metadata');
  const regressed=(base,rows,field)=>base.filter(r=>!r[field].length&&rows.find(c=>c.id===r.id)[field].length).map(r=>r.id);
  const regressions={learning:regressed(a,b,'errors'),fresh:regressed(c,d,'errors'),natal:regressed(nb,n,'problems'),chat:regressed(cb,ch,'problems')};
@@ -26,7 +29,10 @@ export function assessRepairRun({baseline,candidate,freshBase,fresh,natalBase,na
   allowedAll:all.filter(r=>r.scope!=='offtopic').every(r=>!r.errors.length),
   noSensitiveOffers:all.filter(r=>r.sensitive).every(r=>!r.suggested&&!r.button),
   noUnwantedLearning:all.filter(r=>!r.expected).every(r=>!r.suggested&&!r.button),
-  noFilteredFallbacks:all.every(r=>!r.styleFiltered&&!r.groundedFallback),
+  noFilteredFallbacks:[...all,...n,...ch].every(r=>!r.styleFiltered&&!r.groundedFallback),
+  candidateAnswersPresent:[...all,...n,...ch].every(r=>r.answer.trim()),
+  baselineAnswersPresent:[...a,...c,...nb,...cb].every(r=>r.answer.trim()),
+  ...(requireTelemetry?{candidateSignalFormat:[...b,...d,...n,...ch].filter(r=>!r.fixedCrisisReply&&!r.groundedFallback&&!r.styleFiltered).every(r=>r.signalFormatValid===true),candidateRawDecisions:all.every(r=>r.rawLearningSuggested===r.expected)}:{}),
   natalAll:n.every(r=>!r.problems.length),chatAll:ch.every(r=>!r.problems.length),
   noIndividualRegression:Object.values(regressions).every(ids=>!ids.length),
  };

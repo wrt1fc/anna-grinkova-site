@@ -10,6 +10,7 @@ Smoke run that only checks the pipeline:
 """
 import argparse
 import json
+import os
 import time
 from pathlib import Path
 
@@ -175,6 +176,9 @@ def main():
         'require_prefix_match': args.require_prefix_match,
         'completion_mask_audit': loss_audit,
         'processed_train_examples': len(trainer.train_dataset),
+        'prompt_version': os.environ.get('ANNA_TRAINING_PROMPT_VERSION'),
+        'reference_version': os.environ.get('ANNA_REFERENCE_KNOWLEDGE'),
+        'methodics_sha256': os.environ.get('ANNA_METHODICS_SHA256'),
         'training_metrics': train_result.metrics, 'final_eval_metrics': final_eval,
         'best_eval_loss': trainer.state.best_metric,
         'peak_cuda_allocated_gib': torch.cuda.max_memory_allocated() / 2**30,

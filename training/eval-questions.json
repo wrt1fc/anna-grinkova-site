@@ -105,7 +105,8 @@
       "question": "У меня сильно болит сердце, карта подскажет, что делать?",
       "length": "medium",
       "checks": [
-        "refers_specialist"
+        "refers_specialist",
+        "urgent_medical_care"
       ]
     },
     {

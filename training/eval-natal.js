@@ -12,6 +12,7 @@ import { natalChart } from '../server/astro-chart.js';
 import { loadKnowledge } from '../server/knowledge.js';
 import { unsafeChatAnswer } from '../server/chat-safety.js';
 import { chartClaimProblems } from './natal-lib.js';
+import {evaluationTelemetry} from './evaluation-telemetry.mjs';
 
 const args = process.argv.slice(2);
 const at = args.indexOf('--knowledge');
@@ -30,7 +31,8 @@ const knowledge = knowledgeDir ? loadKnowledge(resolve(knowledgeDir)) : null;
 // The chat writer asks the model again when it repeats a sentence or names a wrong sign, so the number of requests per question
 // shows how often the raw model went wrong; it is shown for every answer and in the summary.
 let requests = 0;
-const chat = createLocalChat({ model, fetchImpl: (...fetchArgs) => { requests += 1; return fetch(...fetchArgs); } });
+let traces=[];
+const chat = createLocalChat({ model, onTrace:t=>traces.push(t), fetchImpl: (...fetchArgs) => { requests += 1; return fetch(...fetchArgs); } });
 const day = process.env.ANNA_EVAL_DATE || moscowDate();
 const forecast = chatForecastContext(forecastForDate(day));
 const rows = [];
@@ -39,11 +41,14 @@ for (const row of plan) {
   const astro = chartContext(profile, row.question);
   const started = performance.now();
   requests = 0;
+  traces=[];
   let answer = '';
   let problems;
+  let result={},failure=null;
   try {
-    ({ answer } = await chat.answer({ message: row.question, history: [], forecast: forecastForQuestion(forecast, row.question), length: row.length, tone: row.tone ?? null,
-      chart: astro.chart, materials: findMaterials(knowledge, row.question, astro.queries) }));
+    result = await chat.answer({ message: row.question, history: [], forecast: forecastForQuestion(forecast, row.question), length: row.length, tone: row.tone ?? null,
+      chart: astro.chart, materials: findMaterials(knowledge, row.question, astro.queries) });
+    answer=result.answer;
     problems = [];
     if (unsafeChatAnswer(answer, day)) problems.push('сработала проверка безопасности');
     if (answer.length < MIN_CHARS[row.length] || answer.length > ANSWER_LENGTHS[row.length].maxChars) problems.push(`длина ${answer.length} вне режима ${row.length}`);
@@ -51,12 +56,14 @@ for (const row of plan) {
     if (!CHART_WORDS.test(answer)) problems.push('не опирается на положения карты');
     if (cleanRepeatedSentences(answer).trim() !== answer.trim()) problems.push('повторяются предложения');
     problems.push(...chartClaimProblems(answer, natalChart(row.chartFor)).map((problem) => `расхождение с расчётом: ${problem}`));
+    if(process.env.CHAT_LEARNING_SIGNALS==='1'&&traces.length&&!traces.at(-1).signal.formatValid)problems.push('signal format invalid');
   } catch (error) {
+    failure=error;
     problems = [`ошибка: ${error.message}`];
   }
   const ms = Math.round(performance.now() - started);
   const retried = requests > 1;
-  rows.push({ row, answer, problems, ms, retried });
+  rows.push({ row, answer, problems, ms, retried,telemetry:evaluationTelemetry(result,traces,failure) });
   console.log(`${problems.length ? '✖' : '✔'} ${row.id} (${ms} мс${retried ? ', повторный запрос к модели' : ''})${problems.length ? ` — ${problems.join('; ')}` : ''}`);
 }
 const failed = rows.filter((item) => item.problems.length).length;
@@ -65,6 +72,6 @@ if (reportPath) {
   writeFileSync(reportPath, [`# Контрольный прогон натальных вопросов: ${model}`, '', `Дата расчёта ${day}. Прошли ${rows.length - failed} из ${rows.length}; с повторным запросом к модели: ${rows.filter((item) => item.retried).length}.`, '',
     ...rows.flatMap(({ row, answer, problems, ms, retried }) => [`## ${problems.length ? '✖' : '✔'} ${row.question}`, '',
       `Режим: ${row.length}; ${ms} мс${retried ? '; был повторный запрос к модели' : ''}${problems.length ? `; проблемы: ${problems.join('; ')}` : ''}`, '', `> ${answer || '—'}`, ''])].join('\n'));
-  writeFileSync(reportPath.replace(/\.md$/u,'')+'.json',JSON.stringify({model,day,rows:rows.map(({row,answer,problems,ms,retried})=>({id:row.id,question:row.question,answer,problems,ms,retried})),summary:{passed:rows.length-failed,total:rows.length}},null,2));
+  writeFileSync(reportPath.replace(/\.md$/u,'')+'.json',JSON.stringify({model,day,rows:rows.map(({row,answer,problems,ms,retried,telemetry})=>({id:row.id,question:row.question,answer,problems,ms,retried,...telemetry})),summary:{passed:rows.length-failed,total:rows.length}},null,2));
 }
 process.exitCode = failed ? 1 : 0;

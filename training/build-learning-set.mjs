@@ -19,15 +19,16 @@ for(const c of cards){
  if(unsafeChatAnswer(c.answer,'2026-11-02')||c.answer.includes('[[LEARNING_')||c.answer.length>900)throw Error('Unsafe or overlong answer '+c.id);
  if(c.scope==='offtopic'&&(c.learning||c.sensitive))throw Error('Offtopic cards must not offer learning or replace crisis support: '+c.id);
  if(c.scope&&learningAnswerProblems(c.answer,c).some(p=>p.startsWith('scope:')))throw Error('Scope policy mismatch in teacher answer '+c.id);
- if([16,17,18].includes(c.qualityVersion)&&(hasFormalAddress(c.answer)||learningAnswerProblems(c.answer,c).length))throw Error('Invalid v'+c.qualityVersion+' teacher answer '+c.id+': '+learningAnswerProblems(c.answer,c).join('; '));
+ if([16,17,18,19].includes(c.qualityVersion)&&(hasFormalAddress(c.answer)||learningAnswerProblems(c.answer,c).length))throw Error('Invalid v'+c.qualityVersion+' teacher answer '+c.id+': '+learningAnswerProblems(c.answer,c).join('; '));
+ if(c.qualityVersion===19&&(process.env.ANNA_REFERENCE_KNOWLEDGE!=='19'||!process.env.ANNA_METHODICS_FILE))throw Error('v19 requires matching reference and methodic snapshot');
  if(c.qualityVersion===18&&process.env.ANNA_TRAINING_PROMPT_VERSION!=='18')throw Error('v18 dataset requires its matching experimental prompt');
  const history=c.history??[],profile=c.chartFor?{birthUtc:c.chartFor.birthUtc,birthLatitude:c.chartFor.latitude,birthLongitude:c.chartFor.longitude}:null;
  const astro=c.learning?{chart:null}:chartContext(profile,c.question,new Date('2026-11-02T09:00:00Z'),{history});
  const prompt=chatPrompt({message:c.question,history:historyForQuestion(history,c.question),forecast:forecastForQuestion(forecast,c.question),chart:astro.chart,length:c.length??'medium',tone:c.tone??null,materials:[]});
  const system=firstPassSystem({message:c.question,chart:astro.chart,history,learningSignals:true});
- split[c.split].push({id:c.id,prompt:[{role:'system',content:system},{role:'user',content:prompt}],completion:[{role:'assistant',content:c.answer+'\n'+(c.learning?LEARNING_SIGNAL:LEARNING_NONE)}],...([17,18].includes(c.qualityVersion)?{chat_template_kwargs:{enable_thinking:false}}:{})});
+ split[c.split].push({id:c.id,prompt:[{role:'system',content:system},{role:'user',content:prompt}],completion:[{role:'assistant',content:c.answer+'\n'+(c.learning?LEARNING_SIGNAL:LEARNING_NONE)}],...([17,18,19].includes(c.qualityVersion)?{chat_template_kwargs:{enable_thinking:false}}:{})});
 }
 if(!split.train.length||!split.eval.length)throw Error('Both splits required');mkdirSync(out,{recursive:true});
 for(const [name,rows]of Object.entries(split))writeFileSync(join(out,name+'.jsonl'),rows.map(r=>JSON.stringify(r)).join('\n')+'\n');
-writeFileSync(join(out,'manifest.json'),JSON.stringify({sourceSha256:createHash('sha256').update(readFileSync(input)).digest('hex'),train:split.train.length,eval:split.eval.length,...(cards.every(c=>c.qualityVersion===18)?{promptVersion:18}:{}),labels:Object.fromEntries(['train','eval'].map(s=>[s,{yes:cards.filter(c=>c.split===s&&c.learning).length,no:cards.filter(c=>c.split===s&&!c.learning).length}])),families:families.size,status:'synthetic-drafts-for-review'},null,2));
+writeFileSync(join(out,'manifest.json'),JSON.stringify({sourceSha256:createHash('sha256').update(readFileSync(input)).digest('hex'),train:split.train.length,eval:split.eval.length,...(cards.some(c=>c.qualityVersion===19)?{promptVersion:18,referenceVersion:19,methodicsSha256:process.env.ANNA_METHODICS_SHA256}:cards.every(c=>c.qualityVersion===18)?{promptVersion:18}:{}),labels:Object.fromEntries(['train','eval'].map(s=>[s,{yes:cards.filter(c=>c.split===s&&c.learning).length,no:cards.filter(c=>c.split===s&&!c.learning).length}])),families:families.size,status:'synthetic-drafts-for-review'},null,2));
 console.log(JSON.stringify({train:split.train.length,eval:split.eval.length,families:families.size}));
