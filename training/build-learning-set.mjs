@@ -19,12 +19,12 @@ for(const c of cards){
  if(unsafeChatAnswer(c.answer,'2026-11-02')||c.answer.includes('[[LEARNING_')||c.answer.length>900)throw Error('Unsafe or overlong answer '+c.id);
  if(c.scope==='offtopic'&&(c.learning||c.sensitive))throw Error('Offtopic cards must not offer learning or replace crisis support: '+c.id);
  if(c.scope&&learningAnswerProblems(c.answer,c).some(p=>p.startsWith('scope:')))throw Error('Scope policy mismatch in teacher answer '+c.id);
- if(c.qualityVersion===16&&(hasFormalAddress(c.answer)||learningAnswerProblems(c.answer,c).length))throw Error('Invalid v16 teacher answer '+c.id+': '+learningAnswerProblems(c.answer,c).join('; '));
+ if([16,17].includes(c.qualityVersion)&&(hasFormalAddress(c.answer)||learningAnswerProblems(c.answer,c).length))throw Error('Invalid v'+c.qualityVersion+' teacher answer '+c.id+': '+learningAnswerProblems(c.answer,c).join('; '));
  const history=c.history??[],profile=c.chartFor?{birthUtc:c.chartFor.birthUtc,birthLatitude:c.chartFor.latitude,birthLongitude:c.chartFor.longitude}:null;
  const astro=c.learning?{chart:null}:chartContext(profile,c.question,new Date('2026-11-02T09:00:00Z'),{history});
  const prompt=chatPrompt({message:c.question,history:historyForQuestion(history,c.question),forecast:forecastForQuestion(forecast,c.question),chart:astro.chart,length:c.length??'medium',tone:c.tone??null,materials:[]});
  const system=firstPassSystem({message:c.question,chart:astro.chart,history,learningSignals:true});
- split[c.split].push({id:c.id,prompt:[{role:'system',content:system},{role:'user',content:prompt}],completion:[{role:'assistant',content:c.answer+'\n'+(c.learning?LEARNING_SIGNAL:LEARNING_NONE)}]});
+ split[c.split].push({id:c.id,prompt:[{role:'system',content:system},{role:'user',content:prompt}],completion:[{role:'assistant',content:c.answer+'\n'+(c.learning?LEARNING_SIGNAL:LEARNING_NONE)}],...(c.qualityVersion===17?{chat_template_kwargs:{enable_thinking:false}}:{})});
 }
 if(!split.train.length||!split.eval.length)throw Error('Both splits required');mkdirSync(out,{recursive:true});
 for(const [name,rows]of Object.entries(split))writeFileSync(join(out,name+'.jsonl'),rows.map(r=>JSON.stringify(r)).join('\n')+'\n');

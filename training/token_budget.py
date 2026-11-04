@@ -4,7 +4,8 @@ from collections.abc import Mapping
 
 def sequence_length(tokenizer, row):
     encoded = tokenizer.apply_chat_template(
-        row['prompt'] + row['completion'], tokenize=True, return_dict=False)
+        row['prompt'] + row['completion'], tokenize=True, return_dict=False,
+        **row.get('chat_template_kwargs', {}))
     ids = encoded['input_ids'] if isinstance(encoded, Mapping) else encoded
     if ids and isinstance(ids[0], list):
         if len(ids) != 1:

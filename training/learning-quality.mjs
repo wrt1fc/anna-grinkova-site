@@ -1,6 +1,7 @@
 // Observable regression checks, not a claim that an answer is factually complete.
 import scopePolicy from '../config/chat-scope.json' with {type:'json'};
 import {repairAnswerProblems} from './repair-v16-quality.mjs';
+import {repair17AnswerProblems} from './repair-v17-quality.mjs';
 const body=text=>text.replace(/^\s*Привет[!.,]?\s*/iu,'').replace(/\s+/gu,' ').trim();
 export function learningAnswerProblems(answer, card) {
  const problems=[];
@@ -12,5 +13,5 @@ export function learningAnswerProblems(answer, card) {
  for(const pattern of card.forbiddenClaims??[])if(new RegExp(pattern,'iu').test(answer))problems.push('known false claim');
  if(card.scope==='offtopic'&&body(answer)!==body(scopePolicy.reply))problems.push('scope: unrelated task was not redirected with the approved reply');
  if(card.scope&&card.scope!=='offtopic'&&(body(answer)===body(scopePolicy.reply)||answer.includes('С этой темой не помогу')))problems.push('scope: false refusal of an allowed or sensitive question');
- return [...problems,...repairAnswerProblems(answer,card)];
+ return [...problems,...repairAnswerProblems(answer,card),...repair17AnswerProblems(answer,card)];
 }

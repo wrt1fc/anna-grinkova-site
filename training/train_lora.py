@@ -19,6 +19,7 @@ from peft import LoraConfig, PeftModel, prepare_model_for_kbit_training
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig, TrainerCallback
 from trl import SFTConfig, SFTTrainer
 from token_budget import inspect_budget, require_budget
+from audit_completion_mask import audit_row, validate_prepared_labels
 
 
 class StepTiming(TrainerCallback):
@@ -46,6 +47,8 @@ def main():
     parser.add_argument('--max-length', type=int, default=2048)
     parser.add_argument('--reject-truncation', action='store_true',
                         help='check every full prompt and completion before loading model weights; never silently cut answers')
+    parser.add_argument('--require-prefix-match', action='store_true',
+                        help='reject chat-template mismatch before loading weights and verify TRL loss labels')
     parser.add_argument('--batch', type=int, default=1)
     parser.add_argument('--grad-accum', type=int, default=8)
     parser.add_argument('--max-steps', type=int, default=-1)
@@ -74,6 +77,12 @@ def main():
     if args.reject_truncation:
         budget = {split: inspect_budget(tokenizer, rows, args.max_length) for split, rows in dataset.items()}
         require_budget(budget)
+    boundaries = {}
+    if args.require_prefix_match:
+        for split, rows in dataset.items():
+            if any(row.get('chat_template_kwargs') != {'enable_thinking': False} for row in rows):
+                raise ValueError('Expected the non-thinking inference template for every example')
+            boundaries[split] = [audit_row(tokenizer, row) for row in rows]
     model = AutoModelForCausalLM.from_pretrained(
         args.base,
         quantization_config=BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type='nf4',
@@ -121,6 +130,12 @@ def main():
         peft_config=None if args.init_adapter else LoraConfig(r=args.rank, lora_alpha=args.rank * 2, lora_dropout=0.05, task_type='CAUSAL_LM',
                                                               target_modules='all-linear'),
     )
+    loss_audit = {}
+    if args.require_prefix_match:
+        loss_audit['train'] = validate_prepared_labels(trainer.train_dataset, boundaries['train'])
+        if 'eval' in boundaries:
+            loss_audit['eval'] = validate_prepared_labels(trainer.eval_dataset, boundaries['eval'])
+        print('COMPLETION_MASK_AUDIT', json.dumps(loss_audit), flush=True)
     if args.half_embedding:
         embedding = model.get_input_embeddings()
         if embedding.weight.requires_grad:
@@ -156,6 +171,9 @@ def main():
         'frozen_embedding_bf16': args.frozen_embedding_bf16, 'half_embedding': args.half_embedding,
         'max_length': args.max_length, 'seed': config.seed,
         'reject_truncation': args.reject_truncation,
+        'completion_only_loss': config.completion_only_loss,
+        'require_prefix_match': args.require_prefix_match,
+        'completion_mask_audit': loss_audit,
         'processed_train_examples': len(trainer.train_dataset),
         'training_metrics': train_result.metrics, 'final_eval_metrics': final_eval,
         'best_eval_loss': trainer.state.best_metric,

@@ -119,7 +119,7 @@ export function chartClaimProblems(answer, natal) {
   const problems = [];
   if(wrongCalculatedClaim(answer,{calculated:{positions:natal.planets,angles:natal.angles,aspects:natal.aspects}}))problems.push('явное положение или аспект противоречит полному расчёту');
   const text = answer.replace(/\s+/g, ' ');
-  const shown = natal.aspects.slice(0, 12);
+  const shown = natal.aspects;
   // "Луна в Раке" / "Луна у вас в Раке"
   for (const match of text.matchAll(new RegExp(`(${nominativeRegex})(?: у вас| у вас стоит| стоит)? (?:в|во) (${locativeRegex})(?![а-яё])`, 'g'))) {
     const key = NOMINATIVE_TO_KEY[match[1]];
