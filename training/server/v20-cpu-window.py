@@ -22,6 +22,16 @@ def ready():
     raise RuntimeError('Ollama API did not recover')
 
 
+def stop_probe():
+    try:
+        run('systemctl', 'stop', 'anna-v20-cpu-probe')
+    except subprocess.CalledProcessError as error:
+        # Transient units can be garbage-collected after the earlier probe was
+        # stopped. Only that confirmed absence is harmless; don't hide failures.
+        if error.returncode != 5 or run('systemctl', 'show', 'anna-v20-cpu-probe', '--property=LoadState', '--value') != 'not-found':
+            raise
+
+
 def restore():
     if DROPIN.exists():
         assert DROPIN.read_text() == CONTENT, 'Temporary override changed externally'
@@ -39,10 +49,11 @@ def enable():
     # A previously measured CPU-only probe must have completed before switching.
     probe = json.loads(pathlib.Path('/home/ubuntu/anna-v20-cpu-probe.json').read_text())
     assert len(probe['rows']) == 5 and all(row['model'] == 'anna-v19' and not row['groundedFallback'] for row in probe['rows'])
+    # Finish probe cleanup before touching the live Ollama configuration.
+    stop_probe()
     DROPIN.parent.mkdir(parents=True, exist_ok=True)
     DROPIN.write_text(CONTENT)
     try:
-        run('systemctl', 'stop', 'anna-v20-cpu-probe')
         run('systemctl', 'daemon-reload')
         run('systemctl', 'restart', 'ollama')
         ready()

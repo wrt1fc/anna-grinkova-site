@@ -80,3 +80,26 @@ Baseline v10 не обучен протоколу учебных маркеро�
 /home/ubuntu/model-backups/anna-v10-before-learning-v11-20261102,
 GGUF13f233bac1da75c5e4cfa7a12dcd12dfbcc7546c61e32106fb7dd9098b259130,
 adapter99568d4c1cc1ef9669d565e058301e056b5b3e771e9f6a05fd76fdb43f48741f.
+
+## Фактическое завершение попытки 2026-11-05
+
+FAILED stage=cpu-serving-window code=1,02:46:50Москва. Обучение и GPU-smoke
+не начались: временная anna-v20-cpu-probe уже была удалена systemd, а команда
+systemctl stop вернула5. Сценарий ошибочно счёл подтверждённое отсутствие
+завершённой пробы фатальной ошибкой. Baselinev10/parentv19 и backup-check
+выполнены, весовv20, train.log и smoke-result нет. Это не результат сравненияv20.
+
+EXIT восстановил Ollama, собственный runtimeoverride удалён. Проверено
+03:11Москва: anna-site/Ollama active, CHAT_LOCAL_MODEL=anna-v19,
+CHAT_LEARNING_SIGNALS unset, CUDA_VISIBLE_DEVICES unset, parallel4,
+локальный/публичный health200. GPU обнаружена Ollama как CUDA RTX2080Ti.
+Сайт не останавливался; при восстановлении был короткий перезапуск Ollama.
+Проверка health не доказывает успешность каждой пользовательской сессии.
+
+В исходном коде добавлена обработка только подтверждённого not-found при
+ошибке5; прочие ошибки сохраняются. Очистка пробы перенесена до записи
+runtimeoverride, чтобы её сбой не перезапускал живой Ollama.
+Четыре Python regression-теста прошли. Серверные файлы завершившегося запуска
+остались неизменными, автоматического повторного запуска нет.
+Диагностика: D:/AnnaAI/reports/anna-v20-failure-evidence.tar.gz и
+anna-v20-failure.{md,txt,json}.
