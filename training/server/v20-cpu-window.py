@@ -1,9 +1,11 @@
 """Temporary CPU serving for a single-GPU training window; root only.
 Never edits site.env, model selection, or persistent Ollama overrides.
 """
-import json, pathlib, subprocess, sys, time, urllib.request
+import json, pathlib, shlex, subprocess, sys, time, urllib.request
 
-DROPIN = pathlib.Path('/run/systemd/system/ollama.service.d/80-anna-v20-cpu.conf')
+# Drop-ins from /etc and /run are merged by filename. This must sort after
+# the site's existing anna.conf, otherwise its parallel=4 silently wins.
+DROPIN = pathlib.Path('/run/systemd/system/ollama.service.d/zz-anna-v20-cpu.conf')
 CONTENT = '[Service]\nEnvironment="CUDA_VISIBLE_DEVICES=-1"\nEnvironment="OLLAMA_NUM_PARALLEL=1"\nCPUAffinity=0 1 2 3 4 5\n'
 
 
@@ -32,12 +34,18 @@ def stop_probe():
             raise
 
 
-def restore():
+def require_cpu_configuration():
+    values = dict(item.split('=', 1) for item in shlex.split(run('systemctl', 'show', 'ollama', '--property=Environment', '--value')) if '=' in item)
+    assert values.get('CUDA_VISIBLE_DEVICES') == '-1', 'Effective systemd configuration is not CPU-only'
+    assert values.get('OLLAMA_NUM_PARALLEL') == '1', 'Effective systemd configuration overrides parallel=1'
+
+
+def restore(restart_service=True):
     if DROPIN.exists():
         assert DROPIN.read_text() == CONTENT, 'Temporary override changed externally'
         DROPIN.unlink()
         run('systemctl', 'daemon-reload')
-        run('systemctl', 'restart', 'ollama')
+        run('systemctl', 'restart' if restart_service else 'start', 'ollama')
     else:
         run('systemctl', 'start', 'ollama')
     ready()
@@ -53,8 +61,12 @@ def enable():
     stop_probe()
     DROPIN.parent.mkdir(parents=True, exist_ok=True)
     DROPIN.write_text(CONTENT)
+    restarting = False
     try:
         run('systemctl', 'daemon-reload')
+        # Check the composed configuration before interrupting the live API.
+        require_cpu_configuration()
+        restarting = True
         run('systemctl', 'restart', 'ollama')
         ready()
         pid = run('systemctl', 'show', 'ollama', '--property=MainPID', '--value')
@@ -62,7 +74,7 @@ def enable():
         assert b'CUDA_VISIBLE_DEVICES=-1' in env and b'OLLAMA_NUM_PARALLEL=1' in env
         print(json.dumps({'serving': 'CPU', 'productionModel': 'anna-v19', 'temporaryOverride': True}))
     except Exception:
-        restore()
+        restore(restart_service=restarting)
         raise
 
 

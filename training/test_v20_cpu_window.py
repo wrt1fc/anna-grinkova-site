@@ -12,6 +12,16 @@ spec.loader.exec_module(window)
 
 
 class ProbeLifecycleTests(unittest.TestCase):
+    def test_override_sorts_after_the_existing_anna_dropin(self):
+        self.assertGreater(window.DROPIN.name, 'anna.conf')
+
+    def test_effective_parallel_override_is_rejected_before_restart(self):
+        with patch.object(window, 'run', return_value='CUDA_VISIBLE_DEVICES=-1 OLLAMA_NUM_PARALLEL=4'):
+            with self.assertRaisesRegex(AssertionError, 'parallel=1'):
+                window.require_cpu_configuration()
+        with patch.object(window, 'run', return_value='CUDA_VISIBLE_DEVICES=-1 OLLAMA_NUM_PARALLEL=1'):
+            window.require_cpu_configuration()
+
     def test_collected_transient_probe_does_not_abort(self):
         with patch.object(window, 'run', side_effect=[subprocess.CalledProcessError(5, ['systemctl', 'stop']), 'not-found']) as command:
             window.stop_probe()

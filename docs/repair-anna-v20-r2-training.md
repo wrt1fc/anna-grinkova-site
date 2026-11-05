@@ -42,3 +42,25 @@ D:/AnnaAI/reports/after-train-anna-v20-r2.{md,txt,json}, отдельный об
 reviewed-after-train-anna-v20-r2.{md,txt,json}, metadata и детали.
 Автоматического подключения кандидата к сайту нет. Монитор молчит при нормальном
 прогрессе, сообщает после всех проверок/обзора, при ошибке или нужном действии.
+
+## Завершение r2 до обучения
+
+Запуск03:23:17Москва завершился03:24:25 с FAILED stage=cpu-serving-window.
+CPU-prefix/token audit и перенос8 baseline/parent отчётов с SHA/IDs прошли.
+Новых весов, smoke и шагов обучения нет. Журнал Ollama подтвердил временное
+CUDA_VISIBLE_DEVICES=-1, но OLLAMA_NUM_PARALLEL осталось4: systemd объединяет
+drop-in из /etc и /run по имени файла, поэтому штатный anna.conf применялся
+после80-anna-v20-cpu.conf. Защитная проверка остановила конвейер и восстановила
+обычный GPU serving. Сайт остался наv19, оба health200.
+
+Для будущего запуска имя изменено наzz-anna-v20-cpu.conf. После daemon-reload
+составные Environment проверяются до перезапуска живой службы; если проверка
+не проходит, временный файл удаляется без ненужного перезапуска Ollama.
+Шесть Python regression-тестов PASS. Реальная проверка systemd на сервере:
+CUDA_VISIBLE_DEVICES=-1 и OLLAMA_NUM_PARALLEL=1 в итоговой конфигурации, при этом
+PID Ollama не менялся; тестовый override удалён, daemon-reload возвращён.
+Это проверка итоговой конфигурации без запуска GPU-обучения или новых ответов.
+
+Серверный снимокr2 не переписан, автоматического повторного запуска нет.
+Диагностика D:/AnnaAI/reports/anna-v20-r2-failure-evidence.tar.gz,
+anna-v20-r2-effective-config-validation.json и anna-v20-r2-failure.*.
