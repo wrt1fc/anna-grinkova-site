@@ -1,7 +1,8 @@
 #!/bin/bash
 # One bounded candidate, preserving live v19 CPU serving during GPU training.
 set -Eeuo pipefail
-ROOT=/home/ubuntu/natal-training-v20
+ROOT=${ANNA_TRAINING_ROOT:-/home/ubuntu/natal-training-v20}
+UNIT=${ANNA_TRAINING_UNIT:-anna-v20-training.service}
 PARENT=/home/ubuntu/natal-training-v19/anna-v19
 PY=/home/ubuntu/natal-bench/venv/bin/python
 BACKUP=/home/ubuntu/model-backups/anna-v10-before-learning-v11-20261102
@@ -30,6 +31,10 @@ USE_TORCH=0 "$PY" training/count-learning-tokens.py "$ROOT/data" "$ROOT/reports/
 stage completion-mask-preflight
 USE_TORCH=0 "$PY" training/audit_completion_mask.py "$ROOT/data" "$ROOT/reports/completion-mask-audit.json" > "$ROOT/reports/completion-mask-audit.log" 2>&1
 USE_TORCH=0 "$PY" training/prepare-memory-smoke.py "$ROOT/data" "$ROOT/smoke-data" > "$ROOT/reports/memory-smoke-plan.json" 2>&1
+if [ -n "${ANNA_BASELINE_REUSE_ROOT:-}" ]; then
+ stage baseline-integrity-reuse
+ node training/reuse-v20-baselines.mjs "$ANNA_BASELINE_REUSE_ROOT" "$ROOT" > "$ROOT/reports/baseline-reuse.log" 2>&1
+else
 for pair in 'anna-v10 baseline' 'anna-v19 parent'; do
  read -r model prefix <<< "$pair"
  stage "$prefix-learning"; run_check node training/eval-learning.mjs "$model" "$ROOT/cards.jsonl" "$ROOT/reports/$prefix-learning" > "$ROOT/reports/$prefix-learning.log" 2>&1
@@ -37,6 +42,7 @@ for pair in 'anna-v10 baseline' 'anna-v19 parent'; do
  stage "$prefix-natal"; run_check node training/eval-natal.js "$model" "$ROOT/natal-plan.json" "$ROOT/reports/$prefix-natal.md" --knowledge "$KNOWLEDGE" > "$ROOT/reports/$prefix-natal.log" 2>&1
  stage "$prefix-chat"; run_check node training/eval-chat.js "$model" "$ROOT/reports/$prefix-chat.md" > "$ROOT/reports/$prefix-chat.log" 2>&1
 done
+fi
 stage backup-check
 (cd "$BACKUP" && sha256sum -c SHA256SUMS) > "$ROOT/reports/backup-check.log" 2>&1
 stage cpu-serving-window
@@ -59,7 +65,7 @@ stage training
 "$PY" training/train_lora.py --base Qwen/Qwen3.5-4B --data "$ROOT/data" --out "$ROOT/anna-v20" --init-adapter "$PARENT" --epochs 1 --lr 3e-6 --max-length 3400 --reject-truncation --require-prefix-match --grad-accum 8 --half-embedding --timing --eval-first --logging-steps 1 > "$ROOT/reports/train.log" 2>&1
 stage restore-gpu-serving
 sudo -n /usr/bin/python3 "$CPU_WINDOW" restore > "$ROOT/reports/serving-restore.log" 2>&1
-sudo -n systemctl set-property --runtime anna-v20-training.service MemoryHigh=11G MemoryMax=13G
+sudo -n systemctl set-property --runtime "$UNIT" MemoryHigh=11G MemoryMax=13G
 stage export-and-regression
 bash training/server/export-eval.sh v20 "$KNOWLEDGE" natal-plan.json > "$ROOT/reports/export.log" 2>&1
 test "$(cat "$ROOT/reports/eval-natal-anna-v20.exit")" -le 1
