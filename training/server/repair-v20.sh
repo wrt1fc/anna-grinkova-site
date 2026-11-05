@@ -3,6 +3,8 @@
 set -Eeuo pipefail
 ROOT=${ANNA_TRAINING_ROOT:-/home/ubuntu/natal-training-v20}
 UNIT=${ANNA_TRAINING_UNIT:-anna-v20-training.service}
+SERVING_MODE=${ANNA_TRAINING_SERVING_MODE:-cpu}
+case "$SERVING_MODE" in cpu|offline) ;; *) exit 64 ;; esac
 PARENT=/home/ubuntu/natal-training-v19/anna-v19
 PY=/home/ubuntu/natal-bench/venv/bin/python
 BACKUP=/home/ubuntu/model-backups/anna-v10-before-learning-v11-20261102
@@ -11,7 +13,8 @@ CPU_WINDOW="$ROOT/eval-code/training/server/v20-cpu-window.py"
 exec 9>"$ROOT/reports/pipeline.lock"; flock -n 9 || exit 73
 exec 8>/home/ubuntu/anna-training-gpu.lock; flock -n 8 || exit 73
 STAGE=preflight
-cleanup() { result=$?; trap - EXIT; sudo -n /usr/bin/python3 "$CPU_WINDOW" restore >> "$ROOT/reports/serving-restore.log" 2>&1 || result=75; if [ "$result" -ne 0 ]; then printf 'FAILED stage=%s code=%s %s\n' "$STAGE" "$result" "$(date -Is)" > "$ROOT/reports/status.txt"; fi; exit "$result"; }
+restore_serving() { if [ "$SERVING_MODE" = offline ]; then sudo -n systemctl start ollama; else sudo -n /usr/bin/python3 "$CPU_WINDOW" restore; fi; }
+cleanup() { result=$?; trap - EXIT; restore_serving >> "$ROOT/reports/serving-restore.log" 2>&1 || result=75; if [ "$result" -ne 0 ]; then printf 'FAILED stage=%s code=%s %s\n' "$STAGE" "$result" "$(date -Is)" > "$ROOT/reports/status.txt"; fi; exit "$result"; }
 trap cleanup EXIT
 trap 'exit 143' TERM INT
 stage() { STAGE=$1; printf 'RUNNING %s %s\n' "$STAGE" "$(date -Is)" > "$ROOT/reports/status.txt"; }
@@ -45,6 +48,15 @@ done
 fi
 stage backup-check
 (cd "$BACKUP" && sha256sum -c SHA256SUMS) > "$ROOT/reports/backup-check.log" 2>&1
+printf '{"mode":"%s","productionModel":"anna-v19","automaticDeployment":false}\n' "$SERVING_MODE" > "$ROOT/reports/serving-mode.json"
+if [ "$SERVING_MODE" = offline ]; then
+ stage dedicated-gpu-window
+ sudo -n systemctl stop ollama
+ sleep 3
+ test -z "$(nvidia-smi --query-compute-apps=pid --format=csv,noheader)"
+ stage memory-smoke
+ "$PY" training/train_lora.py --base Qwen/Qwen3.5-4B --data "$ROOT/smoke-data" --out "$ROOT/smoke-adapter" --init-adapter "$PARENT" --max-steps 10 --lr 3e-6 --max-length 3400 --reject-truncation --require-prefix-match --grad-accum 1 --half-embedding --timing --logging-steps 1 > "$ROOT/reports/memory-smoke.log" 2>&1
+else
 stage cpu-serving-window
 sudo -n /usr/bin/python3 "$CPU_WINDOW" enable > "$ROOT/reports/cpu-serving-window.json" 2>&1
 CHAT_LEARNING_SIGNALS=0 CHAT_MODEL_PROTOCOL=19 CHAT_FACT_GUARD=1 node training/server/v20-serving-probe.mjs "$ROOT/reports/cpu-serving-before-load.json" > "$ROOT/reports/cpu-serving-before-load.log" 2>&1
@@ -60,12 +72,17 @@ done
 grep -q '^STEP 1 ' "$ROOT/reports/memory-smoke.log" || { kill "$smoke_pid" || true; wait "$smoke_pid" || true; exit 77; }
 CHAT_LEARNING_SIGNALS=0 CHAT_MODEL_PROTOCOL=19 CHAT_FACT_GUARD=1 node training/server/v20-serving-probe.mjs "$ROOT/reports/cpu-serving-under-load.json" > "$ROOT/reports/cpu-serving-under-load.log" 2>&1 || { kill "$smoke_pid" || true; wait "$smoke_pid" || true; exit 76; }
 wait "$smoke_pid"
+fi
 "$PY" training/check-memory-smoke.py "$ROOT/smoke-adapter/anna-training.json" > "$ROOT/reports/memory-smoke-result.json"
 stage training
 "$PY" training/train_lora.py --base Qwen/Qwen3.5-4B --data "$ROOT/data" --out "$ROOT/anna-v20" --init-adapter "$PARENT" --epochs 1 --lr 3e-6 --max-length 3400 --reject-truncation --require-prefix-match --grad-accum 8 --half-embedding --timing --eval-first --logging-steps 1 > "$ROOT/reports/train.log" 2>&1
-stage restore-gpu-serving
-sudo -n /usr/bin/python3 "$CPU_WINDOW" restore > "$ROOT/reports/serving-restore.log" 2>&1
-sudo -n systemctl set-property --runtime "$UNIT" MemoryHigh=11G MemoryMax=13G
+if [ "$SERVING_MODE" = cpu ]; then
+ stage restore-gpu-serving
+ restore_serving > "$ROOT/reports/serving-restore.log" 2>&1
+fi
+# In offline mode export-eval restores Ollama after CPU merge/conversion,
+# preserving RAM for the merge and keeping it off throughout GPU training.
+sudo -n systemctl set-property --runtime "$UNIT" MemoryHigh=11G MemoryMax=14G
 stage export-and-regression
 bash training/server/export-eval.sh v20 "$KNOWLEDGE" natal-plan.json > "$ROOT/reports/export.log" 2>&1
 test "$(cat "$ROOT/reports/eval-natal-anna-v20.exit")" -le 1
