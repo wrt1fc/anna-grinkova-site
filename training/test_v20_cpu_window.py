@@ -1,5 +1,6 @@
 """Regression tests for probe lifecycle; no server, GPU or service mutations."""
 import importlib.util
+import io
 import json
 import pathlib
 import subprocess
@@ -19,8 +20,25 @@ class ProbeLifecycleTests(unittest.TestCase):
         with patch.object(window, 'run', return_value='CUDA_VISIBLE_DEVICES=-1 OLLAMA_NUM_PARALLEL=4'):
             with self.assertRaisesRegex(AssertionError, 'parallel=1'):
                 window.require_cpu_configuration()
-        with patch.object(window, 'run', return_value='CUDA_VISIBLE_DEVICES=-1 OLLAMA_NUM_PARALLEL=1'):
+        with patch.object(window, 'run', return_value='CUDA_VISIBLE_DEVICES=-1 OLLAMA_NUM_PARALLEL=1 OLLAMA_KEEP_ALIVE=-1m'):
             window.require_cpu_configuration()
+
+    def test_preload_is_empty_resident_same_context_and_not_a_visitor_answer(self):
+        response = io.BytesIO(json.dumps({'done': True, 'done_reason': 'load', 'response': ''}).encode())
+        with patch.object(window.urllib.request, 'urlopen', return_value=response) as request:
+            result = window.preload_cpu_model()
+        payload = json.loads(request.call_args.args[0].data)
+        self.assertEqual(payload['prompt'], '')
+        self.assertEqual(payload['keep_alive'], -1)
+        self.assertEqual(payload['options']['num_ctx'], 8192)
+        self.assertEqual(request.call_args.kwargs['timeout'], 180)
+        self.assertTrue(result['preload_response_empty'])
+
+    def test_preload_cannot_be_reported_as_a_generated_answer(self):
+        response = io.BytesIO(b'{"done": true, "response": "unexpected generation"}')
+        with patch.object(window.urllib.request, 'urlopen', return_value=response):
+            with self.assertRaisesRegex(AssertionError, 'without a generated answer'):
+                window.preload_cpu_model()
 
     def test_collected_transient_probe_does_not_abort(self):
         with patch.object(window, 'run', side_effect=[subprocess.CalledProcessError(5, ['systemctl', 'stop']), 'not-found']) as command:
