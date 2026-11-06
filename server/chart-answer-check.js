@@ -3,7 +3,8 @@ import { POINT_NAMES } from './astro-chart.js';
 
 const FORMS = { sun: 'Солнц[еауем]+', moon: 'Лун(?:а|ы|е|у|ой)', mercury: 'Меркури[йяюем]+', venus: 'Венер(?:а|ы|е|у|ой)',
   mars: 'Марс(?:а|у|ом|е)?', jupiter: 'Юпитер(?:а|у|ом|е)?', saturn: 'Сатурн(?:а|у|ом|е)?', uranus: 'Уран(?:а|у|ом|е)?',
-  neptune: 'Нептун(?:а|у|ом|е)?', pluto: 'Плутон(?:а|у|ом|е)?', asc: '(?:Асцендент(?:а|у|ом|е)?|ASC|АСЦ)', mc: '(?:MC|МС)' };
+  neptune: 'Нептун(?:а|у|ом|е)?', pluto: 'Плутон(?:а|у|ом|е)?', node: 'Северн\\p{L}*\\s+узл\\p{L}*', lilith: 'Лилит\\p{L}*',
+  asc: '(?:Асцендент(?:а|у|ом|е)?|ASC|АСЦ)', mc: '(?:MC|МС)' };
 const PLANET = `(?:${Object.values(FORMS).join('|')})`;
 const keyFor = (text) => Object.keys(FORMS).find((key) => new RegExp(`^(?:${FORMS[key]})$`, 'iu').test(text));
 const signFor = (text) => Object.entries(SIGN_PREPOSITIONAL).find(([base, form]) => base.toLowerCase() === text.toLowerCase() || form.toLowerCase() === text.toLowerCase())?.[0];
@@ -41,6 +42,20 @@ export function wrongCalculatedClaim(answer, chart) {
       if(timed(m.index)||consumed.some(([a,b])=>m.index>=a&&m.index<b))continue;
       const at= m[1].match(new RegExp(`^${ASPECT}$`,'iu'))?0: m[2].match(new RegExp(`^${ASPECT}$`,'iu'))?1:2;
       const values=m.slice(1);const aspect=values.splice(at,1)[0];if(!checkAspect(values[0],values[1],aspect))return true;
+    }
+  }
+  // Ruler claims are checked against the calculated table for all twelve houses, not only the 2nd and 7th.
+  const rulerFacts = facts.houseRulers;
+  if (Array.isArray(rulerFacts)) {
+    const rulerName = new RegExp(`управител\\p{L}*\\s+(\\d{1,2})-?(?:го|й|м|х)?\\s*дома\\s*(?:—|–|-|:)?\\s*(?:это\\s+)?(${PLANET})`, 'giu');
+    for (const m of answer.matchAll(rulerName)) {
+      const entry = rulerFacts.find((item) => item.house === Number(m[1]));
+      if (entry && !entry.rulers.some((ruler) => ruler.planet === keyFor(m[2]))) return true;
+    }
+    const rulerPlace = /управител\p{L}*\s+(\d{1,2})-?(?:го|й|м|х)?\s*дома[^.!?\n]{0,80}?(?:^|\s|[,;—–-])в\s+(\d{1,2})(?:-?(?:м|ом|х))?\s+доме/giu;
+    for (const m of answer.matchAll(rulerPlace)) {
+      const entry = rulerFacts.find((item) => item.house === Number(m[1]));
+      if (entry && !entry.rulers.some((ruler) => ruler.house === Number(m[2]))) return true;
     }
   }
   return false;

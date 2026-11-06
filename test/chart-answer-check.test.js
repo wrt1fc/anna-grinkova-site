@@ -42,3 +42,20 @@ test('calculated fallback selects the requested planet and respects answer sizes
     assert.equal(wrongCalculatedClaim(text,chart),false);
   }
 });
+
+test('ruler claims are checked against the calculated table for all twelve houses',()=>{
+  // 1990-05-15 chart: the 1st house (Дева) is ruled by Mercury, which stands in the 9th house.
+  assert.equal(wrongCalculatedClaim('Управитель 1 дома — Меркурий, он стоит в 9 доме.',chart),false);
+  assert.equal(wrongCalculatedClaim('Управитель 1 дома — Венера.',chart),true);
+  assert.equal(wrongCalculatedClaim('Управитель 1 дома стоит в 7 доме.',chart),true);
+  // Co-rulers both pass: the 11th house (Рак) is ruled by the Moon (5th) and the Sun (9th).
+  assert.equal(wrongCalculatedClaim('У 11 дома два управителя: Луна в 5 доме и Солнце в 9 доме.',chart),false);
+  assert.equal(wrongCalculatedClaim('Управитель 11 дома Луна стоит в 8 доме.',chart),true);
+});
+
+test('lunar node and Lilith claims are validated like planet claims',()=>{
+  const nodeFacts={calculated:{positions:{},angles:null,houses:[],aspects:[{first:'uranus',second:'node',aspect:'conjunction',orb:1.5}]}};
+  assert.equal(wrongCalculatedClaim('Соединение Урана и Северного узла тянет к нестандартному пути.',nodeFacts),false);
+  const noAspect={calculated:{positions:{},angles:null,houses:[],aspects:[]}};
+  assert.equal(wrongCalculatedClaim('Соединение Урана и Северного узла тянет к нестандартному пути.',noAspect),true);
+});

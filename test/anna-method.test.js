@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { natalChart } from '../server/astro-chart.js';
 import { houseProperties, secondHouse, elementBalance, financialStrategy, moneyProfile, moneyForPrompt, methodQueries,
-  asksAboutMoney } from '../server/anna-method.js';
+  asksAboutMoney, houseRulers, houseFormulas, houseRulersForPrompt, formulasForPrompt, houseMentions, houseQueries } from '../server/anna-method.js';
 import { createKnowledge } from '../server/knowledge.js';
 
 // Reference: Chronos «Временная карта» 01.01.2021 00:00 (GMT+3), Moscow 55°45′N 37°36′E, widget «Домарные свойства планет».
@@ -94,4 +94,48 @@ test('money questions are recognised', () => {
   assert.ok(asksAboutMoney('Мне копить или тратить?'));
   assert.ok(asksAboutMoney('Почему у меня не держатся накопления?'));
   assert.equal(asksAboutMoney('Почему я срываюсь на близких?'), false);
+});
+
+test('rulers of all twelve houses come from Anna’s table with co-rulers and their houses', () => {
+  const rulers = houseRulers(chart);
+  assert.equal(rulers.length, 12);
+  // Chronos reference: Venus rules houses 1, 2 and 9 and stands in the 3rd.
+  assert.deepEqual(rulers.find((item) => item.house === 1).rulers, [{ planet: 'venus', house: 3 }]);
+  assert.equal(rulers.find((item) => item.house === 1).sign, 'Весы');
+  // Lines are ready for the prompt and name every co-ruler.
+  const lines = houseRulersForPrompt(rulers);
+  assert.equal(lines.length, 12);
+  assert.match(lines[0], /^1 дом \(Весы\): Венера в 3 доме$/);
+  const noTime = natalChart({ birthUtc: '1990-03-10T09:00:00Z', latitude: 55.75, longitude: 37.62, timeKnown: false });
+  assert.equal(houseRulers(noTime), null);
+});
+
+test('house formulas link each house to the house of its ruler and count repeats', () => {
+  const formulas = houseFormulas(chart);
+  assert.ok(formulas.links.some((link) => link.formula === '1#3' && link.count === 1));
+  assert.deepEqual(formulas.strong, formulas.links.filter((link) => link.count >= 3).map((link) => link.formula));
+  const prompt = formulasForPrompt(formulas);
+  assert.match(prompt.links, /1#3/);
+  assert.equal(prompt.strong, null);
+  // A doubled co-ruler pair produces a ×2 link (1988: Saturn and Uranus conjunct, sharing houses).
+  const doubled = houseFormulas(natalChart({ birthUtc: '1988-06-15T12:00:00Z', latitude: 55.75, longitude: 37.6 }));
+  assert.ok(doubled.links.some((link) => link.count >= 2));
+});
+
+test('house mentions and queries target the exact methodic line', () => {
+  assert.deepEqual(houseMentions('Что у меня в 5 доме?'), [5]);
+  assert.deepEqual(houseMentions('Расскажи про пятый дом и 10 дом'), [5, 10]);
+  assert.deepEqual(houseMentions('Какая сегодня погода?'), []);
+  const rulers = houseRulers(chart);
+  // House 1 (Весы) is ruled by Venus, which stands in the 3rd house.
+  assert.deepEqual(houseQueries(rulers, [1]), ['Управитель 1 дома в 3 доме']);
+  // Two rulers in the same house produce one query, not two.
+  const sameHouse = [{ house: 5, sign: 'Козерог', rulers: [{ planet: 'saturn', house: 5 }, { planet: 'uranus', house: 5 }] }];
+  assert.deepEqual(houseQueries(sameHouse, [5]), ['Управитель 5 дома в 5 доме']);
+  const knowledge = createKnowledge([
+    { text: 'Управитель 1 дома в 3 доме: Много общения и поездок.', source: 'a' },
+    { text: 'Управитель 1 дома в 8 доме: Кризисы и трансформации.', source: 'b' },
+    { text: 'Если 1 дом в знаке Весы: Дипломатичность и вкус.', source: 'c' },
+  ]);
+  assert.equal(knowledge.search(houseQueries(rulers, [1])[0], { limit: 1 })[0].source, 'a');
 });

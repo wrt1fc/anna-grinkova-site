@@ -2,7 +2,7 @@
 // the partner's chart for compatibility questions, and matching fragments of her materials. Shared by the live chat
 // and the training set builder, so the tuned model learns on exactly the prompt it is served with.
 import { asksAboutChart, chartForPrompt, chartSectionsFor, natalChart, POINT_NAMES } from './astro-chart.js';
-import { ELEMENT_NAMES, SIGN_PREPOSITIONAL, asksAboutMoney, elementOf, methodQueries, moneyForPrompt, moneyProfile } from './anna-method.js';
+import { ELEMENT_NAMES, SIGN_PREPOSITIONAL, asksAboutMoney, elementOf, formulasForPrompt, houseFormulas, houseMentions, houseQueries, houseRulers, houseRulersForPrompt, methodQueries, moneyForPrompt, moneyProfile } from './anna-method.js';
 import { groundingQuestion, isPartnerPreferenceQuestion, isRelationshipQuestion } from './chat-topics.js';
 import { relationshipContext } from './relationship-context.js';
 
@@ -38,22 +38,33 @@ export function chartContext(profile, message, now = new Date(), { partner = nul
   if (!profile?.birthUtc) return { chart: { missing: 'Данные рождения не заполнены в личном кабинете, натальная карта не рассчитана.' }, queries: [] };
   const natal = chartOf(profile);
   const chart = chartForPrompt(natal, now, { include: chartSectionsFor(question) });
+  // Rulers of all twelve houses and the house-to-house formulas: ground truth for any sphere,
+  // so the model quotes Anna's ruler table instead of guessing from general astrology.
+  const rulers = houseRulers(natal);
+  let queries = [];
+  if (rulers) {
+    chart.houseRulers = houseRulersForPrompt(rulers);
+    chart.formulas = formulasForPrompt(houseFormulas(natal));
+    chart.calculated.houseRulers = rulers;
+    queries = houseQueries(rulers, houseMentions(question));
+  }
   if (isRelationshipQuestion(message)) chart.relationship = { ...relationshipContext(natal), requireOverview: isPartnerPreferenceQuestion(message) };
   if (compatibility) {
     if (partner?.birthUtc) chart.partner = partnerForPrompt(natal, { ...partner, chart: chartOf(partner) });
     else chart.partnerMissing = 'Карты партнёра нет: для разбора совместимости добавь его или её в разделе «Близкие люди».';
   }
-  if (!money) return { chart, queries: [] };
+  if (!money) return { chart, queries };
   const profileMoney = moneyProfile(natal);
   chart.money = moneyForPrompt(profileMoney);
-  return { chart, queries: methodQueries(profileMoney) };
+  return { chart, queries: [...queries, ...methodQueries(profileMoney)] };
 }
 
 // Anna's slides that match this chart first (2nd house sign, its ruler, hard aspects, strategy), then the visitor's own words.
 // A chart query quotes one of Anna's headings ("Управитель 2 дома в 4 доме"); the slide that contains it verbatim wins
 // over a general slide that merely shares the words.
 function exactSlide(knowledge, query) {
-  const candidates = knowledge.search(query, { limit: 5 });
+  // Deep candidate list: house formulas differ only by two numbers, so BM25's top 5 can miss the exact one.
+  const candidates = knowledge.search(query, { limit: 25 });
   const needle = query.toLowerCase();
   const exact = candidates.find((item) => item.text.toLowerCase().includes(needle));
   return exact ? [exact] : candidates.slice(0, 1);

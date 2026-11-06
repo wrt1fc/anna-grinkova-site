@@ -51,6 +51,48 @@ export function secondHouse(natal) {
   };
 }
 
+// Rulers of every house (Anna's table, co-rulers included) and where each ruler stands.
+// Ground truth for any house question, so the model never guesses rulership from general astrology.
+export function houseRulers(natal) {
+  if (!natal.cusps) return null;
+  return natal.cusps.map((cusp) => ({
+    house: cusp.house,
+    sign: cusp.sign,
+    rulers: SIGN_RULERS[cusp.sign].map((planet) => ({ planet, house: natal.planets[planet].house })),
+  }));
+}
+
+// House-to-house links («формулы домов»): each ruler standing in a house makes one link A#B.
+// Anna's rule: a theme becomes active when the same formula repeats 3 or more times.
+export function houseFormulas(natal) {
+  const rulers = houseRulers(natal);
+  if (!rulers) return null;
+  const counts = new Map();
+  for (const { house, rulers: rs } of rulers) {
+    for (const ruler of rs) {
+      if (!ruler.house) continue;
+      const key = `${house}#${ruler.house}`;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+  }
+  const links = [...counts.entries()].map(([formula, count]) => ({ formula, count }));
+  return { links, strong: links.filter((link) => link.count >= 3).map((link) => link.formula) };
+}
+
+// Compact Russian lines for the chat prompt.
+export function houseRulersForPrompt(rulers) {
+  return rulers.map(({ house, sign, rulers: rs }) =>
+    `${house} дом (${sign}): ${rs.map((ruler) => `${POINT_NAMES[ruler.planet]} в ${ruler.house} доме`).join(' и ')}`);
+}
+
+export function formulasForPrompt(formulas) {
+  if (!formulas?.links.length) return null;
+  return {
+    links: `Формулы домов (дом → дом, где стоит его управитель): ${formulas.links.map((link) => (link.count > 1 ? `${link.formula} ×${link.count}` : link.formula)).join(', ')}`,
+    strong: formulas.strong.length ? `Повторяются 3+ раза, значит тема активна: ${formulas.strong.join(', ')}` : null,
+  };
+}
+
 export function elementBalance(natal, strongPlanets = []) {
   const counts = { fire: 0, earth: 0, air: 0, water: 0 };
   for (const planet of PERSONAL) counts[elementOf(natal.planets[planet].sign)] += 1;
@@ -132,3 +174,29 @@ export function moneyForPrompt(money) {
 
 const MONEY_TOPIC = /деньг|денеж|копить|копл|накоп|трат[иая]|финанс|доход|зараб|зарпла|богатств|миллион|разбогат|бизнес|професси|карьер|работ[аеуыой]|призвани|предназначени|стратеги|2 дом|втор(ой|ого) дом|\bmc\b|10 дом/i;
 export function asksAboutMoney(message) { return MONEY_TOPIC.test(message); }
+
+// Houses the question names, by digit («5 дом») or ordinal word («пятый дом»).
+const HOUSE_WORDS = { перв: 1, втор: 2, трет: 3, четв: 4, пят: 5, шест: 6, седьм: 7, восьм: 8, девят: 9, десят: 10, одиннадцат: 11, двенадцат: 12 };
+export function houseMentions(question) {
+  const found = new Set();
+  for (const match of question.matchAll(/(\d{1,2})\s*[-–]?(?:й|ый|го|м|х|ом)?\s*дом/giu)) {
+    const n = Number(match[1]);
+    if (n >= 1 && n <= 12) found.add(n);
+  }
+  const lower = question.toLowerCase().replaceAll('ё', 'е');
+  for (const [stem, n] of Object.entries(HOUSE_WORDS)) {
+    if (new RegExp(`${stem.replace('ё', 'е')}\\p{L}*\\s+дом`, 'u').test(lower)) found.add(n);
+  }
+  return [...found].sort((a, b) => a - b);
+}
+
+// Material queries in Anna's wording for houses the question names, so the search finds the exact
+// методичка line («Управитель 5 дома в 9 доме») instead of a generic one.
+export function houseQueries(rulers, houses) {
+  if (!rulers) return [];
+  const queries = houses.flatMap((house) => {
+    const entry = rulers.find((item) => item.house === house);
+    return entry ? entry.rulers.map((ruler) => `Управитель ${house} дома в ${ruler.house} доме`) : [];
+  });
+  return [...new Set(queries)];
+}
