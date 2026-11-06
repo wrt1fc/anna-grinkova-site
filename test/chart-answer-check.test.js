@@ -59,3 +59,13 @@ test('lunar node and Lilith claims are validated like planet claims',()=>{
   const noAspect={calculated:{positions:{},angles:null,houses:[],aspects:[]}};
   assert.equal(wrongCalculatedClaim('Соединение Урана и Северного узла тянет к нестандартному пути.',noAspect),true);
 });
+
+test('ruler claims without a house number are checked against the house last mentioned in the answer',()=>{
+  // Regression from the live chat: the model invented Pluto as a co-ruler of the house under discussion.
+  assert.equal(wrongCalculatedClaim('В 11 доме у тебя Лев. Его управители Солнце и Плутон.',chart),true);
+  // 11th house (Рак): the Moon and the Sun are both accepted.
+  assert.equal(wrongCalculatedClaim('В 11 доме у тебя Рак. Его управители Луна и Солнце.',chart),false);
+  assert.equal(wrongCalculatedClaim('В 11 доме у тебя Рак. Управители дома: Луна и Солнце.',chart),false);
+  // Without any house mentioned the claim cannot be verified and passes.
+  assert.equal(wrongCalculatedClaim('Его управитель Марс очень сильный.',chart),false);
+});

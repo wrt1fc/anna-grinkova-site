@@ -57,6 +57,20 @@ export function wrongCalculatedClaim(answer, chart) {
       const entry = rulerFacts.find((item) => item.house === Number(m[1]));
       if (entry && !entry.rulers.some((ruler) => ruler.house === Number(m[2]))) return true;
     }
+    // Claims without a house number («В 11 доме у тебя Лев. Его управители Солнце и Плутон.») are attributed
+    // to the house last mentioned in the answer before the claim; without any house mention they cannot be checked.
+    const implicit = new RegExp(`управител\\p{L}*(?:\\s+(?:его|её|этого дома|этой темы|дома))?\\s*(?:—|–|-|:)?\\s*(?:это\\s+)?(${PLANET})(?:\\s+и\\s+(${PLANET}))?`, 'giu');
+    for (const m of answer.matchAll(implicit)) {
+      if (new RegExp(`^управител\\p{L}*\\s+\\d`, 'iu').test(m[0])) continue; // explicit claims are checked above
+      const before = answer.slice(Math.max(0, m.index - 160), m.index);
+      const mentioned = [...before.matchAll(/(\d{1,2})(?:-?(?:го|й|м|х))?\s+дом/giu)];
+      if (!mentioned.length) continue;
+      const entry = rulerFacts.find((item) => item.house === Number(mentioned.at(-1)[1]));
+      if (!entry) continue;
+      for (const name of [m[1], m[2]].filter(Boolean)) {
+        if (!entry.rulers.some((ruler) => ruler.planet === keyFor(name))) return true;
+      }
+    }
   }
   return false;
 }
