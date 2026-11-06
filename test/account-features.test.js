@@ -192,6 +192,10 @@ test('chat history is stored only with consent and erased when consent is withdr
   const history = (await request('/api/chat/history', { cookie })).data;
   assert.equal(history.consent, true);
   assert.deepEqual(history.messages.map((m) => [m.role, m.content]), [['user', 'С согласием'], ['assistant', LONG_ANSWER]]);
+  // Stored assistant answers come back signed, so a restored conversation is trusted as model context.
+  const assistant = history.messages.find((m) => m.role === 'assistant');
+  assert.match(assistant.signature, /^[0-9a-f]{64}$/);
+  assert.equal(history.messages.find((m) => m.role === 'user').signature, undefined);
   await request('/api/chat/consent', { method: 'PUT', body: { consent: false }, cookie });
   assert.deepEqual((await request('/api/chat/history', { cookie })).data.messages, []);
   assert.equal((await request('/api/chat/history')).response.status, 401);

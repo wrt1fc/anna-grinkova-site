@@ -55,6 +55,9 @@ test('money summary and material queries use Anna’s wording', () => {
   const lines = moneyForPrompt(money);
   assert.equal(lines.secondHouseCusp, 'Куспид 2 дома в знаке Весы');
   assert.deepEqual(lines.rulers, ['Управитель 2 дома Венера стоит в 3 доме']);
+  // A sign with two rulers (Anna's table: Рак — Луна и Солнце) is phrased as co-rulers, never as one.
+  const coRuled = moneyForPrompt({ ...money, secondHouse: { sign: 'Рак', rulers: [{ planet: 'moon', house: 9 }, { planet: 'sun', house: 11 }], planetsInside: [] } });
+  assert.deepEqual(coRuled.rulers, ['У 2 дома несколько управителей: Луна стоит в 9 доме; Солнце стоит в 11 доме']);
   assert.match(lines.mc, /Рак/);
   assert.ok(methodQueries(money).includes('Управитель 2 дома в 3 доме'));
   const noTime = natalChart({ birthUtc: '1990-03-10T09:00:00Z', latitude: 55.75, longitude: 37.62, timeKnown: false });

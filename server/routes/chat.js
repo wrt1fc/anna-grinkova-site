@@ -305,7 +305,11 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
     }
     if (path === '/api/chat/history' && req.method === 'GET') {
       const consent = await store.chatConsent(user.id) != null;
-      return json(res, 200, { consent, messages: consent ? await store.listChatMessages(user.id) : [] }), true;
+      // The server stored these answers itself, so it signs them again: the client sends them back
+      // as trusted history when the conversation continues on another device or after a reload.
+      const messages = consent ? (await store.listChatMessages(user.id)).map((item) => item.role === 'assistant'
+        ? { ...item, signature: historySigner.sign(item.content) } : item) : [];
+      return json(res, 200, { consent, messages }), true;
     }
     if (path === '/api/chat/history' && req.method === 'DELETE') {
       await store.deleteChatMessages(user.id);

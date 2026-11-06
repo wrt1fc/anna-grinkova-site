@@ -6,6 +6,8 @@ import { activeIdeaDraw, bindIdeas, refreshIdeas, resetIdeas, setIdeasBusy } fro
 
 const MAX_CHARS = 600;
 const HISTORY_ITEMS = 6;
+// The consent question is asked once per device; the answer itself lives on the account.
+const CONSENT_ASKED_KEY = 'fortuna-chat-consent-asked';
 let history = [];
 let busy = false;
 let personId = null;
@@ -15,6 +17,10 @@ let replyController = null;
 
 const transcript = () => $('#transcript');
 const input = () => $('#chat-input');
+
+function clearTranscript() {
+  transcript().querySelectorAll('.msg:not(#chat-welcome)').forEach((row) => row.remove());
+}
 
 function say(role, text, className = '') {
   const row = node('div', `msg msg-${role === 'user' ? 'user' : 'bot'}`);
@@ -43,12 +49,46 @@ export async function enterChat() {
   transcript().hidden = !history.length;
   showComposer(true, false);
   refreshIdeas();
+  loadSaved();
   if (app.pendingQuestion) {
     const question = app.pendingQuestion;
     app.pendingQuestion = '';
     input().value = question;
     autosize();
   }
+}
+
+// The server keeps the conversation when the visitor agreed; signed answers come back trusted.
+function renderSaved(messages) {
+  const mine = messages.filter((item) => (item.profileId ?? null) === personId);
+  clearTranscript();
+  for (const item of mine.slice(-40)) say(item.role, item.content);
+  history = mine.slice(-HISTORY_ITEMS).map(({ role, content, signature }) => ({ role, content, ...(signature ? { signature } : {}) }));
+  transcript().hidden = !history.length;
+}
+
+function consentSheet() {
+  const body = node('div');
+  body.append(node('p', 'sheet-text', 'Могу сохранять нашу переписку, чтобы разговор не терялся и продолжался с любого устройства. История хранится на сервере в России, и ты можешь удалить её в любой момент.'));
+  const keep = node('button', 'btn btn-gold', 'Сохранять переписку'); keep.type = 'button';
+  keep.addEventListener('click', async () => {
+    localStorage.setItem(CONSENT_ASKED_KEY, '1');
+    const { ok } = await api('/api/chat/consent', { method: 'PUT', body: { consent: true } });
+    closeSheet();
+    if (ok) loadSaved();
+  });
+  const no = node('button', 'btn btn-line', 'Не надо'); no.type = 'button';
+  no.addEventListener('click', () => { localStorage.setItem(CONSENT_ASKED_KEY, '1'); closeSheet(); });
+  body.append(keep, no);
+  openSheet('Сохранять историю чата?', body);
+}
+
+async function loadSaved() {
+  if (!app.me || busy) return;
+  const { ok, data } = await api('/api/chat/history');
+  if (!ok) return;
+  if (data.consent) { renderSaved(data.messages ?? []); return; }
+  if (!localStorage.getItem(CONSENT_ASKED_KEY)) consentSheet();
 }
 
 function autosize() {
@@ -158,12 +198,13 @@ async function peopleSheet() {
     button.addEventListener('click', () => {
       personId = entry.id; history = []; app.dayCardContext = null;
       chatGeneration++;
-      transcript().querySelectorAll('.msg:not(#chat-welcome)').forEach((row) => row.remove());
+      clearTranscript();
       input().value = ''; showComposer(true, false);
       $('#chat-suggestions').open = true;
       $('#person-name').textContent = entry.label;
       $('#person-note').textContent = entry.id ? 'Близкий человек' : 'Моя карта';
       closeSheet(); refreshIdeas();
+      loadSaved();
     });
     list.append(button);
   }
@@ -173,7 +214,7 @@ async function peopleSheet() {
 export function resetChat() { history = []; personId = null; people = null; app.dayCardContext = null;
   chatGeneration++; replyController?.abort(); busy = false;
   resetIdeas(); input().value = ''; $('#composer button').disabled = false; $('#person-switch').disabled = false;
-  transcript().querySelectorAll('.msg:not(#chat-welcome)').forEach((row) => row.remove()); }
+  clearTranscript(); }
 
 export function prepareCardQuestion({ position, date, card }) {
   if (busy) return false;

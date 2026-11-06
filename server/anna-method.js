@@ -118,7 +118,10 @@ export function moneyForPrompt(money) {
     planetRules: second.planetsInside.map((planet) => `${POINT_NAMES[planet]} во 2 доме: ${moneyRules.planets[planet]}`),
     source: second.rulers.map((ruler) => `Управитель 2 дома в ${ruler.house} доме: ${moneyRules.rulerHouses[ruler.house]}`).join(' '),
     secondHouseCusp: `Куспид 2 дома в знаке ${second.sign}`,
-    rulers: second.rulers.map((ruler) => `Управитель 2 дома ${POINT_NAMES[ruler.planet]} стоит в ${ruler.house} доме`),
+    // With co-rulers the answer must mention both ("один из управителей…"), never a single "the" ruler.
+    rulers: second.rulers.length > 1
+      ? [`У 2 дома несколько управителей: ${second.rulers.map((ruler) => `${POINT_NAMES[ruler.planet]} стоит в ${ruler.house} доме`).join('; ')}`]
+      : [`Управитель 2 дома ${POINT_NAMES[second.rulers[0].planet]} стоит в ${second.rulers[0].house} доме`],
     planetsInSecondHouse: second.planetsInside.map((planet) => POINT_NAMES[planet]),
     mc: `MC (куспид 10 дома) в знаке ${money.mcSign}`,
     elements: `Стихии личных планет: ${counts}${money.strongPlanetsCounted ? ' (с учётом сильных планет)' : ' (без сильных планет из Chronos — они могут добавить по одному баллу стихии)'}`,
