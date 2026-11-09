@@ -2,9 +2,9 @@
 # Idempotent cleanup for the explicitly authorized v25 GPU-only training window.
 set -Eeuo pipefail
 OVERRIDE=/run/systemd/system/anna-site.service.d/90-training-v25.conf
-PENDING=/home/ubuntu/natal-training-v25-r1/reports/restore-needed
+PENDING=/home/ubuntu/natal-training-v25-r2/reports/restore-needed
 if [ -e "$OVERRIDE" ]; then
-  grep -Fxq 'EnvironmentFile=/home/ubuntu/natal-training-v25-r1/serving-disabled.env' "$OVERRIDE"
+  grep -Fxq 'EnvironmentFile=/home/ubuntu/natal-training-v25-r2/serving-disabled.env' "$OVERRIDE"
   : > "$PENDING"
   rm -- "$OVERRIDE"
 fi

@@ -1,7 +1,7 @@
 #!/bin/bash
 # One separate v25 candidate from immutable v19. Never changes the selected production model.
 set -Eeuo pipefail
-ROOT=/home/ubuntu/natal-training-v25-r1
+ROOT=/home/ubuntu/natal-training-v25-r2
 PY=/home/ubuntu/natal-bench/venv/bin/python
 PARENT=/home/ubuntu/natal-training-v19/anna-v19
 PARENT_SHA=309fb7c9b9f90fe691f41dbea4f00b37232dc54d1efedfd725a0174495820325
@@ -50,7 +50,7 @@ sudo -n mkdir -p /run/systemd/system/anna-site.service.d
 sudo -n install -m 644 "$ROOT/runtime-disable.conf" "$OVERRIDE"
 sudo -n systemctl daemon-reload
 sudo -n systemctl restart anna-site
-curl -fsS --max-time 15 http://127.0.0.1:3000/api/health > "$ROOT/reports/site-health-during-training.json"
+curl -fsS --retry 15 --retry-connrefused --retry-delay 1 --retry-max-time 30 --max-time 5 http://127.0.0.1:3000/api/health > "$ROOT/reports/site-health-during-training.json"
 sudo -n systemctl stop ollama
 for _ in $(seq 1 10); do
   test -z "$(nvidia-smi --query-compute-apps=pid --format=csv,noheader)" && break
