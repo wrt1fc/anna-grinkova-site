@@ -129,11 +129,11 @@
   /* Чат: the back button carries its label, spacing from the Figma PC frame */
   .screen-chat .back-round { width: auto; padding: 0 18px 0 12px; border-radius: 22px; min-height: 44px; }
   .screen-chat .back-round .back-label { display: inline; }
-  .screen-chat { gap: 24px; padding-top: 20px; }
+  .screen-chat { gap: 14px; padding-top: 20px; }
   .screen-chat .person-bar { min-height: 64px; padding: 10px 20px 10px 10px; }
-  .screen-chat .transcript { gap: 26px; padding-top: 6px; }
+  .screen-chat .transcript { gap: 16px; padding-top: 6px; }
   .screen-chat .msg { gap: 12px; }
   .screen-chat .msg-bot img { width: 36px; height: 36px; margin-top: 16px; }
-  .screen-chat .bubble { padding: 20px 24px; font-size: 16px; }
+  .screen-chat .bubble { padding: 16px 20px; font-size: 16px; }
   .screen-chat .chart-chip { padding: 14px 18px 18px; }
 }

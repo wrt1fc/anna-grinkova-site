@@ -5,6 +5,7 @@ import { asksAboutChart, chartForPrompt, chartSectionsFor, natalChart, POINT_NAM
 import { ELEMENT_NAMES, SIGN_PREPOSITIONAL, asksAboutMoney, elementOf, formulasForPrompt, houseFormulas, houseMentions, houseQueries, houseRulers, houseRulersForPrompt, methodQueries, moneyForPrompt, moneyProfile } from './anna-method.js';
 import { groundingQuestion, isPartnerPreferenceQuestion, isRelationshipQuestion } from './chat-topics.js';
 import { relationshipContext } from './relationship-context.js';
+import {isNatalSuggestion} from './chat-suggestions.js';
 
 // Natal chart, transits, directions and Anna's money method for chart and money questions only;
 // birth date, place and email never reach the model.
@@ -32,9 +33,12 @@ function partnerForPrompt(own, partner) {
 
 export function chartContext(profile, message, now = new Date(), { partner = null, history = [] } = {}) {
   const question = groundingQuestion(message, history);
+  // groundingQuestion appends this suffix only for a dependent follow-up. Match the
+  // complete original editorial question, never arbitrary words inside a new message.
+  const suggestionQuestion = question !== message ? question.slice(0, question.lastIndexOf('\nУточнение: ')) : question;
   const money = asksAboutMoney(question);
   const compatibility = asksAboutCompatibility(question);
-  if (!asksAboutChart(question) && !money && !compatibility) return { chart: null, queries: [] };
+  if (!asksAboutChart(question) && !money && !compatibility && !isNatalSuggestion(suggestionQuestion)) return { chart: null, queries: [] };
   if (!profile?.birthUtc) return { chart: { missing: 'Данные рождения не заполнены в личном кабинете, натальная карта не рассчитана.' }, queries: [] };
   const natal = chartOf(profile);
   const chart = chartForPrompt(natal, now, { include: chartSectionsFor(question) });

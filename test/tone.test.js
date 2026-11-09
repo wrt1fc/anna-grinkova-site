@@ -4,12 +4,12 @@ import { CHAT_TONES, chatPrompt } from '../server/local-chat.js';
 
 const base = { message: 'Что значит Луна в Раке?', history: [], forecast: { date: '2026-10-26', scope: 'general', subject: null } };
 
-test('friendly humour is the default tone, including legacy normal requests', () => {
+test('plain tone is the default, including legacy normal requests; humour stays optional', () => {
   assert.deepEqual(CHAT_TONES, ['playful']);
   const normal = JSON.parse(chatPrompt(base));
-  assert.equal(normal.tone, 'playful');
-  assert.ok(normal.toneInstruction.length > 0);
-  assert.equal(JSON.parse(chatPrompt({ ...base, tone: 'normal' })).tone, 'playful');
+  assert.equal(normal.tone, undefined);
+  assert.equal(normal.toneInstruction, undefined);
+  assert.equal(JSON.parse(chatPrompt({ ...base, tone: 'normal' })).tone, undefined);
   assert.equal('tone' in JSON.parse(chatPrompt({ ...base, tone: 'unknown' })), false);
   const playful = JSON.parse(chatPrompt({ ...base, tone: 'playful' }));
   assert.equal(playful.tone, 'playful');

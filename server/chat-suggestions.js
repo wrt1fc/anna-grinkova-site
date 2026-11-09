@@ -1,5 +1,3 @@
-import { natalChart, POINT_NAMES } from './astro-chart.js';
-import { SIGN_PREPOSITIONAL, SIGN_RULERS } from './anna-method.js';
 import { moscowDate, tarotForDate } from './daily-forecast.js';
 
 const PLANETS = ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'pluto'];
@@ -14,14 +12,18 @@ const TOPICS = {
   pluto: ['Как отпускать то, что уже не подходит?', 'Как замечать повторяющиеся сценарии?', 'Как проходить перемены бережнее к себе?'],
 };
 const GENERAL = [
-  'Какие сильные стороны видны в моей натальной карте?',
-  'Что моя натальная карта говорит о привычках в отношениях?',
-  'Как по натальной карте понять, что меня поддерживает?',
-  'Какие темы моей натальной карты стоит изучить в первую очередь?',
-  'Как моя натальная карта помогает разобраться с выбором работы?',
-  'Что в моей натальной карте связано с общением?',
-  'Как по моей натальной карте понять свой подход к деньгам?',
-  'Что моя натальная карта может подсказать о личных границах?',
+  'Как замечать свои таланты?', 'Что помогает мне выбирать работу?',
+  'Как находить общий язык с людьми?', 'Как я принимаю важные решения?',
+  'Какой подход к деньгам мне ближе?', 'Как находить баланс в отношениях?',
+  'Что помогает мне принимать перемены?', 'Как бережнее относиться к себе?',
+];
+const GROUPS = [
+  { id: 'work', label: 'Работа', questions: ['Какая работа мне подходит?', 'Какие у меня сильные стороны?', 'Что поможет мне расти в профессии?'],
+    subject: ['Какая работа ему подходит?', 'Какие у него сильные стороны?', 'Что поможет ему расти в профессии?'] },
+  { id: 'money', label: 'Деньги', questions: ['Какой подход к деньгам мне ближе?', 'Что помогает мне больше зарабатывать?', 'Как мне увереннее обращаться с деньгами?'],
+    subject: ['Какой подход к деньгам ему ближе?', 'Что помогает ему больше зарабатывать?', 'Как ему увереннее обращаться с деньгами?'] },
+  { id: 'relationships', label: 'Отношения', questions: ['Что для меня важно в отношениях?', 'Как я выражаю заботу?', 'Как мне легче договариваться с партнёром?'],
+    subject: ['Что для него важно в отношениях?', 'Как он выражает заботу?', 'Как ему легче договариваться с партнёром?'] },
 ];
 const SUBJECT_TOPICS = {
   sun: ['Что помогает этому человеку проявлять себя увереннее?', 'Что его по-настоящему увлекает?', 'Какие у него сильные стороны?'],
@@ -34,43 +36,33 @@ const SUBJECT_TOPICS = {
   pluto: ['Как он отпускает то, что уже не подходит?', 'Какие сценарии у него могут повторяться?', 'Как ему бережнее проходить перемены?'],
 };
 
+const normalizeQuestion = text => text.toLocaleLowerCase('ru').replaceAll('ё','е').replace(/[?!.,…]+$/u,'').trim();
+const generalForPerson = text => text.replace(/мне/g,'ему').replace(/меня/g,'него').replace(/я /g,'он ').replace(/свои/g,'его');
+const NATAL_QUESTIONS = new Set([
+  ...Object.values(TOPICS).flat(), ...Object.values(SUBJECT_TOPICS).flat(),
+  ...GENERAL, ...GENERAL.map(generalForPerson),
+  ...GROUPS.flatMap(group => [...group.questions,...group.subject]),
+].map(normalizeQuestion));
+
+// Keep the calculated context when editorial display text deliberately contains no astrology terms.
+export function isNatalSuggestion(message) { return NATAL_QUESTIONS.has(normalizeQuestion(message)); }
+
 // A fixed account offset and a day counter avoid random repeats on consecutive days.
 // This is an editorial question to start a conversation, not an event prediction.
 export function chatSuggestions({ userId, profile = null, profileId = null, now = new Date(), draw = 0 }) {
   const date = moscowDate(now);
   const dayNumber = Math.floor(Date.parse(`${date}T00:00:00Z`) / 86_400_000);
-  const natal = profile?.birthUtc ? natalChart({ birthUtc: profile.birthUtc,
-    latitude: profile.birthLatitude, longitude: profile.birthLongitude, timeKnown: !!profile.birthTime }) : null;
   const topics = profileId ? SUBJECT_TOPICS : TOPICS;
-  const possessive = profileId ? 'его' : 'моей';
-  const bank = PLANETS.flatMap((planet) => topics[planet].map((question, index) => {
-    const sign = natal?.planets[planet]?.sign;
-    return { id: `${planet}-${index}`, text: sign
-      ? `В ${possessive} натальной карте ${POINT_NAMES[planet]} в ${SIGN_PREPOSITIONAL[sign]}. ${question}`
-      : `${question} Что об этом может подсказать ${profileId ? 'его' : 'моя'} натальная карта?` };
-  })).concat(GENERAL.map((text, index) => ({ id: `general-${index}`, text: profileId
-    ? text.replace(/моей/g, 'его').replace(/моя/g, 'его').replace(/меня/g, 'этого человека') : text })));
+  const bank = PLANETS.flatMap((planet) => topics[planet].map((text, index) => ({ id: `${planet}-${index}`, text })))
+    .concat(GENERAL.map((text, index) => ({ id: `general-${index}`, text: profileId
+      ? text.replace(/мне/g, 'ему').replace(/меня/g, 'него').replace(/Как я /g, 'Как он ') : text })));
   const offset = (userId % bank.length) * 17 + ((profileId ?? 0) % bank.length) * 11;
   const daily = bank[(dayNumber + offset) % bank.length];
   const card = tarotForDate(date, profile?.birthUtc && profileId ? 1_000_000_000 + profileId : userId, draw);
-  const natalQuestions = profileId
-    ? ['Что главное в натальной карте этого человека?', 'Как его Венера проявляется в отношениях?', 'Какие сильные стороны видны в его карте?']
-    : ['Что главное в моей натальной карте?', 'Как моя Венера проявляется в отношениях?', 'Какие сильные стороны видны в моей карте?'];
-  const seventh = natal?.cusps?.find((item) => item.house === 7);
-  if (seventh) {
-    const rulerKey = SIGN_RULERS[seventh.sign][0], ruler = natal.planets[rulerKey];
-    natalQuestions[1] = `В ${profileId ? 'его' : 'моей'} карте 7-й дом в ${SIGN_PREPOSITIONAL[seventh.sign]}, управитель — ${POINT_NAMES[rulerKey]} в ${ruler.house}-м доме. Как это проявляется в выборе партнёра?`;
-  }
-  const cardQuestions = [`Что для ${profileId ? 'этого человека' : 'меня'} может значить сегодняшняя карта «${card.name}»?`,
-    `На что ${profileId ? 'ему ' : ''}обратить внимание сегодня с картой «${card.name}»?`,
-    `Какой небольшой шаг ${profileId ? 'он может' : 'можно'} сделать сегодня, опираясь на образ карты «${card.name}»?`];
   return {
     date,
-    dailyQuestion: { ...daily, personalization: natal ? 'natal' : 'account' },
-    groups: [
-      { id: 'natal', label: 'Натальная карта', questions: natalQuestions },
-      { id: 'day', label: 'Карта дня', questions: cardQuestions },
-    ],
+    dailyQuestion: { ...daily, personalization: profile?.birthUtc ? 'natal' : 'account' },
+    groups: GROUPS.map(({ id, label, questions, subject }) => ({ id, label, questions: profileId ? subject : questions })),
     card: { number: card.number, name: card.name, draw },
     refreshAfterMs: Math.max(1000, Date.parse(`${date}T21:00:00Z`) - new Date(now).getTime() + 1000),
   };

@@ -235,11 +235,12 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
         return streaming ? (send('done', payload), res.end()) : json(res, 200, payload);
       }
       // A failed history write must not take the answer away from the visitor.
+      let historySaved = null;
       try {
-        await store.appendChatMessages(user.id, chart.profileId, [{ role: 'user', content: message }, { role: 'assistant', content: answer }]);
-      } catch (error) { console.error('Chat history not saved:', error.message); }
+        if (await store.appendChatMessages(user.id, chart.profileId, [{ role: 'user', content: message }, { role: 'assistant', content: answer }])) historySaved = true;
+      } catch (error) { historySaved = false; console.error('Chat history not saved:', error.message); }
       const learning = !filtered ? learningInvitation(message, historySigner.trusted(body.history ?? []), extra.learningSuggested) : null;
-      const payload = { ...extra, answer, filtered, ...(learning ? { learning } : {}), signature: historySigner.sign(answer),
+      const payload = { ...extra, answer, filtered, historySaved, ...(learning ? { learning } : {}), signature: historySigner.sign(answer),
         context: { date: day, scope: context.scope, basis: astro.chart?.missing ? 'birth-data-missing' : astro.chart ? 'natal' : asksAboutDay(topicMessage) ? 'day' : 'general', subject: chart.subject } };
       return streaming ? (send('done', payload), res.end()) : json(res, 200, payload);
     };
@@ -304,10 +305,21 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
       return json(res, 200, chatSuggestions({ userId: user.id, profile: chart.profile, profileId: chart.profileId, draw: Number(rawDraw) })), true;
     }
     if (path === '/api/chat/history' && req.method === 'GET') {
+      const query = new URL(req.url, 'http://localhost').searchParams;
+      const rawProfile = query.get('profileId');
+      if (query.getAll('profileId').length > 1 || (rawProfile !== null
+        && (!/^(0|[1-9]\d*)$/.test(rawProfile) || !Number.isSafeInteger(Number(rawProfile))))) {
+        return json(res, 400, { error: 'invalid_history_profile', message: 'Не удалось выбрать историю переписки.' }), true;
+      }
+      const profileId = rawProfile === null ? undefined : Number(rawProfile) || null;
+      if (profileId) {
+        const chart = await chartFor(store, user, profileId);
+        if (chart.error) return json(res, ...chart.error), true;
+      }
       const consent = await store.chatConsent(user.id) != null;
       // The server stored these answers itself, so it signs them again: the client sends them back
       // as trusted history when the conversation continues on another device or after a reload.
-      const messages = consent ? (await store.listChatMessages(user.id)).map((item) => item.role === 'assistant'
+      const messages = consent ? (await store.listChatMessages(user.id, 50, profileId)).map((item) => item.role === 'assistant'
         ? { ...item, signature: historySigner.sign(item.content) } : item) : [];
       return json(res, 200, { consent, messages }), true;
     }

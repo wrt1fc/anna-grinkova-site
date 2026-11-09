@@ -173,7 +173,12 @@ export function moneyForPrompt(money) {
 }
 
 const MONEY_TOPIC = /деньг|денеж|копить|копл|накоп|трат[иая]|финанс|доход|зараб|зарпла|богатств|миллион|разбогат|бизнес|професси|карьер|работ[аеуыой]|призвани|предназначени|стратеги|2 дом|втор(ой|ого) дом|\bmc\b|10 дом/i;
-export function asksAboutMoney(message) { return MONEY_TOPIC.test(message); }
+export function asksAboutMoney(message) {
+  // Mentioning work while asking about rest or emotions is not an income question.
+  if (/восстанов|отдох|отдых|устал|выгоран|раздраж|эмоци|ссор/iu.test(message)
+    && !/деньг|денеж|доход|зараб|зарплат|финанс|бюджет|копить|накоп/iu.test(message)) return false;
+  return MONEY_TOPIC.test(message);
+}
 
 // Houses the question names, by digit («5 дом») or ordinal word («пятый дом»).
 const HOUSE_WORDS = { перв: 1, втор: 2, трет: 3, четв: 4, пят: 5, шест: 6, седьм: 7, восьм: 8, девят: 9, десят: 10, одиннадцат: 11, двенадцат: 12 };

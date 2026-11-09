@@ -1,8 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { chatSuggestions } from '../server/chat-suggestions.js';
-import { natalChart, POINT_NAMES } from '../server/astro-chart.js';
-import { SIGN_PREPOSITIONAL } from '../server/anna-method.js';
 import { moscowDate, tarotForDate } from '../server/daily-forecast.js';
 import { createServer } from '../server/http.js';
 import { createStore } from '../server/store.js';
@@ -26,23 +24,20 @@ test('daily chat questions are stable per account and rotate at Moscow midnight'
     now: new Date(Date.parse('2026-10-30T12:00Z') + n * 86_400_000) }).dailyQuestion.id)).size, 32);
 });
 
-test('personal prompts use calculated signs, selected cards and the selected profile', () => {
-  const natal = natalChart({ birthUtc: profile.birthUtc, latitude: profile.birthLatitude, longitude: profile.birthLongitude });
-  for (let n = 0; n < 32; n++) {
-    const now = new Date(Date.parse('2026-10-30T12:00Z') + n * 86_400_000);
-    const data = chatSuggestions({ userId: 1, profile, now, draw: 4 });
+test('ideas are three short natal questions per everyday topic, cards remain separate', () => {
+  for (const profileId of [null, 3]) {
+    const data = chatSuggestions({ userId: 1, profileId, profile, now: new Date('2026-10-30T12:00Z'), draw: 4 });
     assert.equal(data.dailyQuestion.personalization, 'natal');
-    const planet = data.dailyQuestion.id.split('-')[0];
-    if (planet !== 'general') assert.ok(data.dailyQuestion.text.startsWith(`В моей натальной карте ${POINT_NAMES[planet]} в ${SIGN_PREPOSITIONAL[natal.planets[planet].sign]}.`));
-    const missing = chatSuggestions({ userId: 1, now });
-    assert.equal(missing.dailyQuestion.personalization, 'account');
-    assert.doesNotMatch(missing.dailyQuestion.text, /в моей натальной карте в /);
-    const card = tarotForDate(data.date, 1, 4);
-    assert.equal(data.card.name, card.name);
-    assert.ok(data.groups[1].questions.every((q) => q.includes(card.name)));
-    const other = chatSuggestions({ userId: 1, profileId: 3, profile, now });
-    assert.doesNotMatch(JSON.stringify(other.groups) + other.dailyQuestion.text, /моей|моя|для меня|мне |Как я /u);
-    assert.equal(other.card.name, tarotForDate(other.date, 1_000_000_003, 0).name);
+    assert.deepEqual(data.groups.map(({ id, label }) => [id, label]), [
+      ['work', 'Работа'], ['money', 'Деньги'], ['relationships', 'Отношения'],
+    ]);
+    for (const text of [data.dailyQuestion.text, ...data.groups.flatMap((g) => g.questions)]) {
+      assert.ok(text.length <= 95, text);
+      assert.doesNotMatch(text, /дом[а-я]*|куспид|Венер|Юпитер|Сатурн|Плутон|Меркур|Марс|Лун[аы]|Солнц|карт[аыу] дня/iu);
+      if (profileId) assert.doesNotMatch(text, /моей|моя|для меня|мне |Как я /u);
+    }
+    assert.ok(data.groups.every((g) => g.questions.length === 3));
+    assert.equal(data.card.name, tarotForDate(data.date, profileId ? 1_000_000_003 : 1, 4).name);
   }
 });
 

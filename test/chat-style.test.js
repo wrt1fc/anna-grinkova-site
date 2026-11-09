@@ -33,6 +33,7 @@ test('a second formal answer uses a friendly fallback and never leaks a formal p
   const result=await chat.answer({...input,onDelta:text=>deltas.push(text)});assert.equal(calls,2);assert.equal(result.styleFiltered,true);assert.equal(hasFormalAddress(result.answer),false);assert.deepEqual(deltas,[result.answer]);
 });
 
-test('normal or omitted tone inherits informal humour, including the sensitive-topic exception',()=>{
-  for(const tone of [undefined,'normal','playful']){const p=JSON.parse(chatPrompt({...input,tone}));assert.equal(p.tone,'playful');assert.match(p.toneInstruction,/одна лёгкая шутка/);assert.match(p.toneInstruction,/горя.*без юмора/);}
+test('normal or omitted tone stays plain while explicit humour keeps the sensitive-topic exception',()=>{
+  for(const tone of [undefined,'normal']){const p=JSON.parse(chatPrompt({...input,tone}));assert.equal(p.tone,undefined);assert.equal(p.toneInstruction,undefined);}
+  const p=JSON.parse(chatPrompt({...input,tone:'playful'}));assert.equal(p.tone,'playful');assert.match(p.toneInstruction,/одна лёгкая шутка/);assert.match(p.toneInstruction,/горя.*без юмора/);
 });

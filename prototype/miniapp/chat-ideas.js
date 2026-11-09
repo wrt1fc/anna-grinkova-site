@@ -3,25 +3,28 @@ import { $, app } from './state.js?v=3';
 import { closeSheet, node, openSheet } from './sheet.js';
 import { savedPosition } from './daily-card-choice.js?v=1';
 
-let context, choose, data = null, topic = 'natal', generation = 0, controller, timer;
+let context, choose, data = null, topic = 'work', generation = 0, controller, timer;
 let busy = false, loading = false, expiresAt = 0;
 const visible = () => !document.querySelector('[data-screen="chat"]').hidden;
 const fresh = () => data && performance.now() < expiresAt;
-const fallbackQuestions = () => context().profileId
-  ? ['Что главное в натальной карте этого человека?', 'Как его Венера проявляется в отношениях?', 'Какие сильные стороны видны в его карте?']
-  : ['Что главное в моей натальной карте?', 'Как моя Венера проявляется в отношениях?', 'Какие сильные стороны видны в моей карте?'];
+const FALLBACK = {
+  work: ['Какая работа мне подходит?', 'Какие у меня сильные стороны?', 'Что поможет мне расти в профессии?'],
+  money: ['Какой подход к деньгам мне ближе?', 'Что помогает мне больше зарабатывать?', 'Как мне увереннее обращаться с деньгами?'],
+  relationships: ['Что для меня важно в отношениях?', 'Как я выражаю заботу?', 'Как мне легче договариваться с партнёром?'],
+};
+const fallbackQuestions = (group = topic) => (FALLBACK[group] ?? FALLBACK.work).map((text) => context().profileId
+  ? text.replace(/мне/g, 'ему').replace(/меня/g, 'него').replace(/Как я /g, 'Как он ').replace(/ у меня/g, ' у него') : text);
 
-function pick(question, card = false) {
+function pick(question) {
   if (busy || loading) return;
   if (data && !fresh()) { refreshIdeas(); return; }
-  if (card && data && !context().profileId) app.dayCardContext = { date: data.date, position: data.card.draw };
   $('#chat-suggestions').open = false;
   choose(question);
 }
 
 function syncDisabled() {
   for (const button of $('#chat-suggestions').querySelectorAll('button')) {
-    button.disabled = busy || loading || (button.dataset.questionTopic === 'day' && !data);
+    button.disabled = busy || loading;
   }
 }
 
@@ -31,14 +34,12 @@ function render() {
   if (data) {
     $('#chat-daily-label').textContent = context().profileId ? 'Вопрос дня о близком человеке' : 'Твой вопрос дня';
     $('#chat-daily-text').textContent = data.dailyQuestion.text;
-    $('#chat-daily-note').textContent = data.dailyQuestion.personalization === 'natal'
-      ? 'По натальной карте · обновляется каждый день' : 'Личный вопрос · обновляется каждый день';
   }
-  if (!data) topic = 'natal';
+  if (!Object.hasOwn(FALLBACK, topic)) topic = 'work';
   const questions = data?.groups.find((group) => group.id === topic)?.questions ?? fallbackQuestions();
   const buttons = questions.map((question) => {
     const button = node('button', '', question); button.type = 'button';
-    button.addEventListener('click', () => pick(question, topic === 'day'));
+    button.addEventListener('click', () => pick(question));
     return button;
   });
   $('#chat-question-list').replaceChildren(...buttons);
@@ -78,7 +79,6 @@ export async function refreshIdeas() {
       || !Number.isFinite(result.data.refreshAfterMs)) throw new Error('unavailable');
     data = result.data;
     expiresAt = performance.now() + data.refreshAfterMs;
-    if (!selected.profileId) app.dayCardContext = { date: data.date, position: data.card.draw };
     $('#chat-suggestions-status').textContent = '';
     timer = setTimeout(() => { if (visible()) refreshIdeas(); }, Math.min(data.refreshAfterMs, 86_401_000));
   } catch (error) {
@@ -92,11 +92,11 @@ export async function refreshIdeas() {
   }
 }
 
-export function activeIdeaDraw() { return fresh() ? data.card.draw : null; }
+export function activeIdeaDraw() { return fresh() && !context().profileId && !app.dayCardContext ? data.card.draw : null; }
 export function setIdeasBusy(value) { busy = value; syncDisabled(); }
 export function resetIdeas() {
   generation++; controller?.abort(); clearTimeout(timer);
-  data = null; topic = 'natal'; expiresAt = 0; busy = false; loading = false;
+  data = null; topic = 'work'; expiresAt = 0; busy = false; loading = false;
   $('#chat-suggestions').open = true;
   $('#chat-daily-question').hidden = true;
   $('#chat-question-list').replaceChildren();
@@ -112,11 +112,11 @@ export function bindIdeas(getContext, selectQuestion) {
   $('#chat-ideas').addEventListener('click', () => {
     if (busy || loading) return;
     const list = node('div', 'idea-list');
-    const questions = data ? data.groups.flatMap((group) => group.questions.map((text) => ({ text, card: group.id === 'day' })))
+    const questions = data ? data.groups.flatMap((group) => group.questions.map((text) => ({ text })))
       : fallbackQuestions().map((text) => ({ text, card: false }));
     for (const question of questions) {
       const button = node('button', 'btn btn-line', question.text); button.type = 'button';
-      button.addEventListener('click', () => { closeSheet(); pick(question.text, question.card); }); list.append(button);
+      button.addEventListener('click', () => { closeSheet(); pick(question.text); }); list.append(button);
     }
     openSheet('Что спросить у Фортуны', list);
   });

@@ -47,10 +47,15 @@ export function wrongCalculatedClaim(answer, chart) {
   // Ruler claims are checked against the calculated table for all twelve houses, not only the 2nd and 7th.
   const rulerFacts = facts.houseRulers;
   if (Array.isArray(rulerFacts)) {
-    const rulerName = new RegExp(`управител\\p{L}*\\s+(\\d{1,2})-?(?:го|й|м|х)?\\s*дома\\s*(?:—|–|-|:)?\\s*(?:это\\s+)?(${PLANET})`, 'giu');
+    const rulerName = new RegExp(`управител\\p{L}*\\s+(\\d{1,2})-?(?:го|й|м|х)?\\s*дома\\s*(?:—|–|-|:|,)?\\s*(?:это\\s+)?(${PLANET})(?:\\s+и\\s+(${PLANET}))?`, 'giu');
     for (const m of answer.matchAll(rulerName)) {
       const entry = rulerFacts.find((item) => item.house === Number(m[1]));
-      if (entry && !entry.rulers.some((ruler) => ruler.planet === keyFor(m[2]))) return true;
+      if (entry && [m[2],m[3]].filter(Boolean).some(name => !entry.rulers.some(ruler => ruler.planet === keyFor(name)))) return true;
+    }
+    const moneyRulerName = new RegExp(`управител\\p{L}*\\s+денежного\\s+дома\\s*(?:—|–|-|:|,)?\\s*(${PLANET})`, 'giu');
+    for (const m of answer.matchAll(moneyRulerName)) {
+      const entry = rulerFacts.find(item => item.house === 2);
+      if (entry && !entry.rulers.some(ruler => ruler.planet === keyFor(m[1]))) return true;
     }
     const rulerPlace = /управител\p{L}*\s+(\d{1,2})-?(?:го|й|м|х)?\s*дома[^.!?\n]{0,80}?(?:^|\s|[,;—–-])в\s+(\d{1,2})(?:-?(?:м|ом|х))?\s+доме/giu;
     for (const m of answer.matchAll(rulerPlace)) {

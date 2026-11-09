@@ -175,7 +175,10 @@ img { display: block; max-width: 100%; }
 .week-days .is-today small { color: var(--gold-light); }
 
 /* chat */
-.screen-chat { min-height: 100dvh; padding-bottom: 20px; width: min(100% - 2 * var(--gutter), var(--wide)); }
+.screen-chat { gap: 12px; min-height: 100dvh; padding-bottom: 20px; width: min(100% - 2 * var(--gutter), 820px); }
+.screen-chat .back { min-height: 44px; }
+.screen-chat .transcript { flex: none; min-height: 0; }
+.screen-chat .chip-btn { min-height: 44px; }
 .person-bar { display: flex; align-items: center; gap: 12px; padding: 10px 14px; min-height: 64px; }
 .person-icon { width: 44px; height: 44px; border: 1px solid var(--line); border-radius: 50%; display: grid; place-items: center; flex: none; }
 .person-text { flex: 1; min-width: 0; display: grid; }

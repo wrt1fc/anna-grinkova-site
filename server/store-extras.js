@@ -78,9 +78,11 @@ export function createExtras(q, transaction) {
     });
     return true;
   }
-  async function listChatMessages(userId, limit = 50) {
+  async function listChatMessages(userId, limit = 50, profileId = undefined) {
+    const profileFilter = profileId === undefined ? '' : profileId === null ? ' AND profile_id IS NULL' : ' AND profile_id = $3';
     return q.query(`SELECT role, content, profile_id AS "profileId", created_at AS "createdAt" FROM (
-      SELECT * FROM chat_messages WHERE user_id = $1 ORDER BY id DESC LIMIT $2) AS recent ORDER BY id`, [userId, limit]);
+      SELECT * FROM chat_messages WHERE user_id = $1${profileFilter} ORDER BY id DESC LIMIT $2) AS recent ORDER BY id`,
+    profileId == null ? [userId, limit] : [userId, limit, profileId]);
   }
   async function deleteChatMessages(userId) { await q.run('DELETE FROM chat_messages WHERE user_id = $1', [userId]); }
 

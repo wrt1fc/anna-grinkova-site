@@ -201,6 +201,44 @@ test('chat history is stored only with consent and erased when consent is withdr
   assert.equal((await request('/api/chat/history')).response.status, 401);
 }, { chatWriter: steadyWriter() }));
 
+test('history can be restored per accessible profile before the message limit is applied', async () => fixture(async ({ store, request, signIn }) => {
+  const cookie = await signIn();
+  const userId = await store.findUserIdByEmail('owner@example.com');
+  await store.setPlan(userId, 'partner');
+  const person = await request('/api/profiles', { method: 'POST', body: partnerBirth, cookie });
+  const profileId = person.data.profile.id;
+  await store.setChatConsent(userId, true);
+  await store.appendChatMessages(userId, null, [{ role: 'user', content: 'Моя переписка' }]);
+  await store.appendChatMessages(userId, profileId, Array.from({ length: 60 }, (_, i) => ({ role: 'user', content: `О близком ${i}` })));
+  const own = await request('/api/chat/history?profileId=0', { cookie });
+  assert.deepEqual(own.data.messages.map(m => m.content), ['Моя переписка']);
+  const related = await request(`/api/chat/history?profileId=${profileId}`, { cookie });
+  assert.equal(related.data.messages.length, 50);
+  assert.ok(related.data.messages.every(m => m.profileId === profileId));
+  for (const query of ['profileId=-1', 'profileId=abc', 'profileId=0&profileId=0', 'profileId=9007199254740992']) {
+    assert.equal((await request('/api/chat/history?' + query, { cookie })).response.status, 400);
+  }
+  const stranger = await signIn('stranger@example.com');
+  assert.equal((await request(`/api/chat/history?profileId=${profileId}`, { cookie: stranger })).response.status, 404);
+  await store.setPlan(userId, 'free');
+  assert.equal((await request(`/api/chat/history?profileId=${profileId}`, { cookie })).response.status, 403);
+}, { chatWriter: steadyWriter() }));
+
+test('a history storage failure is visible without losing or charging again for the delivered answer', async () => fixture(async ({ store, request, signIn }) => {
+  const cookie = await signIn();
+  const userId = await store.findUserIdByEmail('owner@example.com');
+  const unsaved = await request('/api/chat', { method: 'POST', body: { message: 'Без сохранения' }, cookie });
+  assert.equal(unsaved.data.historySaved, null);
+  await store.setChatConsent(userId, true);
+  const saved = await request('/api/chat', { method: 'POST', body: { message: 'Сохранить' }, cookie });
+  assert.equal(saved.data.historySaved, true);
+  store.appendChatMessages = async () => { throw new Error('storage unavailable'); };
+  const failed = await request('/api/chat', { method: 'POST', body: { message: 'Ответ нужен даже при сбое' }, cookie });
+  assert.equal(failed.response.status, 200);
+  assert.equal(failed.data.answer, LONG_ANSWER);
+  assert.equal(failed.data.historySaved, false);
+}, { chatWriter: steadyWriter() }));
+
 test('traffic metrics count page views, unique visitors, logins and chat health without storing addresses', async () => fixture(async ({ store, raw, request, signIn }) => {
   await raw('/', { headers: { 'User-Agent': 'browser-a' } });
   await raw('/', { headers: { 'User-Agent': 'browser-a' } });
