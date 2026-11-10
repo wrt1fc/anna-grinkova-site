@@ -189,9 +189,30 @@ export function createLocalChat({ model, fetchImpl = fetch, learningSignals = pr
   if (typeof model !== 'string' || !/^[\w./:-]{2,80}$/.test(model)) throw new Error('Invalid local model name');
   const signalProtocol=learningSignals||process.env.CHAT_MODEL_PROTOCOL==='19';
   return {
-    async answer({ message, history, forecast, visitorName = null, visitorGender = null, signal, length = DEFAULT_ANSWER_LENGTH, materials = [], chart = null, mode = null, tone = null, onDelta = null, temperature = 0.25, qualityRetry = false, styleRetry = false, factRetry = false, factCorrection = '', explanationRetry = false }) {
+    async answer({ message, history, forecast, visitorName = null, visitorGender = null, signal, length = DEFAULT_ANSWER_LENGTH, materials = [], chart = null, mode = null, tone = null, onDelta = null, temperature = 0.25, qualityRetry = false, styleRetry = false, factRetry = false, factCorrection = '', explanationRetry = false, lengthRetry = false }) {
       const size = answerSize(mode, length);
       if (!size) throw new Error('Unknown answer length');
+      const question = groundingQuestion(message, history);
+      const topicFallback = () => chart?.relationship && !chart.partner ? groundedRelationshipAnswer(chart, length)
+        : chart?.calculated && !chart.partner ? chart.money && asksAboutMoney(question)
+          ? calculatedMoneyExplanation(chart, question, length) : groundedNatalAnswer(chart, question, length)
+          : null;
+      // Generated and calculated answers share the same publication contract.
+      // Trimming a fallback can remove required facts, so validate after trimming.
+      const publishFallback = (text, flags = {}) => {
+        let fixed = conversationalOpening(text, history);
+        if (fixed.length > size.maxChars) fixed = lastFullSentence(fixed.slice(0, size.maxChars));
+        if (mode !== TAROT_MODE && length === 'detailed' && fixed.length < 400) throw new Error('Local chat returned an incomplete detailed answer');
+        if (fixed.length < MIN_ANSWER_CHARS || hasFormalAddress(fixed)
+          || wrongPlanetSign(fixed, chart) || wrongCalculatedClaim(fixed, chart)
+          || wrongMoneyRulerClaim(fixed, chart, question) || relationshipAnswerProblems(fixed, chart, length)
+          || mode !== TAROT_MODE && incompleteMoneyExplanation(fixed, chart, question, length)
+          || process.env.CHAT_FACT_GUARD === '1' && mode !== TAROT_MODE && astroFactProblems(fixed,{question:message,chart}).length) {
+          throw new Error('Local chat fallback failed answer validation');
+        }
+        onDelta?.(fixed, fixed);
+        return {answer:fixed,model:null,length,truncated:false,contextVersion:chatContext.version,groundedFallback:true,learningSuggested:false,...flags};
+      };
       const urgent=urgentHealthReply(message,history);
       if(urgent){onDelta?.(urgent.answer,urgent.answer);return {...urgent,length,contextVersion:chatContext.version};}
       const financial=financialDecisionReply(message,history);
@@ -214,6 +235,7 @@ export function createLocalChat({ model, fetchImpl = fetch, learningSignals = pr
           system: firstPassSystem({message, chart, mode, history, learningSignals:signalProtocol, length})
             + (explanationRetry ? '\nВ предыдущем ответе пропущен управитель денежного дома. Объясни просто, учти все перечисленные выше планеты и их рассчитанные дома. Не цитируй это указание.' : '')
             +(factRetry?'\nИсправь конкретную ошибку предыдущего ответа. Проверенный факт: '+factCorrection+' Сохрани вопрос и рассчитанные данные, не цитируй это указание.':'')
+            + (lengthRetry ? '\nПредыдущий ответ слишком краток для подробного режима. Раскрой тему в 5–8 содержательных предложениях: объяснение, пример и вывод, не меньше 400 символов. Не повторяй мысли и не добавляй неизвестных фактов.' : '')
             + (styleRetry ? '\nИсправь обращение: только «ты», «тебе», «твой» и глаголы в единственном числе. Сохрани смысл и факты. Разговорный тон, без официальных приветствий и без цитирования этих правил.' : '') + (qualityRetry
             ? '\nПовторная проверка ответа: не повторяй предложения. Положения планет в поле chart — уже рассчитанные факты; не исправляй их и не добавляй другие положения. Не меняй номера домов и знаки ASC/MC. Не добавляй аспектов, которых нет в chart.aspects; лучше объясни одно рассчитанное положение без аспекта. ' + (chart?.relationship
               ? 'Обязательно опирайся на рассчитанные 7-й дом, его основного управителя и Венеру или Луну. Назови реальные положения и свяжи их с качествами партнёра. Если точного времени нет, домов не называй.'
@@ -239,7 +261,7 @@ export function createLocalChat({ model, fetchImpl = fetch, learningSignals = pr
         if (event.done) doneReason = event.done_reason ?? 'stop';
       }
       let truncated = doneReason === 'length';
-      onTrace?.({rawText:text,thinking,doneReason,qualityRetry,styleRetry,factRetry,explanationRetry,signal:learningSignalDiagnostics(text)});
+      onTrace?.({rawText:text,thinking,doneReason,qualityRetry,styleRetry,factRetry,explanationRetry,lengthRetry,signal:learningSignalDiagnostics(text)});
       if (!truncated && doneReason !== 'stop') throw new Error('Local chat returned an incomplete response');
       const parsed = extractLearningSignal(text);
       const cleaned = cleanRepeatedSentences(truncated ? lastFullSentence(parsed.answer.slice(0, size.maxChars)) : parsed.answer).trim()
@@ -251,46 +273,40 @@ export function createLocalChat({ model, fetchImpl = fetch, learningSignals = pr
         answer = lastFullSentence(answer.slice(0, size.maxChars));
         if (answer.length < MIN_ANSWER_CHARS) answer = conversationalOpening(SAFE_FALLBACK_ANSWER, history);
       }
+      // A detailed reply must develop the topic, including after a style retry.
+      // Never pad an undersized answer with unrelated generic reassurance.
+      if (mode !== TAROT_MODE && length === 'detailed' && answer.length < 400 && cleaned !== scopePolicy.reply) {
+        if (!lengthRetry) return createLocalChat({model,fetchImpl,learningSignals,onTrace}).answer({message,history,forecast,visitorName,visitorGender,signal,length,materials,chart,mode,tone,onDelta,temperature:0.1,qualityRetry,styleRetry,factRetry,factCorrection,explanationRetry,lengthRetry:true});
+        if (!isGeneralAstrologyQuestion(question)) {
+          const fallback = topicFallback();
+          if (fallback) return publishFallback(fallback);
+        }
+        throw new Error('Local chat returned an incomplete detailed answer');
+      }
       if (hasFormalAddress(answer)) {
         if (!styleRetry) return createLocalChat({ model, fetchImpl, learningSignals, onTrace }).answer({ message, history, forecast, visitorName, visitorGender,
-          signal, length, materials, chart, mode, tone, onDelta, temperature: 0.15, qualityRetry, styleRetry: true, factRetry, factCorrection, explanationRetry });
-        answer = conversationalOpening(chart?.relationship && !chart.partner ? groundedRelationshipAnswer(chart, length)
-          : chart?.calculated && !chart.partner ? groundedNatalAnswer(chart, groundingQuestion(message, history), length) : SAFE_FALLBACK_ANSWER, history);
-        onDelta?.(answer, answer);
-        return { answer, model, length, truncated: false, contextVersion: chatContext.version, styleFiltered: true };
+          signal, length, materials, chart, mode, tone, onDelta, temperature: 0.15, qualityRetry, styleRetry: true, factRetry, factCorrection, explanationRetry, lengthRetry });
+        return publishFallback(topicFallback() ?? SAFE_FALLBACK_ANSWER, {model,styleFiltered:true});
       }
       const factIssues=process.env.CHAT_FACT_GUARD==='1'&&mode!==TAROT_MODE?astroFactProblems(answer,{question:message,chart}):[];
       if(factIssues.length){
         const correction=factIssues.slice(0,2).map(x=>x.correction).join(' ');
-        if(!factRetry)return createLocalChat({model,fetchImpl,learningSignals,onTrace}).answer({message,history,forecast,visitorName,visitorGender,signal,length,materials,chart,mode,tone,onDelta,temperature:0.1,qualityRetry,styleRetry,factRetry:true,factCorrection:correction,explanationRetry});
-        let fixed=conversationalOpening(correction,history);if(fixed.length>size.maxChars)fixed=lastFullSentence(fixed.slice(0,size.maxChars));
-        onDelta?.(fixed,fixed);
-        return {answer:fixed,model:null,length,truncated:false,contextVersion:chatContext.version,groundedFallback:true,factFiltered:true,learningSuggested:false};
+        if(!factRetry)return createLocalChat({model,fetchImpl,learningSignals,onTrace}).answer({message,history,forecast,visitorName,visitorGender,signal,length,materials,chart,mode,tone,onDelta,temperature:0.1,qualityRetry,styleRetry,factRetry:true,factCorrection:correction,explanationRetry,lengthRetry});
+        return publishFallback(correction,{factFiltered:true});
       }
       const repeated = cleanRepeatedSentences(parsed.answer).trim() !== parsed.answer.trim();
       if (wrongPlanetSign(answer, chart) || wrongCalculatedClaim(answer, chart) || wrongMoneyRulerClaim(answer, chart, groundingQuestion(message, history)) || relationshipAnswerProblems(answer, chart, length) || (chart && repeated && !qualityRetry)) {
         if (qualityRetry) {
-          if (chart?.relationship && !chart.partner) {
-            answer = conversationalOpening(groundedRelationshipAnswer(chart, length), history);
-            onDelta?.(answer, answer);
-            return { answer, model: null, length, truncated: false, contextVersion: chatContext.version, groundedFallback: true };
-          }
-          if (chart?.calculated && !chart.partner) {
-            answer = conversationalOpening(chart.money && asksAboutMoney(groundingQuestion(message, history)) ? calculatedMoneyExplanation(chart, groundingQuestion(message, history), length) : groundedNatalAnswer(chart, groundingQuestion(message, history), length), history);
-            onDelta?.(answer, answer);
-            return { answer, model: null, length, truncated: false, contextVersion: chatContext.version, groundedFallback: true };
-          }
+          const fallback = topicFallback();
+          if (fallback) return publishFallback(fallback);
           throw new Error('Local chat contradicted the calculated chart');
         }
         return createLocalChat({ model, fetchImpl, learningSignals, onTrace }).answer({ message, history, forecast, visitorName, visitorGender, signal,
-          length, materials, chart, mode, tone, onDelta, temperature: 0.1, qualityRetry: true, styleRetry, factRetry, factCorrection, explanationRetry });
+          length, materials, chart, mode, tone, onDelta, temperature: 0.1, qualityRetry: true, styleRetry, factRetry, factCorrection, explanationRetry, lengthRetry });
       }
       if (mode !== TAROT_MODE && incompleteMoneyExplanation(answer, chart, groundingQuestion(message, history), length)) {
-        if (!explanationRetry) return createLocalChat({model,fetchImpl,learningSignals,onTrace}).answer({message,history,forecast,visitorName,visitorGender,signal,length,materials,chart,mode,tone,onDelta,temperature:0.1,qualityRetry,styleRetry,factRetry,factCorrection,explanationRetry:true});
-        answer = conversationalOpening(calculatedMoneyExplanation(chart, groundingQuestion(message, history), length), history);
-        if (answer.length > size.maxChars) answer = lastFullSentence(answer.slice(0,size.maxChars));
-        onDelta?.(answer,answer);
-        return {answer,model:null,length,truncated:false,contextVersion:chatContext.version,groundedFallback:true,explanationFiltered:true,learningSuggested:false};
+        if (!explanationRetry) return createLocalChat({model,fetchImpl,learningSignals,onTrace}).answer({message,history,forecast,visitorName,visitorGender,signal,length,materials,chart,mode,tone,onDelta,temperature:0.1,qualityRetry,styleRetry,factRetry,factCorrection,explanationRetry:true,lengthRetry});
+        return publishFallback(calculatedMoneyExplanation(chart, question, length),{explanationFiltered:true});
       }
       onDelta?.(answer, answer);
       return { answer, model, length, truncated, contextVersion: chatContext.version,

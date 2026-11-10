@@ -1,4 +1,4 @@
-import { isPersonalLifeApplication } from './chat-topics.js';
+import { hasPersonalReference, isPersonalLifeApplication } from './chat-topics.js';
 
 // Grounding is independent of whether the interface may offer a course. A definition
 // is general unless the visitor explicitly asks about a particular person's chart.
@@ -15,6 +15,10 @@ const PERSONAL_SITUATION = new RegExp(String.raw`${POSSESSIVE}\s+(?:(?:подх�
 // Applying a chart to a life choice is personal even when «моя» is omitted.
 // Keep this separate from finding a chart's ruler, aspect or other technical item.
 const APPLICATION_FRAME = /(?:по|через|на\s+основе|с\s+помощью)\s+(?:(?:(?:натальн|рассчитанн)\p{L}*\s+)?карт\p{L}*|гороскоп\p{L}*)/iu;
+// Career and money wording often has no choice verb: «кем мне работать»,
+// «что у меня с карьерой», «где мои миллионы». Require a chart application
+// and an actual personal reference, excluding pronouns addressing an explanation.
+const CHART_LIFE_TOPIC = /работ|карьер|професси|доход|деньг|зараб|финанс|миллион|богатств/iu;
 const LIFE_CHOICE = /как(?:ой|ая|ое|ую|ие|ого|ому|ом|их)\s+(?:подходящ\p{L}*\s+)?(?:работ|професси|карьер|партн[её]р|мужчин|женщин)\p{L}*|(?:выбрать|сменить|найти|искать|выстроить|улучшить)\s+(?:подходящ\p{L}*\s+)?(?:работ|професси|карьер|отношени|партн[её]р)\p{L}*|как\s+(?:(?:лучше|проще|больше)\s+)?(?:зарабатывать|копить|экономить|увеличить\s+доход)/iu;
 const INCOME_ACTIVITY = /(?:заняти|деятел|професси|работ|возможност|потенциал|тем|сфер|направлени).{0,90}(?:доход|деньг|зараб)|(?:доход|деньг|зараб).{0,90}(?:заняти|деятел|професси|работ|возможност|потенциал|тем|сфер|направлени)/iu;
 // A reference to the current calculated result is data application, not a term
@@ -46,7 +50,8 @@ export function isGeneralAstrologyQuestion(question) {
   if (PERSONAL_ASTRO.test(question) || PERSON_CHART.test(question) || PERSONAL_SITUATION.test(question)
     || isPersonalLifeApplication(lifeQuestion(question))
     || !HYPOTHETICAL.test(question) && (CALCULATED_REFERENCE.test(question)
-      || APPLICATION_FRAME.test(question) && (LIFE_CHOICE.test(question) || INCOME_ACTIVITY.test(question)))) return false;
+      || APPLICATION_FRAME.test(question) && (LIFE_CHOICE.test(question) || INCOME_ACTIVITY.test(question)
+        || hasPersonalReference(lifeQuestion(question)) && CHART_LIFE_TOPIC.test(question)))) return false;
   // Technical quiz questions need the same scope even without a definition verb.
   return THEORY_TOPIC.test(question) && (THEORY_REQUEST.test(question) || THEORY_EXERCISE.test(question) || /[?？]/u.test(question));
 }

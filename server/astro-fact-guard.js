@@ -8,6 +8,8 @@ const groups={кардинальная:['Овен','Рак','Весы','Козе
 const modalityCorrection='Модальности: Овен, Рак, Весы и Козерог — кардинальные; Телец, Лев, Скорпион и Водолей — фиксированные; Близнецы, Дева, Стрелец и Рыбы — мутабельные. Это отдельная классификация от четырёх стихий.';
 export function astroFactProblems(answer,{question='',chart=null}={}){
  const issues=sourceGroundedTheoryProblems(answer,{question}).map(problem=>{
+  if(problem==='incorrect element count')return {code:'element_count',correction:'Есть четыре стихии: огонь, земля, воздух, вода. Начало, сохранение и адаптация относятся к трём модальностям: кардинальной, фиксированной и мутабельной. В каждой модальности четыре знака.'};
+  if(problem==='solar arc is not a sum'||problem==='solar arc uses a common rotation')return {code:'incorrect_solar_arc',correction:'В методе солнечной дуги находят разность долготы вторично-прогрессивного и натального Солнца по кругу 360°. Одну и ту же полученную дугу прибавляют к выбранным натальным точкам. Каждой планете не назначают собственную скорость. Это угол в градусах, он не обязан равняться одному знаку.'};
   if(problem==='Sun sign substituted for first-house cusp')return {code:'sun_sign_is_not_cusp',correction:'Знак Солнца не определяет начало первого дома и не означает, что Солнце стоит на его куспиде. В Плацидусе начало первого дома — асцендент; его рассчитывают по моменту и месту рождения.'};
   // Resolve only exact source-derived ruler diagnostics; never infer a planet from model text.
   const sign=Object.keys(SIGN_RULERS).find(sign=>problem===`incorrect ruler of ${sign}`||problem===`incorrect ruler role of ${sign}`);

@@ -43,6 +43,52 @@ test('calculated fallback selects the requested planet and respects answer sizes
   }
 });
 
+test('detailed full natal fallback develops multiple calculated indicators',()=>{
+  const text=groundedNatalAnswer(chart,'Разбери мою натальную карту подробно.','detailed');
+  assert.ok(text.length >= 400 && text.length <= 1800);
+  for (const name of ['Солнце','Луна','Меркурий','Венера']) assert.ok(text.includes(name),name);
+  assert.equal(wrongCalculatedClaim(text,chart),false);
+});
+
+test('a detailed money length retry cannot publish a generic natal fallback',async()=>{
+  const message='Где мой доход по натальной карте?';
+  const moneyChart=chartContext(profile,message).chart;
+  let calls=0;const deltas=[];
+  const writer=createLocalChat({model:'fixture',fetchImpl:async()=>{
+    calls++;
+    return {ok:true,body:new ReadableStream({start(c){c.enqueue(new TextEncoder().encode(JSON.stringify({response:'Доход зависит от выбранного дела.',done:true,done_reason:'stop'})+'\n'));c.close();}})};
+  }});
+  // Its topic-specific calculated fallback is currently too brief for detailed
+  // mode. Fail honestly rather than replacing the money topic with Sun/Moon.
+  await assert.rejects(writer.answer({message,history:[],forecast:chatForecastContext(forecastForDate('2026-10-31')),chart:moneyChart,length:'detailed',onDelta:d=>deltas.push(d)}),/incomplete detailed answer/);
+  assert.equal(calls,2);assert.deepEqual(deltas,[]);
+});
+
+test('a repeated brief full natal reply publishes a validated developed natal fallback',async()=>{
+  const message='Разбери мою натальную карту подробно.';
+  const natalChart=chartContext(profile,message).chart;
+  let calls=0;const deltas=[];
+  const writer=createLocalChat({model:'fixture',fetchImpl:async()=>{
+    calls++;
+    return {ok:true,body:new ReadableStream({start(c){c.enqueue(new TextEncoder().encode(JSON.stringify({response:'В карте есть разные показатели.',done:true,done_reason:'stop'})+'\n'));c.close();}})};
+  }});
+  const result=await writer.answer({message,history:[],forecast:chatForecastContext(forecastForDate('2026-10-31')),chart:natalChart,length:'detailed',onDelta:d=>deltas.push(d)});
+  assert.equal(calls,2);assert.ok(result.answer.length>=400);assert.equal(result.groundedFallback,true);
+  assert.equal(wrongCalculatedClaim(result.answer,natalChart),false);assert.deepEqual(deltas,[result.answer]);
+});
+
+test('co-ruler keeps the explicit money-house topic across the first ruler placement',()=>{
+  const moneyChart={calculated:{positions:{neptune:{house:1},jupiter:{house:11},mars:{house:11}},aspects:[],houseRulers:[
+    {house:1,rulers:[{planet:'mars',house:11}]},
+    {house:2,rulers:[{planet:'neptune',house:1},{planet:'jupiter',house:11}]},
+  ]}};
+  const first='Один из управителей денежного дома — Нептун — стоит в 1 доме. ';
+  assert.equal(wrongCalculatedClaim(first+'Другой управитель — Юпитер — стоит в 11 доме.',moneyChart),false);
+  assert.equal(wrongCalculatedClaim(first+'Второй управитель, Юпитер, стоит в 11 доме.',moneyChart),false);
+  assert.equal(wrongCalculatedClaim(first+'Другой управитель — Марс — стоит в 11 доме.',moneyChart),true);
+  assert.equal(wrongCalculatedClaim(first+'Теперь у 1 дома другой управитель — Юпитер.',moneyChart),true);
+});
+
 test('ruler claims are checked against the calculated table for all twelve houses',()=>{
   // 1990-05-15 chart: the 1st house (Дева) is ruled by Mercury, which stands in the 9th house.
   assert.equal(wrongCalculatedClaim('Управитель 1 дома — Меркурий, он стоит в 9 доме.',chart),false);

@@ -72,6 +72,25 @@ test('life-application classifier excludes bare planet addressing without changi
   assert.equal(isPersonalLifeApplication('Какую роль Венера играет в отношениях?'), false);
 });
 
+test('personal chart applications keep career and money grounding regardless of humorous tone', () => {
+  for (const message of [
+    'Кем мне работать по натальной карте, чтобы не было скучно? Шути, не стесняйся',
+    'Звёзды, ну хоть намекните, что у меня по натальной карте с карьерой? Не стесняйтесь шутить',
+    'Ну и где мои миллионы по натальной карте? Давай честно и с шуткой',
+    'Кем нам работать по гороскопу?',
+    'Что у меня с профессией по карте?',
+    'Когда у нас будет богатство по натальной карте?',
+    'Через натальную карту можно понять, что мешает мне зарабатывать?',
+  ]) assert.ok(chartContext(profile, message, now).chart?.calculated, message);
+  for (const message of [
+    'Расскажи мне, что означает карьера в натальной карте? Можно с шуткой',
+    'Объясни нам, как по натальной карте определяют финансовый потенциал?',
+    'Можно мне объяснить, как по гороскопу изучают тему работы?',
+    'Я изучаю астрологию: что означает финансовый потенциал по натальной карте?',
+    'В условной задаче у меня вопрос: как по натальной карте определяют профессию?',
+  ]) assert.equal(chartContext(profile, message, now).chart, null, message);
+});
+
 test('personal life meaning survives non-adjacent pronouns while pedagogical addressing stays general', () => {
   const life = [
     'Какое у меня призвание по натальной карте и чем лучше заниматься?',

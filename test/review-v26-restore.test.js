@@ -12,10 +12,12 @@ test('review stop-post does not touch another job before acquiring its lease and
   const marker=join(root,'reports/lease-owned'),called=join(root,'called'),mock=join(root,'mock.sh'),script=join(root,'restore.sh');
   const source=fs.readFileSync('training/server/restore-v26-review.sh','utf8')
    .replace('ROOT=/home/ubuntu/natal-training-v26-serving-r1',`ROOT='${root}'`)
+   .replace('^/home/ubuntu/natal-training-v26-serving-r','^/invalid-test-root/natal-training-v26-serving-r')
    .replace('/home/ubuntu/anna-training-gpu.lock',join(root,'gpu.lock'))
    .replace('/home/ubuntu/natal-training-v26-r2/eval-code/training/server/restore-v26-serving.sh',mock);
   assert.ok(!source.includes('/home/ubuntu/'),'fixture must never access real training paths');
   fs.writeFileSync(script,source);
+  assert.equal(spawnSync('bash',[script,'/tmp/untrusted-review']).status,64);
   fs.writeFileSync(mock,`printf called >> '${called}'\nexit 1\n`);
   assert.equal(spawnSync('bash',[script]).status,0);assert.equal(fs.existsSync(called),false);
   fs.writeFileSync(marker,'');assert.notEqual(spawnSync('bash',[script]).status,0);assert.equal(fs.existsSync(marker),true);

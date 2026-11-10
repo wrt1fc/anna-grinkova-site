@@ -2,7 +2,8 @@
 # Final production-protocol review, after the immutable training pipeline has finished.
 # Reuses the tested v26 maintenance-window restore helper; never selects the candidate on the site.
 set -Eeuo pipefail
-ROOT=/home/ubuntu/natal-training-v26-serving-r1
+ROOT=${2:-/home/ubuntu/natal-training-v26-serving-r1}
+[[ "$ROOT" =~ ^/home/ubuntu/natal-training-v26-serving-r[1-9][0-9]*$ ]]
 TRAIN=/home/ubuntu/natal-training-v26-r2
 SOURCE=${1:?verified production release directory}
 [[ "$SOURCE" =~ ^/opt/anna-releases/chat-[a-f0-9]{7,40}$ ]]

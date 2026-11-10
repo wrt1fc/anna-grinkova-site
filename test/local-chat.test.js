@@ -144,9 +144,31 @@ test('chat prompt carries the length instruction and keeps answers within its si
   const tooLong = await chatReturning(Array(80).fill('Слово. ')).answer({ message: 'Тест', history: [], forecast, length: 'short' });
   assert.equal(tooLong.truncated, true);
   assert.ok(tooLong.answer.length <= 400 && tooLong.answer.endsWith('.'));
-  const detailed = await chatReturning(Array(80).fill('Слово. ')).answer({ message: 'Тест', history: [], forecast, length: 'detailed' });
+  const detailed = await chatReturning(Array.from({length:8},(_,i)=>`Пояснение ${i}: разные ожидания стоит обсуждать, чтобы понимать потребности друг друга. `)).answer({ message: 'Тест', history: [], forecast, length: 'detailed' });
   assert.equal(detailed.truncated, false);
   await assert.rejects(chatReturning(['Тест']).answer({ message: 'Тест', history: [], forecast, length: 'huge' }));
+});
+
+test('detailed relationship answer is expanded after style retry and never padded or published short',async()=>{
+  let calls=0;const deltas=[];const payloads=[];
+  const writer=createLocalChat({model:'fixture',fetchImpl:async(_url,request)=>{
+    payloads.push(JSON.parse(request.body)); calls++;
+    return ollamaStream([calls===1
+      ? Array.from({length:8},(_,i)=>`Пояснение ${i}: в отношениях важно говорить о том, что каждый ждёт от другого. `).join(' ')+'Вы можете обсудить это спокойно.'
+      : 'Ссоры часто начинаются с разных ожиданий. Один хочет спокойствия, другой активности. Ожидания нужно уточнять друг у друга.']);
+  }});
+  await assert.rejects(writer.answer({message:'Почему мы с партнёром часто ссоримся?',history:[],forecast,length:'detailed',onDelta:d=>deltas.push(d)}),/incomplete detailed answer/);
+  assert.equal(calls,3);
+  assert.match(payloads.at(-1).system,/5–8 содержательных предложениях/);
+  assert.deepEqual(deltas,[]);
+});
+
+test('detailed retry can publish a developed answer without a fallback',async()=>{
+  let calls=0;const deltas=[];
+  const full='Ссоры часто начинаются с разных ожиданий. Один ждёт поддержки словами, другому важнее поступки и помощь в быту. Если ожидания остаются невысказанными, обычная задержка ответа может восприниматься как равнодушие. Это возможное объяснение, а не вывод о твоей паре: без примера ссоры нельзя определить причину. Можно обсудить один конкретный эпизод и сказать, какая поддержка тогда была нужна. В таком разговоре проще заметить различие потребностей, чем искать виноватого.';
+  const writer=createLocalChat({model:'fixture',fetchImpl:async()=>ollamaStream([++calls===1?'Причины ссор бывают разными.':full])});
+  const result=await writer.answer({message:'Почему мы часто ссоримся?',history:[],forecast,length:'detailed',onDelta:d=>deltas.push(d)});
+  assert.equal(calls,2);assert.equal(result.answer,'Привет! '+full);assert.deepEqual(deltas,[result.answer]);
 });
 
 test('the calculated day context reaches the model only for questions about the day', async () => {

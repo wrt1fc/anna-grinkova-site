@@ -6,6 +6,31 @@ import {curriculum25} from '../training/curriculum-v25.mjs';
 import {astroFactProblems} from '../server/astro-fact-guard.js';
 import {createLocalChat} from '../server/local-chat.js';
 
+test('concept descriptions retrieve source facts before the learner knows the term',()=>{
+ for(const [topic,questions]of Object.entries({
+  direction:['Что означают дирекции?','Зачем всё колесо символически сдвигают на один угол?','Как вычислить общую дугу через прогрессивное и натальное Солнце?','У планет при солнечной дуге общий поворот?'],
+  modality:['Как начало, сохранение и смену относят к разным типам знаков?','Знаки могут начинать, удерживать и изменять: что это за деление?'],
+  orb:['А какой разброс вокруг точного угла считается допустимым и почему?'],
+  relocation:['Хочу сравнивать исходное колесо с картой для другой точки на земле.'],
+ }))for(const question of questions)assert.ok(astroReference(question)?.topics.includes(topic),question);
+ assert.equal(astroReference('Нужно символически сдвинуть срок проекта.'),null);
+ assert.equal(astroReference('Как сохранить начало и изменить конец рассказа?'),null);
+});
+
+test('solar arc and classification claims use shared source diagnostics',()=>{
+ const question='Как устроены дирекции солнечной дугой?';
+ for(const answer of ['Дуга — сумма долгот двух Солнц.','Складываем долготы прогрессивного и натального Солнца.','Общую дугу получают, сложив дугу прогрессивного Солнца и дугу натального Солнца.','Каждая планета получает собственную скорость.','У каждой планеты своя скорость: её берут из таблицы прогрессий.','Планеты движутся со своей скоростью.','Все точки всегда сдвигают на один знак.','Точки обязательно сдвигают на один знак зодиака.','Дирекции означают двойную дугу.','Прогрессивный Солнце рассматривают как двойную дугу от натального Солнца.']){
+  assert.ok(sourceGroundedTheoryProblems(answer,{question}).length,answer);
+  assert.equal(astroFactProblems(answer,{question})[0].code,'incorrect_solar_arc');
+ }
+ for(const answer of ['Начало, сохранение и смена — это три стихии.','Выделяют 3 стихии: огонь, земля, воздух, вода.']){
+  assert.ok(sourceGroundedTheoryProblems(answer).length,answer);
+  assert.equal(astroFactProblems(answer)[0].code,'element_count');
+ }
+ for(const answer of ['Дуга — разность долгот, не сумма.','Солнечная дуга не равна сумме долгот.','Не нужно складывать долготы двух Солнц.','Для солнечной дуги не требуется складывать долготы двух Солнц.','Разве солнечная дуга — сумма долгот? Нет, это разность.','В этом примере все точки сдвигают на один знак, то есть на 30°.','Каждая планета не получает собственную скорость.','Точки не сдвигают на один знак.','Не три стихии, а четыре.','Это не двойная дуга.','Одну общую дугу прибавляют ко всем выбранным точкам.'])assert.deepEqual(sourceGroundedTheoryProblems(answer,{question}),[],answer);
+ assert.deepEqual(sourceGroundedTheoryProblems('Каждая планета имеет собственную скорость.',{question:'Как планеты движутся по небу?'}),[]);
+});
+
 test('implicit ruler pairs and Sun-sign paraphrases retrieve their source facts',()=>{
  for(const question of ['Учу пары: можно ли считать Уран главным у Козерога?','Кто главный у Рыб?','У Козерога какая пара планет?']){
   const reference=astroReference(question);
@@ -122,6 +147,8 @@ test('repeated theory errors produce a corrected fallback with model null',async
  try{
   process.env.CHAT_MODEL_PROTOCOL='19';process.env.CHAT_FACT_GUARD='1';
   for(const [message,bad,expected]of [
+   ['Как устроены дирекции солнечной дугой?','Каждая планета получает собственную скорость.',/разность долготы вторично-прогрессивного и натального Солнца/u],
+   ['Начало, сохранение и смена у знаков — это что?','Это три стихии: огонь, земля, воздух, вода.',/четыре стихии/u],
    ['Учу пары: можно ли считать Уран главным у Козерога?','У Козерога главный управитель — Уран, соуправитель — Сатурн.',/Козерог: главный управитель — Сатурн, соуправитель — Уран/u],
    ['Для учебы: знак Солнца указывает начало первого дома?','Солнце в первом доме — это начало, и оно действительно стоит в куспиде первого дома.',/начало первого дома — асцендент/u],
   ]){

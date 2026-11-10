@@ -125,14 +125,14 @@ export function wrongCalculatedClaim(answer, chart) {
       // «Управитель Нептуна — Юпитер» describes a planet's dispositor,
       // not another ruler of the previously discussed house.
       if (new RegExp(`^управител\\p{L}*\\s+${PLANET}\\s*[,—–:-]\\s*${PLANET}`,'iu').test(rulerAnswer.slice(m.index))) continue;
-      const declared = [...before.matchAll(new RegExp(`управител\\p{L}*\\s+(${RULER_HOUSE})\\s+дома`,'giu'))].at(-1);
+      const declared = [...before.matchAll(new RegExp(`управител\\p{L}*\\s+(${RULER_HOUSE}|денежного)\\s+дома`,'giu'))].at(-1);
       const mentioned = [...before.matchAll(new RegExp(`(${RULER_HOUSE})\\s+дом`,'giu'))];
       if (!mentioned.length) continue;
       let house = houseNumber(mentioned.at(-1)[1]);
       if (m[1] && declared) {
         const afterDeclaration = before.slice(declared.index + declared[0].length);
         const newTopic = [...afterDeclaration.matchAll(new RegExp(`(?:теперь|далее|перейд[её]м к|что касается|у|для)\\s+(${RULER_HOUSE})\\s+дом`,'giu'))].at(-1);
-        house = houseNumber(newTopic?.[1] ?? declared[1]);
+        house = newTopic ? houseNumber(newTopic[1]) : declared[1].toLowerCase() === 'денежного' ? 2 : houseNumber(declared[1]);
       } else if (!m[1] && !/управители|управител\p{L}*\s+дома/iu.test(m[0])) {
         // Singular «его управитель» after a planet is ambiguous; only
         // accept this implicit form immediately after an explicit house topic.
@@ -158,7 +158,14 @@ const MEANINGS = { sun:'Солнце связывают с тем, как чел
 export function groundedNatalAnswer(chart, message, length='medium') {
   const facts=chart.calculated;
   const keys=Object.keys(MEANINGS).filter(key=>new RegExp(FORMS[key],'iu').test(message));
-  const selected=(keys.length?keys:['sun','moon']).slice(0,length==='short'?1:2);
+  const selected=[...new Set([...(keys.length?keys:['sun','moon']), ...(length==='detailed'?['sun','moon','mercury','venus']:[])])]
+    .filter(key=>facts.positions[key]).slice(0,length==='short'?1:length==='detailed'?4:2);
+  if (length === 'detailed') {
+    return selected.map(key => {
+      const p = facts.positions[key];
+      return `${POINT_NAMES[key]} в ${SIGN_PREPOSITIONAL[p.sign]}${p.house ? `, в ${p.house}-м доме` : ''}. ${MEANINGS[key]}.`;
+    }).join('\n\n') + '\n\nЭти показатели описывают разные стороны карты: цели, привычные реакции и способы взаимодействовать с людьми нужно сопоставлять, а не заменять одним солнечным знаком. Это ориентиры для размышления; по ним нельзя гарантировать конкретное событие или решение другого человека.';
+  }
   const positions=selected.map(key=>{const p=facts.positions[key];return `${POINT_NAMES[key]} в ${SIGN_PREPOSITIONAL[p.sign]}${p.house?`, в ${p.house}-м доме`:''}`;});
   const meaning=selected.map(key=>MEANINGS[key]).join('. ');
   return `В твоей карте ${positions.join('; ')}. ${meaning}.${length==='short'?'':' Это опоры для разбора твоего вопроса, а не готовый приговор: проявление этих качеств зависит и от твоего опыта.'}`;
