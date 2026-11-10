@@ -69,3 +69,11 @@ test('ruler claims without a house number are checked against the house last men
   // Without any house mentioned the claim cannot be verified and passes.
   assert.equal(wrongCalculatedClaim('Его управитель Марс очень сильный.',chart),false);
 });
+
+test('dash-separated placements are checked while quotes and explicit negations are ignored',()=>{
+  assert.equal(wrongCalculatedClaim('Венера — в 9 доме.',chart),true);
+  assert.equal(wrongCalculatedClaim('Другой управитель — Венера — в 9 доме.',chart),true);
+  assert.equal(wrongCalculatedClaim('Венера — стоит в 8-м доме.',chart),false);
+  assert.equal(wrongCalculatedClaim('«Венера — в 9 доме» — неверный пример.',chart),false);
+  assert.equal(wrongCalculatedClaim('Венера не в 9 доме.',chart),false);
+});

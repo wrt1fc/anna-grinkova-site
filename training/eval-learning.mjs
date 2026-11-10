@@ -12,13 +12,14 @@ import {evaluationTelemetry} from './evaluation-telemetry.mjs';
 const [model,path,prefix]=process.argv.slice(2);if(!model||!path||!prefix)throw Error('Expected model, cards.jsonl, report-prefix');
 const cards=readFileSync(path,'utf8').split(/\r?\n/).filter(Boolean).map(s=>JSON.parse(s)).filter(c=>c.split==='eval');
 let traces=[];
-const chat=createLocalChat({model,learningSignals:true,onTrace:t=>traces.push(t)}),forecast=chatForecastContext(forecastForDate('2026-11-02')),rows=[];
+const evaluationDate=process.env.ANNA_EVAL_DATE??'2026-11-02';
+const chat=createLocalChat({model,learningSignals:true,onTrace:t=>traces.push(t)}),forecast=chatForecastContext(forecastForDate(evaluationDate)),rows=[];
 for(const c of cards){const started=performance.now();let r={},errors=[],failure=null;traces=[];try{
  const history=c.history??[],profile=c.chartFor?{birthUtc:c.chartFor.birthUtc,birthLatitude:c.chartFor.latitude,birthLongitude:c.chartFor.longitude}:null;
- const astro=c.learning?{chart:null}:chartContext(profile,c.question,new Date('2026-11-02T09:00:00Z'),{history});
+ const astro=c.learning?{chart:null}:chartContext(profile,c.question,new Date(evaluationDate+'T09:00:00Z'),{history});
  r=await chat.answer({message:c.question,history,forecast:forecastForQuestion(forecast,c.question),chart:astro.chart,length:c.length??'medium'});
  if(traces.length&&!traces.at(-1).signal.formatValid)errors.push('signal format invalid');
- if(unsafeChatAnswer(r.answer,'2026-11-02')||hasFormalAddress(r.answer))errors.push('safety/style');
+ if(unsafeChatAnswer(r.answer,evaluationDate)||hasFormalAddress(r.answer))errors.push('safety/style');
  if(/\[\[LEARN/.test(r.answer))errors.push('internal marker leaked');
  if(r.answer.length<(c.minAnswerChars??(c.scope==='offtopic'||c.scope==='service'?30:150))||r.answer.length>ANSWER_LENGTHS[c.length??'medium'].maxChars)errors.push('answer length');
  errors.push(...learningAnswerProblems(r.answer,c));

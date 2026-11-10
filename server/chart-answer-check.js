@@ -14,10 +14,20 @@ const HOUSE = `(?:\\d{1,2}(?:-?(?:м|ом))?|${Object.keys(ORDINALS).join('|')})
 const ASPECT = '(?:соедин[её]н[а-яё]*|соединени[а-яё]*|трин[а-яё]*|тригон[а-яё]*|квадрат[а-яё]*|секстил[а-яё]*|оппозици[а-яё]*)';
 const aspectFor = (text) => /соедин/iu.test(text)?'conjunction':/квадрат/iu.test(text)?'square':/секстил/iu.test(text)?'sextile':/оппозици/iu.test(text)?'opposition':'trine';
 
+// Only asserted facts count. Preserve separators while removing quoted examples and
+// direct negated assertions, so unrelated negation cannot hide an incorrect fact.
+export function assertedNatalText(answer) {
+  return String(answer)
+    .replace(/«[^»]*»|“[^”]*”|"[^"\n]*"/gu, ' ')
+    .replace(new RegExp(`(${PLANET})\\s+(?:(?:у тебя|у вас)\\s+)?не\\s+(?:(?:стоит|находится|расположен\\p{L}*)\\s+)?(?:в|во)\\s+(?:${SIGN}\\s*)?(?:${HOUSE}\\s+доме)?`, 'giu'), ' ')
+    .replace(/(?:другой|второй)\s+управитель\s+не\s+(?:нужен|указан|рассчитан)/giu, ' ');
+}
+
 // Conservative checks of explicit natal claims, not of every possible Russian paraphrase.
 export function wrongCalculatedClaim(answer, chart) {
   const facts = chart?.calculated;
   if (!facts || chart.partner) return false; // A comparison needs subject-aware parsing; don't mix the two owners.
+  answer = assertedNatalText(answer);
   const timed = (index) => {
     const start=Math.max(answer.lastIndexOf('.',index),answer.lastIndexOf('!',index),answer.lastIndexOf('?',index),answer.lastIndexOf('\n',index))+1;
     const end=answer.slice(index).search(/[.!?\n]/u);
@@ -26,7 +36,7 @@ export function wrongCalculatedClaim(answer, chart) {
   const point = (name) => { const key=keyFor(name); return facts.positions[key] ?? facts.angles?.[key]; };
   const claimSign = new RegExp(`(${PLANET})(?: и (${PLANET}))?(?: у тебя)?(?: стоит| находится)? (?:в|во) (${SIGN})(?!\\p{L})`, 'giu');
   for (const m of answer.matchAll(claimSign)) if (!timed(m.index)) for (const name of [m[1],m[2]].filter(Boolean)) if (point(name)?.sign !== signFor(m[3])) return true;
-  const claimHouse = new RegExp(`(${PLANET})(?: и (${PLANET}))?(?: у тебя)?(?: стоит| находится)? (?:в|во) (?:${SIGN} (?:в|во) )?(${HOUSE}) доме`, 'giu');
+  const claimHouse = new RegExp(`(${PLANET})(?: и (${PLANET}))?(?: у тебя)?\\s*(?:[—–-]\\s*)?(?:(?:стоит|находится)\\s+)?(?:в|во) (?:${SIGN} (?:в|во) )?(${HOUSE}) доме`, 'giu');
   for (const m of answer.matchAll(claimHouse)) if (!timed(m.index)) for (const name of [m[1],m[2]].filter(Boolean)) if (point(name)?.house !== (ORDINALS[m[3].toLowerCase()] ?? parseInt(m[3],10))) return true;
   const checkAspect = (a,b,aspect) => facts.aspects.some(f=> f.aspect===aspectFor(aspect)
     && ((f.first===keyFor(a)&&f.second===keyFor(b))||(f.first===keyFor(b)&&f.second===keyFor(a))));

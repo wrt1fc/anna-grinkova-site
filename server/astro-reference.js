@@ -10,7 +10,7 @@ const facts={
  progression:'Вторичные прогрессии: возраст A лет соответствует моменту рождения плюс A суток. Для27 лет —27 суток после рождения, для58 —58 суток. Исходный момент — ноль; день рождения не добавляет сутки. Положения берут из эфемерид на этот момент, не на сегодня. Это день за год, не лунный цикл и не формула24000/возраст.',
  direction:'Солнечная дуга — разность долготы вторично-прогрессивного и натального Солнца по кругу. При98° и75° дуга23°. Одна и та же дуга прибавляется к выбранным натальным точкам. Это не сумма долгот, не разница номеров домов и не собственная скорость каждой планеты. Около1° в год — приближение, не универсальная точная формула.',
  relocation:'Релокация сохраняет один физический момент рождения и меняет место расчёта. Запись местного времени может отличаться из-за часового пояса, но UTC-момент один. Геоцентрические положения планет и взаимные аспекты сохраняются; углы карты и дома меняются. Дата переезда/заселения не заменяет момент рождения. Это не сравнение двух людей.',
- ruler:'Хозяин дома — планета-управитель знака куспида именно этого дома. Диспозитор планеты — управитель знака, в котором стоит сама планета. Планета, просто находящаяся в доме, не обязательно его хозяин. Роли могут совпасть. По принятой таблице: ',
+ ruler:'Хозяин дома — планета-управитель знака куспида именно этого дома. Диспозитор планеты — управитель знака, в котором стоит сама планета. Планета, просто находящаяся в доме, не обязательно его хозяин. Роли могут совпасть. В каждой паре первая планета — главный управитель, вторая — соуправитель; порядок нельзя менять. По принятой таблице: ',
  stellium:'Стеллиум — скопление нескольких планет в одном знаке или доме по выбранной методике. Это не обитель. Обитель означает положение планеты в управляемом ею знаке; у Луны это Рак. Термина «Луна в кармине» здесь нет. Планеты группы рассматривают по отдельности и вместе.',
  angles:'Солнечный знак определяется Солнцем, а не асцендентом или Луной. В системе Плацидуса асцендент — куспид1 дома. Планета рядом с ним может быть в12 доме, сам асцендент — начало1 дома. Соседи, ближайшее окружение и повседневное общение — тема3 дома;2 дом — личные ресурсы.',
  service:'Данные рождения сохраняются и просматриваются в личном кабинете Фортуны. Для изменения времени рождения открывают свои данные в кабинете; требования доказанной причины или экспертизы не установлено. Оплата доступна в приложении. Неизвестные кнопки, отделы, контакты и условия оплаты в справке не указаны.',
@@ -23,12 +23,76 @@ const patterns={
  progression:/вторичн.{0,12}прогресс|прогресси|послеродов|дн(?:ей|и).{0,10}и лет/iu,
  direction:/солнечн.{0,12}дуг|дирекци|двигают точки|символическ.{0,15}сдвиг/iu,
  relocation:/релокац|карт.{0,15}переезд|двух город|дв[аеух].{0,15}мест.{0,15}прожив|карт.{0,15}друг.{0,8}город|друг.{0,12}полушар/iu,
- ruler:/управител|хозяин.{0,18}(?:дом|знак)|диспозит|куспид/iu,
+ ruler:/управител|хозяин.{0,18}(?:дом|знак)|диспозит|куспид|(?:главн|втор[оы]|пар[ауые]).{0,45}(?:Ов[ен]|Тель|Близнец|Рак|Ль[вве]|Дев|Вес|Скорпион|Стрел|Козерог|Водоле|Рыб)|(?:Ов[ен]|Тель|Близнец|Рак|Ль[вве]|Дев|Вес|Скорпион|Стрел|Козерог|Водоле|Рыб).{0,45}(?:главн|пар[ауые]|соуправ|управля)/iu,
  stellium:/стеллиум|скоплени.{0,18}планет|групп.{0,12}планет|обител|кармин/iu,
- angles:/асцендент|солнечн.{0,10}знак|сосед|под каким знаком/iu,
+ angles:/асцендент|солнечн.{0,10}знак|знак.{0,15}Солнц|начал.{0,15}(?:перв|1).{0,8}дом|сосед|под каким знаком/iu,
  service:/приложени|подписк|оплат|доступ|кабинет|профил|изменить время.{0,10}рождени/iu,
  health:/сильно болит (?:сердце|грудь)|сильн.{0,15}боль.{0,15}груд|выб(?:ор|ирать).{0,15}(?:лечени|препарат)|кредитн.{0,10}риск/iu,
 };
+// Inflected names are used for claim extraction; the facts themselves come from SIGN_RULERS.
+const signStems={Овен:'Ов(?:ен|на|ном|не)',Телец:'Тел(?:ец|ьца|ьцом|ьце)',Близнецы:'Близнец\\p{L}*',Рак:'Рак\\p{L}*',Лев:'Л(?:ев|ьва|ьвом|ьве)',Дева:'Дев\\p{L}*',Весы:'Вес(?:ы|ов|ами|ах)',Скорпион:'Скорпион\\p{L}*',Стрелец:'Стрел(?:ец|ьца|ьцом|ьце)',Козерог:'Козерог\\p{L}*',Водолей:'Водоле\\p{L}*',Рыбы:'Рыб\\p{L}*'};
+const planetStems={sun:'Солнц\\p{L}*',moon:'Лун\\p{L}*',mercury:'Меркури\\p{L}*',venus:'Венер\\p{L}*',mars:'Марс\\p{L}*',jupiter:'Юпитер\\p{L}*',saturn:'Сатурн\\p{L}*',uranus:'Уран\\p{L}*',neptune:'Нептун\\p{L}*',pluto:'Плутон\\p{L}*'};
+const token=pattern=>`(?<!\\p{L})(?:${pattern})(?!\\p{L})`;
+const signPattern=Object.values(signStems).map(token).join('|');
+const planetPattern=Object.values(planetStems).map(token).join('|');
+const findKey=(forms,text)=>Object.keys(forms).find(key=>new RegExp(`^(?:${forms[key]})$`,'iu').test(text));
+const negativeClaim=text=>/(?:^|[\s,:—–-])(?:не|нет|неверно|ошибочно|ошибка|нельзя)(?:\s|[,.:—–-]|$)/iu.test(text);
+
+// Bounded affirmative-claim checks, shared by offline evaluation and runtime callers.
+// This is deliberately not a complete semantic judge: questions and negated claims are not assertions.
+export function sourceGroundedTheoryProblems(answer,{question=''}={}){
+ const problems=[];
+ let previousSign;
+ const role='(?:главн\\p{L}*|основн\\p{L}*|соуправител\\p{L}*|втор\\p{L}*\\s+управител\\p{L}*)';
+ for(const sentence of answer.split(/(?<=[.!?;])\s+|\n+/u)){
+  const signs=[...sentence.matchAll(new RegExp(signPattern,'giu'))];
+  const contextSign=signs.length===1?findKey(signStems,signs[0][0]):undefined;
+  for(const clause of sentence.split(/,?\s+(?:но|а|зато)\s+|,/iu)){
+   // Match direct relations only; nearby unrelated mentions are not enough.
+   const relations=[
+    {pattern:`(${planetPattern})\\s+(?:явля\\p{L}*\\s+)?(${role})[^,;.!?]{0,25}?(${signPattern})`,order:'planet-role-sign'},
+    {pattern:`(${signPattern})[^,;.!?]{0,25}?(${role})\\s*(?:управител\\p{L}*)?\\s*(?:[—–:=]|явля\\p{L}*|считается|это)?\\s*(${planetPattern})`,order:'sign-role-planet'},
+    {pattern:`(${planetPattern})\\s+управля\\p{L}*\\s+(${signPattern})`,order:'planet-sign'},
+    {pattern:`управител\\p{L}*\\s+(${signPattern})\\s*(?:[—–:=]|явля\\p{L}*|это)?\\s*(${planetPattern})`,order:'sign-planet'},
+   ];
+   const check=(sign,planet,roleText)=>{
+    if(!sign||!planet)return;
+    const allowed=SIGN_RULERS[sign];
+    if(!allowed.includes(planet))problems.push('incorrect ruler of '+sign);
+    else if(roleText){
+     const secondary=/соуправител|втор/iu.test(roleText);
+     if(allowed[secondary?1:0]!==planet)problems.push('incorrect ruler role of '+sign);
+    }
+   };
+   for(const relation of relations){
+    for(const match of clause.matchAll(new RegExp(relation.pattern,'giu'))){
+     const prefix=clause.slice(0,match.index);
+     if(negativeClaim(match[0])||negativeClaim(prefix)||/[«"“]/u.test(prefix)||/\?/u.test(clause))continue;
+     if(relation.order==='planet-role-sign')check(findKey(signStems,match[3]),findKey(planetStems,match[1]),match[2]);
+     if(relation.order==='sign-role-planet')check(findKey(signStems,match[1]),findKey(planetStems,match[3]),match[2]);
+     if(relation.order==='planet-sign')check(findKey(signStems,match[2]),findKey(planetStems,match[1]));
+     if(relation.order==='sign-planet')check(findKey(signStems,match[1]),findKey(planetStems,match[2]));
+    }
+   }
+   // A sign in the same or immediately preceding sentence supplies context for a role list.
+   if(!negativeClaim(clause)&&!/[?«"“]/u.test(clause)){
+    const localSigns=[...clause.matchAll(new RegExp(signPattern,'giu'))];
+    const sign=localSigns.length===1?findKey(signStems,localSigns[0][0]):localSigns.length===0?(contextSign??previousSign):undefined;
+    if(sign)for(const m of clause.matchAll(new RegExp(`(${role})\\s*(?:управител\\p{L}*)?\\s*(?:[—–:=]|явля\\p{L}*|считается|это)?\\s*(${planetPattern})`,'giu')))check(sign,findKey(planetStems,m[2]),m[1]);
+   }
+   const sunFirst=/знак\p{L}*\s+Солнц\p{L}*[^,;.!?]{0,45}(?:указыва\p{L}*|определя\p{L}*|показыва\p{L}*|это|[—–=])[^,;.!?]{0,25}(?:начал\p{L}*|куспид)[^,;.!?]{0,15}(?:перв\p{L}*|1(?:-?го)?)\s+дом/iu;
+   if(sunFirst.test(clause)&&!negativeClaim(clause)&&!/[?«"“]/u.test(clause))problems.push('Sun sign substituted for first-house cusp');
+   // In a general Sun-sign/cusp question, placement cannot be inferred from the sign.
+   // Do not reject an actual Sun-on-cusp description in an unrelated personal-chart answer.
+   const asksSunCusp=/знак\p{L}*\s+Солнц|солнечн\p{L}*\s+знак/iu.test(question)&&/(?:начал|куспид|асцендент|перв\p{L}*\s+дом)/iu.test(question);
+   const assertedSunCusp=/Солнц\p{L}*[^.!?;]{0,100}(?:стоит|находится|расположен\p{L}*)\s+(?:на|в)\s+куспид\p{L}*\s+(?:перв\p{L}*|1(?:-?го)?)\s+дом/iu;
+   if(asksSunCusp&&assertedSunCusp.test(sentence)&&!negativeClaim(sentence)&&!/[?«"“]/u.test(sentence))problems.push('Sun sign substituted for first-house cusp');
+  }
+  previousSign=contextSign;
+ }
+ return [...new Set(problems)];
+}
+
 export function astroReference(message,history=[]){
  if(/\b(?:SQL|Python|JavaScript)\b|напиш\p{L}* код|рецепт|переведи/iu.test(message))return null;
  let topics=Object.keys(patterns).filter(k=>patterns[k].test(message));

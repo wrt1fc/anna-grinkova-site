@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {chatPrompt, createLocalChat, firstPassSystem} from '../server/local-chat.js';
-import {incompleteMoneyExplanation} from '../server/chat-explanation.js';
+import {incompleteMoneyExplanation, wrongMoneyRulerClaim, calculatedMoneyExplanation} from '../server/chat-explanation.js';
 
 const forecast = {date:'2026-11-09',scope:'general'};
 const chart = {money:{source:'Управитель 2 дома в 9 доме: обучение. Управитель 2 дома в 11 доме: сообщества.'},
@@ -78,4 +78,44 @@ test('an unrelated mention of the second planet does not count as explaining its
   assert.equal(incompleteMoneyExplanation('Управитель денежного дома — Луна — стоит в 9 доме. Это доход от обучения. Солнце связано с твоим характером.',chart,'Как мне зарабатывать?','medium'),true);
   assert.equal(incompleteMoneyExplanation('Луна стоит в 9 доме, а Солнце — в 11-м доме.',chart,'Как мне зарабатывать?','medium'),false);
   assert.equal(incompleteMoneyExplanation('Один из управителей — Луна — стоит в 9 доме.',chart,'Как мне зарабатывать?','short'),false);
+});
+
+const singleRuler = {money:{},calculated:{positions:{venus:{house:11}},aspects:[],houseRulers:[{house:2,rulers:[{planet:'venus',house:11}]}]}};
+
+test('a single money ruler cannot acquire a second ruler or contradictory placement', () => {
+  for (const answer of [
+    'Управитель денежного дома — Венера — стоит в 11 доме. Другой управитель — Венера — в 9 доме.',
+    'Второй управитель — Венера — стоит в 11 доме.',
+    'Другой управитель — Марс — в 11 доме.',
+    'Один из управителей денежного дома — Венера в 11 доме.',
+    'Венера — в девятом доме.',
+  ]) assert.equal(wrongMoneyRulerClaim(answer,singleRuler,'Как мне зарабатывать?'),true,answer);
+  for (const answer of [
+    'Управитель денежного дома — Венера — стоит в 11 доме.',
+    '«Другой управитель — Венера — в 9 доме» — ошибочная фраза. Венера в 11 доме.',
+    'Второй управитель не нужен. Венера в 11 доме.',
+    'Венера не в 9 доме. Венера в 11 доме.',
+    'Второй управитель 7 дома — Марс. Венера в 11 доме.',
+  ]) assert.equal(wrongMoneyRulerClaim(answer,singleRuler,'Как мне зарабатывать?'),false,answer);
+  assert.equal(wrongMoneyRulerClaim('Другой управитель — Марс.',singleRuler,'Что такое оппозиция?'),false);
+  const fallback = calculatedMoneyExplanation(singleRuler,'Как мне зарабатывать?','medium');
+  assert.match(fallback,/Управитель денежного дома — Венера — стоит в 11 доме/u);
+  assert.doesNotMatch(fallback,/один из|другой управитель|несколько показателей/iu);
+});
+
+test('each co-ruler needs its own asserted house, not a house borrowed from another planet', () => {
+  assert.equal(incompleteMoneyExplanation('Луна и Солнце стоят в 9 доме. Солнце в 11 доме.',chart,'Как мне зарабатывать?','medium'),true);
+  assert.equal(incompleteMoneyExplanation('«Луна в 9 доме». Солнце в 11 доме.',chart,'Как мне зарабатывать?','medium'),true);
+  assert.equal(incompleteMoneyExplanation('Луна не в 9 доме. Солнце в 11 доме.',chart,'Как мне зарабатывать?','medium'),true);
+  assert.equal(incompleteMoneyExplanation('Луна — в девятом доме, Солнце — в одиннадцатом доме.',chart,'Как мне зарабатывать?','medium'),false);
+  assert.equal(wrongMoneyRulerClaim('Луна в 11 доме, Солнце в 9 доме.',chart,'Как мне зарабатывать?'),true);
+});
+
+test('money guards distinguish unrelated negation and transit or other-house claims',()=>{
+  for(const answer of ['Венера в 9 доме и не боится перемен.','Венера в 9 доме — это не ошибка.']){
+    assert.equal(wrongMoneyRulerClaim(answer,singleRuler,'Как мне зарабатывать?'),true,answer);
+  }
+  for(const answer of ['Венера в 11 доме. Транзитная Венера в 9 доме.','Венера в 11 доме. У 7 дома другая тема. Его управитель — Марс.','Венера в 11 доме и не в 9 доме.','Венера в 11 доме. У 7 дома другая тема. Другой управитель — Марс.']){
+    assert.equal(wrongMoneyRulerClaim(answer,singleRuler,'Как мне зарабатывать и что с партнёрами?'),false,answer);
+  }
 });

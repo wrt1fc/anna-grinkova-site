@@ -3,9 +3,10 @@ import scopePolicy from '../config/chat-scope.json' with {type:'json'};
 import {repairAnswerProblems} from './repair-v16-quality.mjs';
 import {repair17AnswerProblems} from './repair-v17-quality.mjs';
 import {repair18AnswerProblems,basicFactProblems} from './repair-v18-quality.mjs';
+import {sourceGroundedTheoryProblems} from '../server/astro-reference.js';
 const body=text=>text.replace(/^\s*Привет[!.,]?\s*/iu,'').replace(/\s+/gu,' ').trim();
 export function learningAnswerProblems(answer, card) {
- const problems=[];
+ const problems=sourceGroundedTheoryProblems(answer,{question:card.question??''}).map(problem=>'source: '+problem);
  if(/(?<!\p{L})(?:ИИ|нейросет\p{L}*|языковая модель)(?!\p{L})/iu.test(answer))problems.push('AI words');
  if(/\bforecast\b|\bchart\.(?:aspects|relationship)\b|беру.*из.*facts|не шути и не обесценивай/iu.test(answer))problems.push('instruction echo');
  for(const [i,alternatives]of (card.requiredMeanings??[]).entries()) {

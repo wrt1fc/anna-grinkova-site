@@ -1,9 +1,19 @@
 // Bounded checks for observed mistakes, not a semantic truth oracle.
 // Only explicit assertions are rejected. Unknown claims remain unknown.
+import {sourceGroundedTheoryProblems} from './astro-reference.js';
+import {SIGN_RULERS} from './anna-method.js';
+import {POINT_NAMES} from './astro-chart.js';
 const groups={кардинальная:['Овен','Рак','Весы','Козерог'],фиксированная:['Телец','Лев','Скорпион','Водолей'],мутабельная:['Близнецы','Дева','Стрелец','Рыбы']};
 const modalityCorrection='Модальности: Овен, Рак, Весы и Козерог — кардинальные; Телец, Лев, Скорпион и Водолей — фиксированные; Близнецы, Дева, Стрелец и Рыбы — мутабельные. Это отдельная классификация от четырёх стихий.';
 export function astroFactProblems(answer,{question='',chart=null}={}){
- const issues=[];
+ const issues=sourceGroundedTheoryProblems(answer,{question}).map(problem=>{
+  if(problem==='Sun sign substituted for first-house cusp')return {code:'sun_sign_is_not_cusp',correction:'Знак Солнца не определяет начало первого дома и не означает, что Солнце стоит на его куспиде. В Плацидусе начало первого дома — асцендент; его рассчитывают по моменту и месту рождения.'};
+  // Resolve only exact source-derived ruler diagnostics; never infer a planet from model text.
+  const sign=Object.keys(SIGN_RULERS).find(sign=>problem===`incorrect ruler of ${sign}`||problem===`incorrect ruler role of ${sign}`);
+  if(!sign)throw new Error('Unknown source-grounded theory diagnostic: '+problem);
+  const describe=sign=>{const names=SIGN_RULERS[sign].map(key=>POINT_NAMES[key]);return `${sign}: главный управитель — ${names[0]}${names.length>1?`, соуправитель — ${names[1]}`:''}`;};
+  return {code:'incorrect_ruler_'+sign,correction:'По таблице методики Анны '+[sign,...Object.keys(SIGN_RULERS).filter(other=>other!==sign)].map(describe).join('; ')+'. Порядок главного управителя и соуправителя менять нельзя.'};
+ });
  const add=(code,correction)=>{if(!issues.some(x=>x.code===code))issues.push({code,correction});};
  const clauses=answer.replace(/\s+/gu,' ').split(/[.!?;\n]/u);
  for(const clause of clauses){

@@ -124,7 +124,7 @@ export function chartClaimProblems(answer, natal) {
     const expected=natal.planets.sun?.sign;
     if(expected && ![expected,solarForms[expected]].filter(Boolean).some(s=>m[1].toLowerCase()===s.toLowerCase()))problems.push('солнечный знак подменён другим знаком');
   }
-  if(/асцендент[^.!?]{0,50}в (?:12|двенадцатом) доме/iu.test(answer))problems.push('асцендент ошибочно помещён в 12 дом');
+  if(/асцендент\s*(?:(?:стоит|находится|расположен)\s*)?(?:—\s*)?в (?:12|двенадцатом) доме/iu.test(answer))problems.push('асцендент ошибочно помещён в 12 дом');
   for(const m of answer.matchAll(new RegExp(`(${Object.values(POINT_NAMES).join('|')}) управляет (?:и )?(\\d{1,2}) домом`,'giu'))){
     const sign=natal.cusps?.find(c=>c.house===Number(m[2]))?.sign;
     if(sign && !SIGN_RULERS[sign]?.some(k=>POINT_NAMES[k].toLowerCase()===m[1].toLowerCase()))problems.push('неверный управитель '+m[2]+' дома');
