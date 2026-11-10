@@ -85,6 +85,14 @@ export function sourceGroundedTheoryProblems(answer,{question=''}={}){
     if(sign)for(const m of clause.matchAll(new RegExp(`(${role})\\s*(?:управител\\p{L}*)?\\s*(?:[—–:=]|явля\\p{L}*|считается|это)?\\s*(${planetPattern})`,'giu')))check(sign,findKey(planetStems,m[2]),m[1]);
    }
    const sunFirst=/знак\p{L}*\s+Солнц\p{L}*[^,;.!?]{0,45}(?:указыва\p{L}*|определя\p{L}*|показыва\p{L}*|это|[—–=])[^,;.!?]{0,25}(?:начал\p{L}*|куспид)[^,;.!?]{0,15}(?:перв\p{L}*|1(?:-?го)?)\s+дом/iu;
+   // Scope negation to the inference verb; «нельзя игнорировать» does not negate
+   // a later false assertion that the solar sign determines the ascendant.
+   const inference=/(?:солнечн\p{L}*\s+знак\p{L}*|знак\p{L}*\s+Солнц\p{L}*)[^.!?;]{0,100}?(?<!\p{L})(?:(позволя\p{L}*|можно|может)\s+(?:точно\s+)?(?:определить|рассчитать|узнать|получить)|(?:определяет|показывает))\s+(?:знак\s+)?асцендент\p{L}*/iu.exec(clause);
+   if(inference&&!/[?«"“]/u.test(clause)){
+    const predicate=inference[1]??/(?:определяет|показывает)/iu.exec(inference[0])?.[0];
+    const prefix=inference[0].slice(0,inference[0].lastIndexOf(predicate));
+    if(!/(?:не|нельзя|невозможно)\s*(?:точно\s*)?$/iu.test(prefix)&&!/^\s*(?:Неверно|Неправда|Ошибочно)/iu.test(clause))problems.push('Sun sign substituted for first-house cusp');
+   }
    if(sunFirst.test(clause)&&!negativeClaim(clause)&&!/[?«"“]/u.test(clause))problems.push('Sun sign substituted for first-house cusp');
    // In a general Sun-sign/cusp question, placement cannot be inferred from the sign.
    // Do not reject an actual Sun-on-cusp description in an unrelated personal-chart answer.

@@ -88,6 +88,19 @@ export function curriculum26(){
   'трёх':['тр[её]х','три','3'],
   'не складывают':['не складыва','не суммир','нельзя.{0,15}(?:складыва|суммир)'],
  };
- const evaluation=fresh.map(([id,q,a,ms])=>({...base(id,'eval',q,a,ms.map(m=>equivalent[m]??[m])),rubricVersion:2}));
+ const evaluation=fresh.map(([id,q,a,ms])=>{
+  const required=ms.map(m=>equivalent[m]??[m]);
+  // Grade what the question asks, without requiring an unsolicited definition or
+  // explanation. These controls remain excluded from training; source fact guards
+  // and the negative examples still reject wrong facts and contrary conclusions.
+  if(id==='sun'){required[0]=['нельзя','невозмож','не\\s+позволя','не\\s+может','не\\s+заменя','не\\s+определ'];required[1]=['Солнц','солнечн'];required[2]=['врем','час','момент'];}
+  if(id==='modality')required.splice(2);
+  if(id==='arc')required[1].push('(?<!не )примен');
+  if(id==='relocation')required[1]=['не\\s+заменя'];
+  if(id==='formula')required[3].push('ни одна[^.!?]{0,60}не[^.!?]{0,30}сильн','сильн[^.!?]{0,30}не назов');
+  return {...base(id,'eval',q,a,required),rubricVersion:3,
+   ...(id==='formula'?{forbiddenClaims:['разн\\p{L}*\\s+формул\\p{L}*\\s+(?<!не )(?:складыва|суммир)','сильн\\p{L}*\\s+формул\\p{L}*\\s+(?:есть|получается)']}:{}),
+  };
+ });
  return {train:[...train,...added],eval:evaluation,newTheoryCount:added.length,reusedTheoryCount:train.length};
 }

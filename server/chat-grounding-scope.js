@@ -1,3 +1,5 @@
+import { isPersonalLifeApplication } from './chat-topics.js';
+
 // Grounding is independent of whether the interface may offer a course. A definition
 // is general unless the visitor explicitly asks about a particular person's chart.
 // Bare «мне» in «объясни мне понятие» addresses the assistant, not a natal chart.
@@ -25,11 +27,24 @@ const THEORY_REQUEST = /что\s+(?:это\s+)?(?:такое|значит|озн
 
 const THEORY_EXERCISE = /изуча|изучить|учу(?!\p{L})|учусь|уч[её]б|условн|задач|сколько|вычисл|может\s+ли|явля|где\s+наход|како[йяею]\p{L}*\s+(?:момент|дата|планет|знак|дом)/iu;
 
+// These pronouns address the explanation or describe studying, not a personal
+// life situation. Keep the rest of the question, including any actual self-reference.
+function lifeQuestion(question) {
+  return question
+    .replace(/((?:объясни|поясни|расскажи|покажи|подскажи)\s+)(?:мне|нам)(?!\p{L})/giu, '$1')
+    .replace(/((?:объясни|поясни|расскажи|покажи|подскажи)\s+)(?:моей|моему|нашей|нашему)\s+\p{L}+\s+(?=понятие|термин|что|как)/giu, '$1')
+    .replace(/(?<!\p{L})(?:я|мы)\s+(?=(?:(?:не\s+)?(?:хочу|хотим)\s+)?(?:учу(?:сь)?|учим(?:ся)?|изучаю|изучаем|изучать|изучить|учиться|научиться|осваиваю|осваиваем|понять|разобраться)(?!\p{L}))/giu, '')
+    .replace(/((?:не\s+)?(?:предлагай|советуй|приглашай)\s+)(?:мне|нам)(?!\p{L})/giu, '$1')
+    .replace(/(?<!\p{L})(?:мне|нам)\s+(?=(?:не\s+(?:нужн|интерес)|интересно|любопытно))/giu, '')
+    .replace(/(можно\s+)(?:мне|нам)\s+(?=объяснить|пояснить|рассказать|узнать|понять)/giu, '$1');
+}
+
 // The caller supplies groundingQuestion(message, history), so dependent follow-ups
 // retain the original topic and a complete new question starts afresh.
 export function isGeneralAstrologyQuestion(question) {
   if (NO_PERSONAL_CHART.test(question) && THEORY_TOPIC.test(question)) return true;
   if (PERSONAL_ASTRO.test(question) || PERSON_CHART.test(question) || PERSONAL_SITUATION.test(question)
+    || isPersonalLifeApplication(lifeQuestion(question))
     || !HYPOTHETICAL.test(question) && (CALCULATED_REFERENCE.test(question)
       || APPLICATION_FRAME.test(question) && (LIFE_CHOICE.test(question) || INCOME_ACTIVITY.test(question)))) return false;
   // Technical quiz questions need the same scope even without a definition verb.

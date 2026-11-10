@@ -5,6 +5,7 @@ import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { chartContext } from '../server/chat-grounding.js';
+import { isPersonalLifeApplication, isPersonalLifeQuestion } from '../server/chat-topics.js';
 import { questionGuidance } from '../server/local-chat.js';
 import { createServer } from '../server/http.js';
 import { createStore } from '../server/store.js';
@@ -62,6 +63,43 @@ test('personal astrology study and everyday presets retain their calculated char
     'Объясни, почему я ревную, по натальной карте']) {
     for (const prefix of ['', 'Без обучения: ']) assert.ok(chartContext(profile, prefix + message, now).chart?.calculated, prefix + message);
   }
+});
+
+test('life-application classifier excludes bare planet addressing without changing chart-topic classification', () => {
+  assert.equal(isPersonalLifeQuestion('Объясни мне Венеру'), true);
+  assert.equal(isPersonalLifeApplication('Объясни мне Венеру'), false);
+  assert.equal(isPersonalLifeApplication('В отношениях я повторяю один сценарий'), true);
+  assert.equal(isPersonalLifeApplication('Какую роль Венера играет в отношениях?'), false);
+});
+
+test('personal life meaning survives non-adjacent pronouns while pedagogical addressing stays general', () => {
+  const life = [
+    'Какое у меня призвание по натальной карте и чем лучше заниматься?',
+    'Почему в отношениях я повторяю один и тот же сценарий? Что в натальной карте про это?',
+    'Что натальная карта говорит о том, почему в близости я тревожусь?',
+    'В отношениях постоянно одни и те же трудности. Что со мной по натальной карте?',
+    'Чем мне лучше заниматься по натальной карте?',
+    'С чем связана моя тревожность по натальной карте?',
+    'Мне интересно, почему в отношениях я повторяю один сценарий. Что говорит натальная карта?',
+    'Можно мне объяснить мою Венеру?',
+  ];
+  for (const message of life) assert.ok(chartContext(profile, message, now).chart?.calculated, message);
+  const general = [
+    'Я учу основы Луны. Что означает Луна в седьмом доме?',
+    'Без курсов. Мне интересно, что означает Венера в 7 доме?',
+    'Можно мне объяснить понятие аспекта Венеры без обучения?',
+    'Мне интересно, какую роль Венера играет в отношениях вообще?',
+    'Можно мне объяснить понятие эмоциональных границ в натальной карте?',
+    'Я хочу изучать аспекты Венеры. Что означает квадратура?',
+    'Мы изучаем Луну. Объясни её значение в натальной карте.',
+    'Объясни мне понятие Венеры и её роль в отношениях.',
+    'Расскажи нам, что означает Луна в натальной карте.',
+    'Объясни моей подруге понятие Венеры.',
+    'Не предлагай мне курсы. Что означает Венера в 7 доме?',
+    'Мне не нужны курсы. Что означает Венера в 7 доме?',
+    'Почему люди повторяют сценарии в отношениях? Что в натальной карте про это?',
+  ];
+  for (const message of general) assert.equal(chartContext(profile, message, now).chart, null, message);
 });
 
 test('personal compatibility study keeps the supplied partner comparison', () => {

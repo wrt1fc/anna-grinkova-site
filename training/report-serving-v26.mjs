@@ -13,8 +13,10 @@ export function servingReview(root){
     assert.ok(rows.every(row=>Array.isArray(problems(row))),`${prefix}-${group}: missing errors`);
     const passed=rows.filter(row=>!problems(row).length).length;
     assert.equal(summary.passed,passed,`${prefix}-${group}: inconsistent summary`);
+    const fallback=row=>row.groundedFallback||row.styleFiltered;
     return [group,{total:rows.length,passed,generationErrors:rows.filter(row=>row.generationError).length,
-      generated:rows.filter(row=>row.generationModel).length,fallbacks:rows.filter(row=>row.groundedFallback).length,
+      generated:rows.filter(row=>row.generationModel&&!fallback(row)).length,fallbacks:rows.filter(fallback).length,
+      styleFiltered:rows.filter(row=>row.styleFiltered).length,
       retried:rows.filter(row=>(row.rawAttempts??[]).length>1).length}];
   }));
   const groups=['fresh','exposed','chat','natal'];

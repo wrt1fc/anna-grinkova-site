@@ -6,6 +6,7 @@ import { SAFE_FALLBACK_ANSWER, copiesMaterials, unsafeChatAnswer } from '../chat
 import { DEFAULT_PLAN, planFor } from '../plans.js';
 import { learningInvitation } from '../learning.js';
 import { CRISIS_ANSWER, isCrisisMessage } from '../crisis.js';
+import {urgentHealthReply} from '../urgent-health.js';
 import { profilesWithAccess } from './profiles.js';
 import { asksAboutCompatibility, chartContext, findMaterials } from '../chat-grounding.js';
 import { clientAddress } from '../traffic.js';
@@ -101,7 +102,6 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
     const unavailable = tarot
       ? { error: 'tarot_unavailable', message: 'Расклад сейчас недоступен. Попробуй позже.' }
       : { error: 'chat_unavailable', message: 'Чат пока недоступен. Попробуй позже.' };
-    if (!chatWriter) return json(res, 503, unavailable);
     if (!user) {
       return json(res, 401, { error: 'login_required', message: tarot
         ? 'Расклад с трактовкой доступен после регистрации.' : 'Чат доступен после входа в личный кабинет.' });
@@ -113,6 +113,14 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
     }
     if (tarot) body.message = body.question.trim();
     if (isCrisisMessage(body.message)) { metrics.count('chat_crisis'); return replyCrisis(req, res, json); }
+    const urgent=urgentHealthReply(body.message,historySigner.trusted(body.history??[]));
+    if(urgent){
+      metrics.count('chat_urgent_health');
+      const payload={...urgent,filtered:false,context:null};
+      if(!String(req.headers.accept??'').includes('text/event-stream'))return json(res,200,payload);
+      sse(res)('done',payload);return res.end();
+    }
+    if (!chatWriter) return json(res, 503, unavailable);
     const ip = clientAddress(req, trustProxy);
     if (answering.has(user.id)) return json(res, 429, { error: 'chat_in_progress', message: 'Дождись ответа на предыдущий вопрос.' });
     // Counted only after validation, so malformed requests cannot use up the shared budget.

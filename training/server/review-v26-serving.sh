@@ -35,10 +35,11 @@ trap 'exit 143' TERM INT
 stage() { STAGE=$1; printf 'RUNNING %s %s\n' "$STAGE" "$(date -Is)" > "$ROOT/reports/status.txt"; }
 run_check() { local code=0; "$@" || code=$?; test "$code" -le 1; }
 cp "$SOURCE/SOURCE_COMMIT" "$ROOT/source-commit.txt"
-cp "$TRAIN/"{cards.jsonl,holdout.jsonl,regression.jsonl,natal-plan.json,methodics.json} "$ROOT/"
+cp "$TRAIN/"{cards.jsonl,regression.jsonl,natal-plan.json,methodics.json} "$ROOT/"
+node "$SOURCE/training/review-controls-v26.mjs" "$TRAIN/holdout.jsonl" "$ROOT/holdout.jsonl"
 ln -s "$SOURCE" "$ROOT/eval-code"
 cd "$ROOT"
-sha256sum cards.jsonl holdout.jsonl regression.jsonl natal-plan.json methodics.json source-commit.txt > input-sha256.txt
+sha256sum cards.jsonl holdout.jsonl holdout.jsonl.revision.json regression.jsonl natal-plan.json methodics.json source-commit.txt > input-sha256.txt
 (cd "$SOURCE"; find server config training -type f -print0 | sort -z | xargs -0 sha256sum) > "$ROOT/source-sha256.txt"
 sha256sum -c "$TRAIN/reports/parent-before.sha256" > "$ROOT/reports/parent-integrity.log"
 sha256sum -c "$TRAIN/reports/candidate-sha256.txt" > "$ROOT/reports/candidate-integrity.log"

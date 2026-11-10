@@ -7,6 +7,7 @@ import { forecastForDate, moscowDate } from '../server/daily-forecast.js';
 import { chatForecastContext, createLocalChat, forecastForQuestion } from '../server/local-chat.js';
 import { evaluateAnswer } from './eval-checks.js';
 import { CRISIS_ANSWER, isCrisisMessage } from '../server/crisis.js';
+import {urgentHealthReply} from '../server/urgent-health.js';
 import {evaluationTelemetry} from './evaluation-telemetry.mjs';
 
 const [model, reportPath] = process.argv.slice(2);
@@ -27,7 +28,7 @@ for (const item of evalSet.questions) {
   try {
     // Mirrors the chat route: crisis messages get the fixed reply and never reach the model.
     if(isCrisisMessage(item.question)){answer=CRISIS_ANSWER;result={model:null};}
-    else{result=await chat.answer({ message: item.question, history: [], forecast: forecastForQuestion(forecast, item.question), length: item.length });answer=result.answer;}
+    else{result=urgentHealthReply(item.question,[])??await chat.answer({ message: item.question, history: [], forecast: forecastForQuestion(forecast, item.question), length: item.length });answer=result.answer;}
     problems = evaluateAnswer(item, answer, day);
     if(process.env.CHAT_LEARNING_SIGNALS==='1'&&traces.length&&!traces.at(-1).signal.formatValid)problems.push('signal format invalid');
   } catch (error) {

@@ -111,3 +111,56 @@ test('birth-sign guard ignores negation, quotes, other people, unknown subjects 
   assert.equal(wrongCalculatedClaim('Ты родилась под знаком Рыб.',{calculated:{positions:{},aspects:[]}}),false);
   assert.equal(wrongCalculatedClaim('Если она родилась под знаком Рыб, это пример. Ты родилась под знаком Рыб.',libra),true);
 });
+
+const piscesRulers = {calculated:{positions:{neptune:{house:12},jupiter:{house:7},mars:{house:1},pluto:{house:4}},aspects:[],houseRulers:[
+  {house:1,rulers:[{planet:'neptune',house:12},{planet:'jupiter',house:7}]},
+  {house:7,rulers:[{planet:'mars',house:1},{planet:'pluto',house:4}]},
+  {house:12,rulers:[{planet:'moon',house:9}]},
+]}};
+
+test('word-numbered ruler declarations and comma co-rulers cannot invent extra rulers',()=>{
+  for (const answer of [
+    'Управитель первого дома, Марс, помогает действовать.',
+    'Управитель первого дома, Марс, не мешает действовать.',
+    'Управитель первого дома — Марс, если говорить о твоей личности.',
+    'Управитель первого дома — Марс, если смотреть на твою личность.',
+    'Управитель первого дома — Марс, если сказать проще.',
+    'Управители первого дома: Нептун, Марс.',
+    'Управитель первого дома, Нептун, стоит в 12 доме. Юпитер стоит в 7 доме. Второй управитель, Марс, отвечает за действие. Третий управитель, Плутон, добавляет глубину.',
+    'Управитель первого дома — Нептун в 12 доме. Второй управитель, Плутон.',
+    'Управитель первого дома — Нептун в 12 доме. Второй управитель — Юпитер в 7 доме. Третий управитель, Марс.',
+  ]) assert.equal(wrongCalculatedClaim(answer,piscesRulers),true,answer);
+  for (const answer of [
+    'Управитель первого дома, Нептун, стоит в 12 доме. Второй управитель, Юпитер, стоит в 7 доме.',
+    'Управители первого дома: Нептун, Юпитер.',
+    'Управитель первого дома находится в двенадцатом доме.',
+    'Управитель первого дома — Нептун в 12 доме. Управитель седьмого дома, Марс, стоит в 1 доме. Второй управитель, Плутон, стоит в 4 доме.',
+    'Управитель первого дома — Нептун в 12 доме. Теперь 7 дом. Второй управитель, Плутон, стоит в 4 доме.',
+    'Управитель первого дома — Нептун в 12 доме. Теперь седьмой дом. Второй управитель — Плутон в 4 доме.',
+    'Управитель первого дома — Нептун в 12 доме. Перейдём к седьмому дому. Второй управитель — Плутон в 4 доме.',
+    'Управитель первого дома — Нептун в 12 доме. Управитель Нептуна — Марс.',
+    'Управитель первого дома — Нептун в 12 доме. Управитель Нептуна, Марс, отвечает за действие.',
+    'Нептун стоит в 12 доме. Его управитель Марс.',
+  ]) assert.equal(wrongCalculatedClaim(answer,piscesRulers),false,answer);
+});
+
+test('all twelve genitive house ordinals are normalized for explicit ruler claims',()=>{
+  const words = ['первого','второго','третьего','четвёртого','пятого','шестого','седьмого','восьмого','девятого','десятого','одиннадцатого','двенадцатого'];
+  const facts = {calculated:{positions:{},aspects:[],houseRulers:words.map((_,i)=>({house:i+1,rulers:[{planet:'mercury',house:9}]}))}};
+  for (const word of words) {
+    assert.equal(wrongCalculatedClaim(`Управитель ${word} дома, Меркурий.`,facts),false,word);
+    assert.equal(wrongCalculatedClaim(`Управитель ${word} дома, Марс.`,facts),true,word);
+  }
+});
+
+test('quoted, conditional and explicitly negated ruler statements do not become chart facts',()=>{
+  for (const answer of [
+    '«Управитель первого дома, Марс» — ошибочная фраза.',
+    'Если управитель первого дома — Марс, это другой пример.',
+    'Если бы куспид был в Овне, управитель первого дома — Марс.',
+    'Не управитель первого дома — Марс, а показатель активности.',
+    'Неправда, что управитель первого дома — Марс.',
+    'Управитель первого дома — не Марс.',
+    'Управитель первого дома — Нептун. Второй управитель не Марс.',
+  ]) assert.equal(wrongCalculatedClaim(answer,piscesRulers),false,answer);
+});

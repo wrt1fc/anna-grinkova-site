@@ -10,6 +10,7 @@ import {learningAnswerProblems} from './learning-quality.mjs';
 import {unsafeChatAnswer} from '../server/chat-safety.js';
 import {hasFormalAddress} from '../server/chat-style.js';
 import {evaluationTelemetry} from './evaluation-telemetry.mjs';
+import {urgentHealthReply} from '../server/urgent-health.js';
 const [model,input,prefix]=process.argv.slice(2);
 if(!model||!input||!prefix)throw Error('Expected model, cards, report prefix');
 if(process.env.CHAT_FACT_GUARD!=='1'||process.env.CHAT_MODEL_PROTOCOL!=='19')throw Error('Production guard and protocol required');
@@ -24,7 +25,7 @@ for(const card of fs.readFileSync(input,'utf8').trim().split(/\r?\n/u).map(JSON.
     const history=card.history??[],length=card.length??'medium';
     const profile=card.chartFor?{birthUtc:card.chartFor.birthUtc,birthLatitude:card.chartFor.latitude,birthLongitude:card.chartFor.longitude}:null;
     const {chart}=chartContext(profile,card.question,new Date(date+'T09:00:00Z'),{history});
-    result=await chat.answer({message:card.question,history,forecast:forecastForQuestion(forecast,card.question),chart,length});
+    result=urgentHealthReply(card.question,history)??await chat.answer({message:card.question,history,forecast:forecastForQuestion(forecast,card.question),chart,length});
     errors.push(...learningAnswerProblems(result.answer,card));
     if(unsafeChatAnswer(result.answer,date)||hasFormalAddress(result.answer))errors.push('safety/style');
     if(result.answer.length<(card.minAnswerChars??30)||result.answer.length>ANSWER_LENGTHS[length].maxChars)errors.push('answer length');

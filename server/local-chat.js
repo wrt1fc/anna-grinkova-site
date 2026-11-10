@@ -9,6 +9,8 @@ import {methodicReference} from './methodic-reference.js';
 import {astroFactProblems} from './astro-fact-guard.js';
 import { ollamaGenerateUrl } from './ollama.js';
 import { conversationalOpening, hasFormalAddress } from './chat-style.js';
+import {urgentHealthReply} from './urgent-health.js';
+import {financialDecisionReply} from './financial-safety.js';
 import { SAFE_FALLBACK_ANSWER } from './chat-safety.js';
 import { isRelationshipQuestion } from './chat-topics.js';
 import { groundedRelationshipAnswer, relationshipAnswerProblems } from './relationship-context.js';
@@ -190,6 +192,10 @@ export function createLocalChat({ model, fetchImpl = fetch, learningSignals = pr
     async answer({ message, history, forecast, visitorName = null, visitorGender = null, signal, length = DEFAULT_ANSWER_LENGTH, materials = [], chart = null, mode = null, tone = null, onDelta = null, temperature = 0.25, qualityRetry = false, styleRetry = false, factRetry = false, factCorrection = '', explanationRetry = false }) {
       const size = answerSize(mode, length);
       if (!size) throw new Error('Unknown answer length');
+      const urgent=urgentHealthReply(message,history);
+      if(urgent){onDelta?.(urgent.answer,urgent.answer);return {...urgent,length,contextVersion:chatContext.version};}
+      const financial=financialDecisionReply(message,history);
+      if(financial){onDelta?.(financial.answer,financial.answer);return {...financial,length,contextVersion:chatContext.version};}
       if (!signalProtocol && mode !== TAROT_MODE && chart?.missing && isRelationshipQuestion(message)) {
         const answer = conversationalOpening('Чтобы разобрать твои отношения по натальной карте, добавь дату, время и город рождения в кабинете. А пока расскажи: ты сейчас в паре или хочешь встретить партнёра?', history);
         onDelta?.(answer, answer);

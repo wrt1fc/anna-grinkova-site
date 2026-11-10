@@ -32,6 +32,19 @@ function wrongOwnerSolarSign(answer, expected) {
   return false;
 }
 const ORDINALS = { первом:1, втором:2, третьем:3, четвертом:4, четвёртом:4, пятом:5, шестом:6, седьмом:7, восьмом:8, девятом:9, десятом:10, одиннадцатом:11, двенадцатом:12 };
+const HOUSE_GENITIVES = {первого:1,второго:2,третьего:3,четвертого:4,четвёртого:4,пятого:5,шестого:6,седьмого:7,восьмого:8,девятого:9,десятого:10,одиннадцатого:11,двенадцатого:12};
+// Singular masculine forms cover house subjects and transitions as well as
+// genitive ruler labels: «седьмой дом», «к седьмому дому», «седьмым домом».
+const HOUSE_OTHER_CASES = [
+  ['первый','первому','первым'], ['второй','второму','вторым'], ['третий','третьему','третьим'],
+  ['четвертый','четвертому','четвертым','четвёртый','четвёртому','четвёртым'],
+  ['пятый','пятому','пятым'], ['шестой','шестому','шестым'], ['седьмой','седьмому','седьмым'],
+  ['восьмой','восьмому','восьмым'], ['девятый','девятому','девятым'], ['десятый','десятому','десятым'],
+  ['одиннадцатый','одиннадцатому','одиннадцатым'], ['двенадцатый','двенадцатому','двенадцатым'],
+];
+const HOUSE_FORMS = {...ORDINALS,...HOUSE_GENITIVES,...Object.fromEntries(HOUSE_OTHER_CASES.flatMap((forms,i)=>forms.map(form=>[form,i+1])))};
+const RULER_HOUSE = `(?:\\d{1,2}(?:-?(?:го|й|м|ом|х))?|${Object.keys(HOUSE_FORMS).join('|')})`;
+const houseNumber = text => HOUSE_FORMS[text.toLowerCase()] ?? parseInt(text,10);
 const HOUSE = `(?:\\d{1,2}(?:-?(?:м|ом))?|${Object.keys(ORDINALS).join('|')})`;
 const ASPECT = '(?:соедин[её]н[а-яё]*|соединени[а-яё]*|трин[а-яё]*|тригон[а-яё]*|квадрат[а-яё]*|секстил[а-яё]*|оппозици[а-яё]*)';
 const aspectFor = (text) => /соедин/iu.test(text)?'conjunction':/квадрат/iu.test(text)?'square':/секстил/iu.test(text)?'sextile':/оппозици/iu.test(text)?'opposition':'trine';
@@ -80,32 +93,56 @@ export function wrongCalculatedClaim(answer, chart) {
   // Ruler claims are checked against the calculated table for all twelve houses, not only the 2nd and 7th.
   const rulerFacts = facts.houseRulers;
   if (Array.isArray(rulerFacts)) {
-    const rulerName = new RegExp(`управител\\p{L}*\\s+(\\d{1,2})-?(?:го|й|м|х)?\\s*дома\\s*(?:—|–|-|:|,)?\\s*(?:это\\s+)?(${PLANET})(?:\\s+и\\s+(${PLANET}))?`, 'giu');
-    for (const m of answer.matchAll(rulerName)) {
-      const entry = rulerFacts.find((item) => item.house === Number(m[1]));
+    // This parser is intentionally bounded to named ruler assertions. House
+    // positions in the intervening explanation are not new ruler declarations.
+    const rulerAnswer = answer.replace(/‘[^’]*’|'[^'\n]*'/gu,' ').replace(/[^.!?;\n]+/gu, sentence => {
+      // Framing «если говорить о личности» does not make the preceding ruler
+      // assertion hypothetical; a real «если бы куспид...» still does.
+      const assertion = sentence.replace(/(?<!\p{L})если\s+(?:говорить|смотреть|сказать\s+проще)(?!\p{L})/giu,' ');
+      return /(?<!\p{L})(?:если|допустим|предположим|неверно|неправда|не факт)(?!\p{L})|(?:не|нельзя)\s+(?:считать|утверждать|говорить)|(?<!\p{L})не\s+управител/iu.test(assertion) ? ' ' : sentence;
+    });
+    const rulerName = new RegExp(`управител\\p{L}*\\s+(${RULER_HOUSE})\\s*дома\\s*(?:—|–|-|:|,)?\\s*(?:это\\s+)?(${PLANET})(?:\\s*(?:,|и)\\s*(${PLANET}))?`, 'giu');
+    for (const m of rulerAnswer.matchAll(rulerName)) {
+      const entry = rulerFacts.find((item) => item.house === houseNumber(m[1]));
       if (entry && [m[2],m[3]].filter(Boolean).some(name => !entry.rulers.some(ruler => ruler.planet === keyFor(name)))) return true;
     }
     const moneyRulerName = new RegExp(`управител\\p{L}*\\s+денежного\\s+дома\\s*(?:—|–|-|:|,)?\\s*(${PLANET})`, 'giu');
-    for (const m of answer.matchAll(moneyRulerName)) {
+    for (const m of rulerAnswer.matchAll(moneyRulerName)) {
       const entry = rulerFacts.find(item => item.house === 2);
       if (entry && !entry.rulers.some(ruler => ruler.planet === keyFor(m[1]))) return true;
     }
-    const rulerPlace = /управител\p{L}*\s+(\d{1,2})-?(?:го|й|м|х)?\s*дома[^.!?\n]{0,80}?(?:^|\s|[,;—–-])в\s+(\d{1,2})(?:-?(?:м|ом|х))?\s+доме/giu;
-    for (const m of answer.matchAll(rulerPlace)) {
-      const entry = rulerFacts.find((item) => item.house === Number(m[1]));
-      if (entry && !entry.rulers.some((ruler) => ruler.house === Number(m[2]))) return true;
+    const rulerPlace = new RegExp(`управител\\p{L}*\\s+(${RULER_HOUSE})\\s*дома[^.!?\\n]{0,80}?(?:^|\\s|[,;—–-])в\\s+(${RULER_HOUSE})\\s+доме`,'giu');
+    for (const m of rulerAnswer.matchAll(rulerPlace)) {
+      const entry = rulerFacts.find((item) => item.house === houseNumber(m[1]));
+      if (entry && !entry.rulers.some((ruler) => ruler.house === houseNumber(m[2]))) return true;
     }
     // Claims without a house number («В 11 доме у тебя Лев. Его управители Солнце и Плутон.») are attributed
     // to the house last mentioned in the answer before the claim; without any house mention they cannot be checked.
-    const implicit = new RegExp(`управител\\p{L}*(?:\\s+(?:его|её|этого дома|этой темы|дома))?\\s*(?:—|–|-|:)?\\s*(?:это\\s+)?(${PLANET})(?:\\s+и\\s+(${PLANET}))?`, 'giu');
-    for (const m of answer.matchAll(implicit)) {
+    const implicit = new RegExp(`(?:(второй|третий|четвёртый|четвертый|другой|ещ[её] один)\\s+)?управител\\p{L}*(?:\\s+(?:его|её|этого дома|этой темы|дома))?\\s*(?:—|–|-|:|,)?\\s*(?:это\\s+)?(${PLANET})(?:\\s*(?:,|и)\\s*(${PLANET}))?`, 'giu');
+    for (const m of rulerAnswer.matchAll(implicit)) {
       if (new RegExp(`^управител\\p{L}*\\s+\\d`, 'iu').test(m[0])) continue; // explicit claims are checked above
-      const before = answer.slice(Math.max(0, m.index - 160), m.index);
-      const mentioned = [...before.matchAll(/(\d{1,2})(?:-?(?:го|й|м|х))?\s+дом/giu)];
+      const before = rulerAnswer.slice(Math.max(0, m.index - 2000), m.index);
+      // «Управитель Нептуна — Юпитер» describes a planet's dispositor,
+      // not another ruler of the previously discussed house.
+      if (new RegExp(`^управител\\p{L}*\\s+${PLANET}\\s*[,—–:-]\\s*${PLANET}`,'iu').test(rulerAnswer.slice(m.index))) continue;
+      const declared = [...before.matchAll(new RegExp(`управител\\p{L}*\\s+(${RULER_HOUSE})\\s+дома`,'giu'))].at(-1);
+      const mentioned = [...before.matchAll(new RegExp(`(${RULER_HOUSE})\\s+дом`,'giu'))];
       if (!mentioned.length) continue;
-      const entry = rulerFacts.find((item) => item.house === Number(mentioned.at(-1)[1]));
+      let house = houseNumber(mentioned.at(-1)[1]);
+      if (m[1] && declared) {
+        const afterDeclaration = before.slice(declared.index + declared[0].length);
+        const newTopic = [...afterDeclaration.matchAll(new RegExp(`(?:теперь|далее|перейд[её]м к|что касается|у|для)\\s+(${RULER_HOUSE})\\s+дом`,'giu'))].at(-1);
+        house = houseNumber(newTopic?.[1] ?? declared[1]);
+      } else if (!m[1] && !/управители|управител\p{L}*\s+дома/iu.test(m[0])) {
+        // Singular «его управитель» after a planet is ambiguous; only
+        // accept this implicit form immediately after an explicit house topic.
+        const afterHouse = before.slice(mentioned.at(-1).index + mentioned.at(-1)[0].length);
+        const beforeHouse = before.slice(Math.max(0,mentioned.at(-1).index - 90),mentioned.at(-1).index).split(/[.!?;\n]/u).at(-1);
+        if (new RegExp(PLANET,'iu').test(afterHouse) || new RegExp(PLANET,'iu').test(beforeHouse)) continue;
+      }
+      const entry = rulerFacts.find((item) => item.house === house);
       if (!entry) continue;
-      for (const name of [m[1], m[2]].filter(Boolean)) {
+      for (const name of [m[2], m[3]].filter(Boolean)) {
         if (!entry.rulers.some((ruler) => ruler.planet === keyFor(name))) return true;
       }
     }
