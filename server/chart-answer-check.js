@@ -9,6 +9,28 @@ const PLANET = `(?:${Object.values(FORMS).join('|')})`;
 const keyFor = (text) => Object.keys(FORMS).find((key) => new RegExp(`^(?:${FORMS[key]})$`, 'iu').test(text));
 const signFor = (text) => Object.entries(SIGN_PREPOSITIONAL).find(([base, form]) => base.toLowerCase() === text.toLowerCase() || form.toLowerCase() === text.toLowerCase())?.[0];
 const SIGN = `(?:${[...new Set([...Object.keys(SIGN_PREPOSITIONAL), ...Object.values(SIGN_PREPOSITIONAL)])].sort((a,b)=>b.length-a.length).join('|')})`;
+const SOLAR_GENITIVE = {Овен:'Овна',Телец:'Тельца',Близнецы:'Близнецов',Рак:'Рака',Лев:'Льва',Дева:'Девы',Весы:'Весов',Скорпион:'Скорпиона',Стрелец:'Стрельца',Козерог:'Козерога',Водолей:'Водолея',Рыбы:'Рыб'};
+const SOLAR_SIGN = `(?:${[...Object.keys(SOLAR_GENITIVE), ...Object.values(SOLAR_GENITIVE)].sort((a,b)=>b.length-a.length).join('|')})`;
+
+function wrongOwnerSolarSign(answer, expected) {
+  if (!expected) return false;
+  answer = answer.replace(/‘[^’]*’|'[^'\n]*'/gu, ' ');
+  const claims = new RegExp(`(?<!\\p{L})(?:(?:ты|вы)\\s+родил(?:ась|ся|ись)\\s+под\\s+знаком|твой\\s+солнечный\\s+знак\\s*[—–:-]?)\\s*(${SOLAR_SIGN})(?!\\p{L})`, 'giu');
+  for (const match of answer.matchAll(claims)) {
+    const start = Math.max(...['.','!','?',';','\n'].map(separator => answer.lastIndexOf(separator,match.index - 1))) + 1;
+    const before = answer.slice(start,match.index);
+    const after = answer.slice(match.index + match[0].length);
+    // A conditional, a question or a rejected/reported claim is not a fact about
+    // this chart's owner. Subjectless and third-person phrases never match.
+    if (/(?<!\p{L})(?:если|когда бы|допустим|предположим|возможно|неверно|неправда|не факт|не означает|не значит|сказал\p{L}*|говорил\p{L}*)(?!\p{L})/iu.test(before)
+      || /(?:нельзя|нет оснований|не следует|не стоит)\s+(?:уверенно\s+)?(?:утверждать|считать|говорить|думать)[^.!?;\n]{0,40}$/iu.test(before)
+      || /(?<!\p{L})не\s*$/iu.test(before)
+      || /^[^.!?;\n]*\?/u.test(after)
+      || /^[^.!?;\n]*?(?<!\p{L})если(?!\p{L})/iu.test(after)) continue;
+    if (![expected,SOLAR_GENITIVE[expected]].filter(Boolean).some(sign => sign.toLowerCase() === match[1].toLowerCase())) return true;
+  }
+  return false;
+}
 const ORDINALS = { первом:1, втором:2, третьем:3, четвертом:4, четвёртом:4, пятом:5, шестом:6, седьмом:7, восьмом:8, девятом:9, десятом:10, одиннадцатом:11, двенадцатом:12 };
 const HOUSE = `(?:\\d{1,2}(?:-?(?:м|ом))?|${Object.keys(ORDINALS).join('|')})`;
 const ASPECT = '(?:соедин[её]н[а-яё]*|соединени[а-яё]*|трин[а-яё]*|тригон[а-яё]*|квадрат[а-яё]*|секстил[а-яё]*|оппозици[а-яё]*)';
@@ -28,6 +50,7 @@ export function wrongCalculatedClaim(answer, chart) {
   const facts = chart?.calculated;
   if (!facts || chart.partner) return false; // A comparison needs subject-aware parsing; don't mix the two owners.
   answer = assertedNatalText(answer);
+  if (wrongOwnerSolarSign(answer, facts.positions?.sun?.sign)) return true;
   const timed = (index) => {
     const start=Math.max(answer.lastIndexOf('.',index),answer.lastIndexOf('!',index),answer.lastIndexOf('?',index),answer.lastIndexOf('\n',index))+1;
     const end=answer.slice(index).search(/[.!?\n]/u);

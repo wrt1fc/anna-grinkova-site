@@ -77,3 +77,37 @@ test('dash-separated placements are checked while quotes and explicit negations 
   assert.equal(wrongCalculatedClaim('«Венера — в 9 доме» — неверный пример.',chart),false);
   assert.equal(wrongCalculatedClaim('Венера не в 9 доме.',chart),false);
 });
+
+test('direct birth-sign assertions use the calculated Sun rather than an invented sign',()=>{
+  const libra = {calculated:{positions:{sun:{sign:'Весы'}},aspects:[]}};
+  for (const answer of ['Ты родилась под знаком Рыб.','Ты родился под знаком Рыбы.','Вы родились под знаком Овна.', 'Твой солнечный знак — Рыбы.']) {
+    assert.equal(wrongCalculatedClaim(answer,libra),true,answer);
+  }
+  for (const answer of ['Ты родилась под знаком Весы.','Ты родился под знаком Весов.','Твой солнечный знак — Весы.', 'Твой солнечный знак: Весов.']) {
+    assert.equal(wrongCalculatedClaim(answer,libra),false,answer);
+  }
+});
+
+test('birth-sign guard ignores negation, quotes, other people, unknown subjects and conditionals',()=>{
+  const libra = {calculated:{positions:{sun:{sign:'Весы'}},aspects:[]}};
+  for (const answer of [
+    'Ты не родилась под знаком Рыб.', 'Ты родилась не под знаком Рыб.',
+    'Твой солнечный знак — не Рыбы.', 'Неправда, что ты родилась под знаком Рыб.',
+    'Не твой солнечный знак — Рыбы, а её.',
+    'Не факт, что ты родилась под знаком Рыб.',
+    'Нельзя утверждать, что ты родилась под знаком Рыб.',
+    'Нет оснований считать, что твой солнечный знак — Рыбы.',
+    '«Ты родилась под знаком Рыб» — ошибка.', '“Твой солнечный знак — Рыбы” — пример.',
+    "'Ты родилась под знаком Рыб' — цитата.",
+    'Твоя сестра родилась под знаком Рыб.', 'Анна родилась под знаком Рыб.',
+    'Я родилась под знаком Рыб.', 'Родилась под знаком Рыб.',
+    'Если ты родилась под знаком Рыб, это другой пример.',
+    'Ты родилась под знаком Рыб, если принять эту гипотезу.',
+    'Допустим, твой солнечный знак — Рыбы.',
+    'Она сказала, что ты родилась под знаком Рыб.',
+    'Ты родилась под знаком Рыб?',
+  ]) assert.equal(wrongCalculatedClaim(answer,libra),false,answer);
+  assert.equal(wrongCalculatedClaim('Ты родилась под знаком Рыб.',{...libra,partner:{}}),false);
+  assert.equal(wrongCalculatedClaim('Ты родилась под знаком Рыб.',{calculated:{positions:{},aspects:[]}}),false);
+  assert.equal(wrongCalculatedClaim('Если она родилась под знаком Рыб, это пример. Ты родилась под знаком Рыб.',libra),true);
+});
