@@ -119,3 +119,16 @@ test('money guards distinguish unrelated negation and transit or other-house cla
     assert.equal(wrongMoneyRulerClaim(answer,singleRuler,'Как мне зарабатывать и что с партнёрами?'),false,answer);
   }
 });
+
+test('a strategy explanation is not replaced by an unrelated list of income rulers',async()=>{
+ const answer='Привет! Это название стратегии в материалах. Разберём её смысл простыми словами, без списка домов.';
+ let calls=0;
+ const chat=createLocalChat({model:'fixture',fetchImpl:async()=>{calls++;return stream(answer);}});
+ const result=await chat.answer({message:'Что означает финансовая стратегия «котик»?',history:[],forecast,chart});
+ assert.equal(result.answer,answer);assert.equal(calls,1);assert.equal(result.model,'fixture');
+ assert.equal(incompleteMoneyExplanation(answer,chart,'Объясни стратегию по стихиям.','medium'),false);
+ assert.equal(incompleteMoneyExplanation(answer,chart,'Объясни стратегию и обоих управителей денежного дома.','medium'),true);
+ assert.equal(incompleteMoneyExplanation(answer,chart,'Предложи мне стратегию заработка по карте.','medium'),true);
+ // Factual claims still undergo validation even when the question is about a strategy.
+ assert.equal(wrongMoneyRulerClaim('Луна в 11 доме.',chart,'Объясни финансовую стратегию.'),true);
+});

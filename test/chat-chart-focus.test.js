@@ -17,6 +17,7 @@ test('money prompt projection keeps actual rulers and source, validators retain 
   assert.equal(chart.houseRulers.length,12);
   assert.equal(chart.calculated.houseRulers.length,12);
   assert.equal(focusedChart(chart,'Как связаны деньги и отношения?'),chart);
+  for(const question of ['Какую профессию выбрать по натальной карте?','Какие мои сильные стороны в работе?','Как связаны мой доход и карьера?'])assert.equal(focusedChart(chart,question),chart,question);
   const old=process.env.ANNA_CHART_FOCUS;
   try{process.env.ANNA_CHART_FOCUS='26';
     const prompt=JSON.parse(chatPrompt({message:'Как мне зарабатывать?',history:[],forecast:{},chart}));

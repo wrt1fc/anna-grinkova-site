@@ -16,7 +16,7 @@ const evaluationDate=process.env.ANNA_EVAL_DATE??'2026-11-02';
 const chat=createLocalChat({model,learningSignals:true,onTrace:t=>traces.push(t)}),forecast=chatForecastContext(forecastForDate(evaluationDate)),rows=[];
 for(const c of cards){const started=performance.now();let r={},errors=[],failure=null;traces=[];try{
  const history=c.history??[],profile=c.chartFor?{birthUtc:c.chartFor.birthUtc,birthLatitude:c.chartFor.latitude,birthLongitude:c.chartFor.longitude}:null;
- const astro=c.learning?{chart:null}:chartContext(profile,c.question,new Date(evaluationDate+'T09:00:00Z'),{history});
+ const astro=chartContext(profile,c.question,new Date(evaluationDate+'T09:00:00Z'),{history});
  r=await chat.answer({message:c.question,history,forecast:forecastForQuestion(forecast,c.question),chart:astro.chart,length:c.length??'medium'});
  if(traces.length&&!traces.at(-1).signal.formatValid)errors.push('signal format invalid');
  if(unsafeChatAnswer(r.answer,evaluationDate)||hasFormalAddress(r.answer))errors.push('safety/style');

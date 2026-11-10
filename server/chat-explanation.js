@@ -32,14 +32,20 @@ function moneyRulers(chart, message) {
   return chart.calculated?.houseRulers?.find(item => item.house === 2)?.rulers ?? [];
 }
 
+// Explaining an element-based strategy is a separate topic from locating income rulers.
+const strategyExplanation = message => !/управител/iu.test(message) && (/стихи/iu.test(message)
+  || /что\s+(?:это\s+)?(?:такое|значит|означает)[^.!?]{0,45}стратеги|объясни[^.!?]{0,35}(?:смысл|название)[^.!?]{0,30}стратеги|объясни[^.!?]{0,25}стратеги[^.!?]{0,25}[«“"]/iu.test(message));
+
 // Subject house, rather than the house of a planet just named in a placement.
 const lastTopicHouse = text => [...text.matchAll(/(?:у|для|про)\s+(\d{1,2})(?:-?(?:го|й|м|х))?\s+дом/giu)].at(-1)?.[1];
 
 export function explanationGuidance(message, chart, mode) {
   if (mode === 'tarot') return '';
   const rulers = moneyRulers(chart, message);
-  const facts = rulers.map(r => `${POINT_NAMES[r.planet]} стоит в ${r.house} доме`).join('; ');
-  return '\n' + style.instructions.join(' ') + (facts ? `\nПроверенные управители денежного дома для этого ответа: ${facts}.` : '');
+  const strategy = strategyExplanation(message);
+  const facts = strategy ? '' : rulers.map(r => `${POINT_NAMES[r.planet]} стоит в ${r.house} доме`).join('; ');
+  return '\n' + style.instructions.join(' ') + (facts ? `\nПроверенные управители денежного дома для этого ответа: ${facts}.` : '')
+    + (strategy ? '\nТекущий вопрос о названии стратегии или стихиях: объясни именно это по материалам. Требование перечислить управителей денежного дома к такому ответу не относится.' : '');
 }
 
 export function wrongMoneyRulerClaim(answer, chart, message) {
@@ -68,6 +74,7 @@ export function wrongMoneyRulerClaim(answer, chart, message) {
 
 // Completeness of an explanation, separate from factual correctness and model quality metrics.
 export function incompleteMoneyExplanation(answer, chart, message, length) {
+  if (strategyExplanation(message)) return false;
   const rulers = moneyRulers(chart, message);
   if (rulers.length < 2) return false;
   // Bind each name to its own house in the same clause. A stray mention of the Sun's

@@ -4,7 +4,7 @@ import { ANSWER_LENGTHS, CHAT_TONES, DEFAULT_ANSWER_LENGTH, MAX_ANSWER_CHARS, TA
   chatForecastContext, forecastForQuestion, tarotReadingContext, asksAboutDay } from '../local-chat.js';
 import { SAFE_FALLBACK_ANSWER, copiesMaterials, unsafeChatAnswer } from '../chat-safety.js';
 import { DEFAULT_PLAN, planFor } from '../plans.js';
-import { isLearningQuestion, learningInvitation } from '../learning.js';
+import { learningInvitation } from '../learning.js';
 import { CRISIS_ANSWER, isCrisisMessage } from '../crisis.js';
 import { profilesWithAccess } from './profiles.js';
 import { asksAboutCompatibility, chartContext, findMaterials } from '../chat-grounding.js';
@@ -197,8 +197,7 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
           : general;
         context = chatForecastContext(forecast, chart.subject);
         const pair = compatibilityPair(chart, topicMessage);
-        astro = isLearningQuestion(message, historySigner.trusted(body.history ?? [])) ? { chart: null, queries: [] }
-          : chartContext(pair.primary, message, new Date(), { partner: pair.partner, history: body.history ?? [] });
+        astro = chartContext(pair.primary, message, new Date(), { partner: pair.partner, history: body.history ?? [] });
         // Only the text goes to the model; file names and scores stay on the server.
         materials = findMaterials(knowledge, message, astro.queries);
       }

@@ -91,7 +91,9 @@ test('chat grounds guest and account replies in the right daily context', async 
     assert.equal(JSON.stringify(seen[2].chart).includes('1990'), false);
     const noProfile = await signIn(store, request, 'nochart@example.com');
     await request('/api/chat', 'POST', { message: 'Что значит Венера в 7 доме?' }, noProfile);
-    assert.match(seen[3].chart.missing, /личном кабинете/);
+    assert.equal(seen[3].chart, null); // A general explanation does not require personal birth data.
+    await request('/api/chat', 'POST', { message: 'Что значит моя Венера в 7 доме?' }, noProfile);
+    assert.match(seen[4].chart.missing, /личном кабинете/);
   }, { chatWriter: { async answer(input) { seen.push(input); return { answer: 'Посмотрите на один доступный выбор и проверьте его последствия.' }; } } });
 });
 

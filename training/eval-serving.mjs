@@ -23,7 +23,7 @@ for(const card of fs.readFileSync(input,'utf8').trim().split(/\r?\n/u).map(JSON.
   try{
     const history=card.history??[],length=card.length??'medium';
     const profile=card.chartFor?{birthUtc:card.chartFor.birthUtc,birthLatitude:card.chartFor.latitude,birthLongitude:card.chartFor.longitude}:null;
-    const {chart}=card.learning?{chart:null}:chartContext(profile,card.question,new Date(date+'T09:00:00Z'),{history});
+    const {chart}=chartContext(profile,card.question,new Date(date+'T09:00:00Z'),{history});
     result=await chat.answer({message:card.question,history,forecast:forecastForQuestion(forecast,card.question),chart,length});
     errors.push(...learningAnswerProblems(result.answer,card));
     if(unsafeChatAnswer(result.answer,date)||hasFormalAddress(result.answer))errors.push('safety/style');

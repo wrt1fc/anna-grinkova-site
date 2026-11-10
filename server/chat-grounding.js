@@ -6,6 +6,7 @@ import { ELEMENT_NAMES, SIGN_PREPOSITIONAL, asksAboutMoney, elementOf, formulasF
 import { groundingQuestion, isPartnerPreferenceQuestion, isRelationshipQuestion } from './chat-topics.js';
 import { relationshipContext } from './relationship-context.js';
 import {isNatalSuggestion} from './chat-suggestions.js';
+import { isGeneralAstrologyQuestion } from './chat-grounding-scope.js';
 
 // Natal chart, transits, directions and Anna's money method for chart and money questions only;
 // birth date, place and email never reach the model.
@@ -33,6 +34,7 @@ function partnerForPrompt(own, partner) {
 
 export function chartContext(profile, message, now = new Date(), { partner = null, history = [] } = {}) {
   const question = groundingQuestion(message, history);
+  if (isGeneralAstrologyQuestion(question)) return { chart: null, queries: [] };
   // groundingQuestion appends this suffix only for a dependent follow-up. Match the
   // complete original editorial question, never arbitrary words inside a new message.
   const suggestionQuestion = question !== message ? question.slice(0, question.lastIndexOf('\nУточнение: ')) : question;

@@ -5,7 +5,8 @@ import {POINT_NAMES} from './astro-chart.js';
 // Explicit multi-topic questions keep the complete chart.
 export function focusedChart(chart, question) {
   if (!chart?.money || chart.partner || !asksAboutMoney(question)
-      || /отношени|партн[её]р|совместим|всю карт|всей карт|полный разбор|стратеги|стихи|аспект|транзит|дирекц/iu.test(question)) return chart;
+      || !/деньг|денеж|доход|зараб|зарплат|накоп|копить|трат|финанс/iu.test(question)
+      || /отношени|партн[её]р|совместим|професси|карьер|призвани|предназначени|\bmc\b|10(?:-?(?:й|го))?\s+дом|всю карт|всей карт|полный разбор|стратеги|стихи|аспект|транзит|дирекц/iu.test(question)) return chart;
   const second = chart.calculated?.houseRulers?.find(row => row.house === 2);
   if (!second?.rulers.length) return chart;
   const keys = new Set(second.rulers.map(row => row.planet));
