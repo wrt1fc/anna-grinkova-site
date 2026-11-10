@@ -116,7 +116,7 @@ if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  const result=prepare26(read(source),read(exposed));
  fs.mkdirSync(out,{recursive:true});
  for(const name of ['cards','holdout','regression'])fs.writeFileSync(join(out,name+'.jsonl'),result[name].map(c=>JSON.stringify(c)).join('\n')+'\n');
- const preparation={version:'plain-v26',parent:'anna-v19',train:result.cards.filter(c=>c.split==='train').length,eval:246,fresh:result.holdout.length,
+ const preparation={version:'plain-v26',rubricVersion:2,heldoutStatus:'excluded-from-training-not-blind-after-v19-baseline',parent:'anna-v19',train:result.cards.filter(c=>c.split==='train').length,eval:246,fresh:result.holdout.length,
   exposedRegression:result.regression.length,replay:result.replayCount,newTrain:result.newCount,newTheory:result.theoryNew,reusedTheory:result.theoryReused,
   moneyTrain:result.moneyTrain,moneyFresh:result.moneyFresh,moneyTrainingCharts:24,moneyFreshCharts:12,moneyCuspSigns:12,
   epochs:2,lr:1e-5,maxLength:4096,chartFocusVersion:26,promptLengthRevision:'2026-11-10',promptVersion:18,referenceVersion:19,

@@ -3,6 +3,7 @@
 import {sourceGroundedTheoryProblems} from './astro-reference.js';
 import {SIGN_RULERS} from './anna-method.js';
 import {POINT_NAMES} from './astro-chart.js';
+import {orbExample,orbCorrection,incorrectOrbClaim} from './theory-numerics.js';
 const groups={кардинальная:['Овен','Рак','Весы','Козерог'],фиксированная:['Телец','Лев','Скорпион','Водолей'],мутабельная:['Близнецы','Дева','Стрелец','Рыбы']};
 const modalityCorrection='Модальности: Овен, Рак, Весы и Козерог — кардинальные; Телец, Лев, Скорпион и Водолей — фиксированные; Близнецы, Дева, Стрелец и Рыбы — мутабельные. Это отдельная классификация от четырёх стихий.';
 export function astroFactProblems(answer,{question='',chart=null}={}){
@@ -15,6 +16,8 @@ export function astroFactProblems(answer,{question='',chart=null}={}){
   return {code:'incorrect_ruler_'+sign,correction:'По таблице методики Анны '+[sign,...Object.keys(SIGN_RULERS).filter(other=>other!==sign)].map(describe).join('; ')+'. Порядок главного управителя и соуправителя менять нельзя.'};
  });
  const add=(code,correction)=>{if(!issues.some(x=>x.code===code))issues.push({code,correction});};
+ const orb=orbExample(question);
+ if(incorrectOrbClaim(answer,orb))add('incorrect_orb_arithmetic',orbCorrection(orb));
  const clauses=answer.replace(/\s+/gu,' ').split(/[.!?;\n]/u);
  for(const clause of clauses){
   // Don't reject a direct denial, counterexample or clarification of the false claim.

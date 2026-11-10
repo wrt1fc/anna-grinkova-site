@@ -15,6 +15,52 @@ test('implicit ruler pairs and Sun-sign paraphrases retrieve their source facts'
  for(const question of ['Для учебы: знак Солнца указывает начало первого дома?','Как определить начало первого дома?'])assert.ok(astroReference(question)?.topics.includes('angles'),question);
 });
 
+test('Moon sign motion is retrieved for change and traversal morphology',()=>{
+ for(const question of [
+  'Проверяю утверждение: Луна обязана сменить знак к следующим суткам. Верно?',
+  'Может ли Луна пройти знак всего за один день?',
+  'Когда Луна перейдёт в другой знак?',
+  'Луна свой знак сменит к завтрашнему утру?',
+  'Почему Луна проходит по знаку больше суток?',
+ ]){
+  const reference=astroReference(question);
+  assert.ok(reference?.topics.includes('moonMotion'),question);
+  assert.match(reference.facts.join(' '),/два–три дня/u);
+ }
+ assert.equal(astroReference('Луна на фотографии напоминает красивый знак на небе.'),null);
+});
+
+test('zodiac qualities retrieve modalities without treating quality of life as astrology',()=>{
+ for(const question of [
+  'В учебнике нужно подписать качество Девы и Водолея. Какие подписи верны?',
+  'Какое качество у знака? Качество знака Тельца объясни.',
+  'Скорпион — какое качество?',
+  'Качества Близнецов и Рака в таблице модальностей различаются?',
+ ]){
+  const reference=astroReference(question);
+  assert.ok(reference?.topics.includes('modality'),question);
+  assert.match(reference.facts.join(' '),/Мутабельные: Близнецы, Дева/u);
+ }
+ for(const question of ['Как улучшить качество жизни?','Какое качество общения ценят люди?','Расскажи о качестве сна Девы.','Качество чувств волнует меня.'])assert.equal(astroReference(question),null,question);
+ assert.deepEqual(astroReference('Подпиши качество Девы и Водолея.').computed.signModalities,{Дева:'мутабельная',Водолей:'фиксированная'});
+});
+
+test('explicit angle exercises include computed difference and inclusion from the shared numeric source',()=>{
+ const examples=[
+  ['Фактический угол равен 118°, точный трин 120°, допуск 3°. Входит?',{actual:118,exact:120,limit:3,deviation:2,within:true}],
+  ['Угол: 66°, точный секстиль: 60°, предел: 4°. Как проверить?',{actual:66,exact:60,limit:4,deviation:6,within:false}],
+  ['Угол 88,5°, точный квадрат 90°, орбис 1,5°. Что получается?',{actual:88.5,exact:90,limit:1.5,deviation:1.5,within:true}],
+ ];
+ for(const [question,expected]of examples){
+  const reference=astroReference(question);
+  assert.deepEqual(reference.computed.orbExample,expected,question);
+  const fact=reference.facts.join(' ');
+  assert.ok(fact.includes(`составляет ${expected.deviation}°`),question);
+  assert.ok(fact.includes(`аспект ${expected.within?'входит':'не входит'} в этот допуск`),question);
+ }
+ for(const question of ['Угол 118°, точный трин 120°: как выбрать допуск?','Орбис 4°, но сам угол неизвестен.','Угол 500°, точный квадрат 90°, допуск 3°.'])assert.equal(astroReference(question)?.computed?.orbExample,undefined,question);
+});
+
 test('theory claims are checked against the ordered ruler source without card-specific wording',()=>{
  for(const answer of [
   'Уран управляет Овном.',

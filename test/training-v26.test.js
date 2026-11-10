@@ -68,6 +68,19 @@ test('48 new theory teachers and 12 fresh source controls have semantic requirem
  assert.ok(curriculum.train.some(c=>/Солнечный знак и асцендент/.test(c.question)));
 });
 
+test('equivalent wording does not turn negated facts or opposite conclusions into passing answers',()=>{
+ const cards=curriculum26().eval;
+ const orb=cards.find(c=>c.id.endsWith('orb-edge'));
+ assert.ok(learningAnswerProblems('Отклонение равно 5 градусам и равно пределу. Поэтому аспект не учитывается.',orb).length);
+ const relocation=cards.find(c=>c.id.endsWith('relocation'));
+ for(const answer of [
+  'Релокация сохраняет момент рождения и меняет место расчёта. Дата получения ключей его не заменяет. Геоцентрические аспекты сохраняются, а дома не меняются.',
+  'Релокация сохраняет момент рождения и меняет место расчёта. Дата получения ключей его не заменяет. Аспекты не сохраняются, а дома меняются.',
+ ])assert.ok(learningAnswerProblems(answer,relocation).length,answer);
+ const formula=cards.find(c=>c.id.endsWith('formula'));
+ assert.ok(learningAnswerProblems('Порог составляет три повтора. У 5#9 два повтора, у 5#11 тоже два. Разные формулы складывают, поэтому сильная формула уже есть.',formula).length);
+});
+
 test('prepare26 preserves v19 development and natal replay, labels exposed regression, leaves inputs immutable',()=>{
  const before=JSON.stringify(parent),exposed=[{id:'old-v25-control',family:'old-control',question:'Ранее использованный контроль',split:'eval'}];
  const prepared=prepare26(parent,exposed);

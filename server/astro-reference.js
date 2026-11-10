@@ -3,6 +3,7 @@
 // Rulers: the existing Anna-method table; these drafts are not an endorsement by Anna.
 import {SIGN_RULERS,SIGN_PREPOSITIONAL} from './anna-method.js';
 import {POINT_NAMES} from './astro-chart.js';
+import {orbExample,orbCorrection} from './theory-numerics.js';
 const facts={
  moonMotion:'Луна проходит один знак обычно примерно за два–три дня, а не обязательно каждый день. Конкретное положение и переход проверяют по эфемеридам на заданный момент. При неизвестном времени рождения знак нельзя выбирать наугад, если в эти сутки возможен переход.',
  modality:'Модальности: кардинальная — начало, фиксированная — сохранение, мутабельная — адаптация. По четыре знака в каждой. Кардинальные: Овен, Рак, Весы, Козерог. Фиксированные: Телец, Лев, Скорпион, Водолей. Мутабельные: Близнецы, Дева, Стрелец, Рыбы. Четыре стихии — другая классификация.',
@@ -17,7 +18,7 @@ const facts={
  health:'Астрология не выбирает препараты, лечение и финансовые риски. Сильная боль в груди может требовать немедленной медицинской помощи: разговор о карте или обычная запись к врачу не заменяют срочное обращение за помощью. Поддержка чувств допустима без гороскопа и без курса.'
 };
 const patterns={
- moonMotion:/Лун\p{L}*.{0,45}(?:меня\p{L}*.{0,12}знак|кажды\p{L}*.{0,15}(?:час|день|сут)|два.{0,8}дня)|как часто Луна/iu,
+ moonMotion:/Лун\p{L}*.{0,70}(?:(?:меня|смен|помен|переход|перей|проход|прой)\p{L}*.{0,20}знак|знак\p{L}*.{0,35}(?:меня|смен|помен|переход|перей|проход|прой)|кажды\p{L}*.{0,15}(?:час|день|сут)|два.{0,8}дня)|как часто Луна/iu,
  modality:/модальн|кардинальн|фиксированн|мутаб|три качеств|тр[её]х групп|знаки.{0,35}(?:начин|удерж|меняющ)|стихи/iu,
  orb:/орбис|допуск|отклонени.{0,25}(?:аспект|трин|угл)|аспект.{0,25}уг/iu,
  progression:/вторичн.{0,12}прогресс|прогресси|послеродов|дн(?:ей|и).{0,10}и лет/iu,
@@ -34,6 +35,9 @@ const signStems={Овен:'Ов(?:ен|на|ном|не)',Телец:'Тел(?:�
 const planetStems={sun:'Солнц\\p{L}*',moon:'Лун\\p{L}*',mercury:'Меркури\\p{L}*',venus:'Венер\\p{L}*',mars:'Марс\\p{L}*',jupiter:'Юпитер\\p{L}*',saturn:'Сатурн\\p{L}*',uranus:'Уран\\p{L}*',neptune:'Нептун\\p{L}*',pluto:'Плутон\\p{L}*'};
 const token=pattern=>`(?<!\\p{L})(?:${pattern})(?!\\p{L})`;
 const signPattern=Object.values(signStems).map(token).join('|');
+// "Quality" denotes modality when directly attached to a zodiac sign, not quality of life or feelings.
+const signQualityPattern=new RegExp(`качеств\\p{L}*\\s+(?:знак\\p{L}*\\s+)?(?:${signPattern})|(?:${signPattern})\\s*[,—–:-]?\\s*(?:како\\p{L}*\\s+)?качеств\\p{L}*`,'iu');
+const topicMatches=(topic,text)=>patterns[topic].test(text)||(topic==='modality'&&signQualityPattern.test(text))||(topic==='orb'&&orbExample(text)!==null);
 const planetPattern=Object.values(planetStems).map(token).join('|');
 const findKey=(forms,text)=>Object.keys(forms).find(key=>new RegExp(`^(?:${forms[key]})$`,'iu').test(text));
 const negativeClaim=text=>/(?:^|[\s,:—–-])(?:не|нет|неверно|ошибочно|ошибка|нельзя)(?:\s|[,.:—–-]|$)/iu.test(text);
@@ -95,14 +99,18 @@ export function sourceGroundedTheoryProblems(answer,{question=''}={}){
 
 export function astroReference(message,history=[]){
  if(/\b(?:SQL|Python|JavaScript)\b|напиш\p{L}* код|рецепт|переведи/iu.test(message))return null;
- let topics=Object.keys(patterns).filter(k=>patterns[k].test(message));
+ let topics=Object.keys(patterns).filter(k=>topicMatches(k,message));
  if(!topics.length&&/^(?:а |и )?(?:как это|что это|почему|хочу|мне|можно)/iu.test(message)){
   const prior=[...history].reverse().find(t=>t.role==='assistant')?.content??'';
-  topics=Object.keys(patterns).filter(k=>patterns[k].test(prior));
+  topics=Object.keys(patterns).filter(k=>topicMatches(k,prior));
  }
  topics=topics.slice(0,2);
  if(!topics.length)return null;
  const computed={};
+ if(topics.includes('orb')){
+  const example=orbExample(message);
+  if(example)computed.orbExample=example;
+ }
  if(topics.includes('ruler')){
   computed.mentionedPlanetRulerships=Object.fromEntries(Object.entries(POINT_NAMES).filter(([,name])=>new RegExp(name.slice(0,-1),'iu').test(message)).map(([key,name])=>[name,Object.entries(SIGN_RULERS).filter(([,ks])=>ks.includes(key)).map(([sign])=>sign)]).filter(([,signs])=>signs.length));
   for(const [sign,form]of Object.entries(SIGN_PREPOSITIONAL)){
@@ -113,7 +121,7 @@ export function astroReference(message,history=[]){
  }
  if(topics.includes('modality')){
   const groups={кардинальная:['Овен','Рак','Весы','Козерог'],фиксированная:['Телец','Лев','Скорпион','Водолей'],мутабельная:['Близнецы','Дева','Стрелец','Рыбы']};
-  computed.signModalities=Object.fromEntries(Object.entries(groups).flatMap(([kind,signs])=>signs.filter(s=>new RegExp(s,'iu').test(message)).map(s=>[s,kind])));
+  computed.signModalities=Object.fromEntries(Object.entries(groups).flatMap(([kind,signs])=>signs.filter(s=>new RegExp(token(signStems[s]),'iu').test(message)).map(s=>[s,kind])));
  }
  if(topics.includes('progression')){
   const age=/(?:мне|возраст(?:а|е)?|для)\s+(\d{1,3})/iu.exec(message)?.[1];
@@ -124,5 +132,5 @@ export function astroReference(message,history=[]){
   const progressed=/прогрессивн\p{L}*\s*(?:Солнц\p{L}*\s*)?(?:на\s+)?(\d+(?:[.,]\d+)?)/iu.exec(message)?.[1];
   if(natal&&progressed){const n=Number(natal.replace(',','.')),p=Number(progressed.replace(',','.'));if(n>=0&&n<360&&p>=0&&p<360)computed.solarArc={natalDegrees:n,progressedDegrees:p,arcDegrees:Number(((p-n+360)%360).toFixed(6)),operation:'разность по кругу; одинаковая дуга для натальных точек'};}
  }
- return {version:19,topics,facts:topics.map(k=>facts[k]+(k==='ruler'&&!computed.houseRulers?Object.entries(SIGN_RULERS).map(([s,ks])=>s+' — '+ks.map(k=>POINT_NAMES[k]).join('/')).join('; '):'')),...(Object.keys(computed).length?{computed}:{})};
+ return {version:19,topics,facts:topics.map(k=>facts[k]+(k==='ruler'&&!computed.houseRulers?Object.entries(SIGN_RULERS).map(([s,ks])=>s+' — '+ks.map(k=>POINT_NAMES[k]).join('/')).join('; '):'')+(k==='orb'&&computed.orbExample?' '+orbCorrection(computed.orbExample):'')),...(Object.keys(computed).length?{computed}:{})};
 }

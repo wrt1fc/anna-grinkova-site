@@ -1,7 +1,7 @@
 #!/bin/bash
 # One separate v26 candidate from immutable v19. Never changes the selected production model.
 set -Eeuo pipefail
-ROOT=/home/ubuntu/natal-training-v26-r1
+ROOT=/home/ubuntu/natal-training-v26-r2
 PY=/home/ubuntu/natal-bench/venv/bin/python
 PARENT=/home/ubuntu/natal-training-v19/anna-v19
 PARENT_SHA=309fb7c9b9f90fe691f41dbea4f00b37232dc54d1efedfd725a0174495820325
