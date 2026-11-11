@@ -153,10 +153,12 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
     // Paid daily reading/chat quotas stay separate; free question APIs share one welcome allowance.
     const quotaKind = `${tarot ? 'tarot' : 'chat'}:${user.id}`;
     // A database failure here must still free the slot and the per-user lock, or chat would stay blocked.
-    let plan, allowed, welcomeCharged = false, dailyCharged = false, round = 0;
+    let plan, allowed, welcomeCharged = false, dailyCharged = false, monthlyCharged = false, round = 0;
+    const month = day.slice(0, 7);
     const refundQuestion = async () => {
       if (welcomeCharged) { await store.refundWelcomeQuestion(user.id); welcomeCharged = false; }
       if (dailyCharged) { await store.refundDailyQuota(quotaKind, day); dailyCharged = false; }
+      if (monthlyCharged) { await store.refundMonthlyChatQuota(quotaKind, month); monthlyCharged = false; }
     };
     try {
       const planId = await store.getPlan(user.id);
@@ -172,8 +174,12 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
         }
       }
       const dailyNeeded = tarot || (planId !== DEFAULT_PLAN && user.chatUnlimited !== true);
-      allowed = !dailyNeeded || await store.consumeDailyQuota(quotaKind, day, tarot ? plan.dailyTarotReadings : plan.dailyChatMessages);
-      dailyCharged = dailyNeeded && allowed;
+      const monthlyNeeded = dailyNeeded && !tarot && !!plan.monthlyChatMessages;
+      allowed = !dailyNeeded || (monthlyNeeded
+        ? await store.consumeMonthlyChatQuota(quotaKind, month, plan.monthlyChatMessages)
+        : await store.consumeDailyQuota(quotaKind, day, tarot ? plan.dailyTarotReadings : plan.dailyChatMessages));
+      monthlyCharged = monthlyNeeded && allowed;
+      dailyCharged = dailyNeeded && !monthlyNeeded && allowed;
       if (!allowed) await refundQuestion();
       // Readings already given today; a failed one is given back, so its unseen cards are dealt again next time.
       if (allowed && tarot) round = (await store.dailyQuotaUsed(quotaKind, day)) - 1;
@@ -183,7 +189,9 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
       metrics.count(tarot ? 'tarot_daily_limit' : 'chat_daily_limit');
       return json(res, 429, tarot
         ? { error: 'tarot_daily_limit', message: `Расклады на сегодня по тарифу «${plan.label}» закончились. Возвращайся завтра.` }
-        : { error: 'chat_daily_limit', message: `Сообщения на сегодня по тарифу «${plan.label}» закончились. Возвращайся завтра.` });
+        : plan.monthlyChatMessages
+          ? { error: 'chat_daily_limit', quotaPeriod: 'month', message: '30 вопросов за месяц использованы. Лимит обновится первого числа следующего месяца по московскому времени.' }
+          : { error: 'chat_daily_limit', message: `Сообщения на сегодня по тарифу «${plan.label}» закончились. Возвращайся завтра.` });
     }
 
     const message = body.message.trim();

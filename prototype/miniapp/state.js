@@ -39,7 +39,7 @@ export function planLine() {
   const plan = app.plan?.plan;
   if (plan?.welcomeBonus?.active) return plan.welcomeBonus.remainingQuestions > 0
     ? `Бонус · осталось ${plan.welcomeBonus.remainingQuestions} из 3 вопросов` : 'Бонус использован · нужна подписка';
-  return plan ? `${plan.label} · ${plan.unlimitedChat ? 'безлимитные вопросы' : `${plan.dailyChatMessages} вопросов в день`}` : '';
+  return plan ? `${plan.label} · ${plan.unlimitedChat ? 'безлимитные вопросы' : `${plan.monthlyChatMessages || plan.dailyChatMessages} вопросов в ${plan.monthlyChatMessages ? "месяц" : "день"}`}` : '';
 }
 
 // The natal chart of the account, calculated once per profile.

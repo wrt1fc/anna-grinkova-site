@@ -13,6 +13,7 @@ export function publicPlan(name, user = null) {
   const plan = planFor(name);
   return { id: Object.hasOwn(PLANS, name) ? name : DEFAULT_PLAN, label: plan.label, maxPeople: plan.maxPeople,
     dailyChatMessages: user?.chatUnlimited === true ? null : plan.dailyChatMessages,
+    ...(plan.monthlyChatMessages ? { monthlyChatMessages: plan.monthlyChatMessages, chatQuotaPeriod: 'month' } : {}),
     ...(user?.chatUnlimited === true ? { unlimitedChat: true } : {}),
     dailyTarotReadings: plan.dailyTarotReadings, relations: plan.relations };
 }

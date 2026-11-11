@@ -228,7 +228,7 @@ function limitSheet(subscriptionRequired = false) {
   const body = node('div');
   body.append(node('p', 'sheet-text', subscriptionRequired
     ? 'Три бесплатных вопроса использованы. Чтобы продолжить разговор, оформи подписку. Натальная карта остаётся доступной.'
-    : 'На сегодня вопросы по подписке закончились. Новые появятся завтра.'));
+    : 'Вопросы за текущий период закончились. По подписке доступно 30 вопросов в месяц. Лимит обновляется первого числа по московскому времени.'));
   const subscribe = node('button', 'btn btn-gold', 'Оформить подписку'); subscribe.type = 'button';
   subscribe.addEventListener('click', () => { closeSheet(); app.go('plan'); });
   const later = node('button', 'btn btn-line', 'Понятно'); later.type = 'button';

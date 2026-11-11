@@ -109,6 +109,15 @@ const MIGRATIONS = [
   `
   ALTER TABLE users ADD COLUMN welcome_questions_used INTEGER NOT NULL DEFAULT 0 CHECK (welcome_questions_used BETWEEN 0 AND 3);
   `,
+  // 6: monthly chat counters must survive daily quota cleanup.
+  `
+  CREATE TABLE monthly_chat_quotas (
+    kind TEXT NOT NULL,
+    month TEXT NOT NULL,
+    used INTEGER NOT NULL DEFAULT 0 CHECK (used >= 0),
+    PRIMARY KEY (kind, month)
+  );
+  `,
 ];
 
 const MIGRATION_LOCK = 71_412_026; // any constant shared by all app servers

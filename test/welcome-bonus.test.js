@@ -47,7 +47,14 @@ test('free answers spend the welcome bonus once; failures refund it, paid and op
   const count=calls;cookie=await login();assert.equal((await request('/api/chat',{message:'Новый вход'})).status,402);assert.equal(calls,count);
   assert.equal((await request('/api/tarot/reading',{question:'Вопрос о моей работе',draw:0})).status,402);
   await store.setPlanPeriod(u.id,'subscription',Date.now()+86400000);
+  const month = new Intl.DateTimeFormat('sv-SE', {timeZone:'Europe/Moscow'}).format(new Date()).slice(0,7);
+  await store.q.run('INSERT INTO monthly_chat_quotas (kind,month,used) VALUES ($1,$2,29)',[`chat:${u.id}`,month]);
   assert.equal((await request('/api/chat',{message:'Ещё один вопрос'})).status,200);assert.equal((await store.welcomeBonus(u.id)).remainingQuestions,0);
+  const monthlyBlocked = await request('/api/chat',{message:'Вопрос сверх месячного лимита'});
+  assert.equal(monthlyBlocked.status,429);assert.equal(monthlyBlocked.data.quotaPeriod,'month');
+  await store.refundMonthlyChatQuota(`chat:${u.id}`,month);
+  fail=true;assert.equal((await request('/api/chat',{message:'Проверка возврата вопроса'})).status,503);fail=false;
+  assert.equal(await store.monthlyChatQuotaUsed(`chat:${u.id}`,month),29);
   await store.setPlanPeriod(u.id,'free');await store.q.run('UPDATE users SET chat_unlimited=TRUE WHERE id=$1',[u.id]);
   assert.equal((await request('/api/chat',{message:'Тестовый безлимит'})).status,200);
  }finally{await new Promise(r=>server.close(r));await store.close();}

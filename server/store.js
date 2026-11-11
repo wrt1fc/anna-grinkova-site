@@ -110,6 +110,18 @@ function createAccounts(q, transaction) {
       ON CONFLICT (kind, day) DO UPDATE SET used = daily_quotas.used + 1 WHERE daily_quotas.used < $3`, [kind, day, limit])) === 1;
   }
 
+  async function consumeMonthlyChatQuota(kind, month, limit) {
+    if (!Number.isSafeInteger(limit) || limit < 1) return false;
+    return (await q.run(`INSERT INTO monthly_chat_quotas (kind, month, used) VALUES ($1, $2, 1)
+      ON CONFLICT (kind, month) DO UPDATE SET used = monthly_chat_quotas.used + 1 WHERE monthly_chat_quotas.used < $3`, [kind, month, limit])) === 1;
+  }
+  async function refundMonthlyChatQuota(kind, month) {
+    await q.run('UPDATE monthly_chat_quotas SET used = used - 1 WHERE kind = $1 AND month = $2 AND used > 0', [kind, month]);
+  }
+  async function monthlyChatQuotaUsed(kind, month) {
+    return (await q.one('SELECT used FROM monthly_chat_quotas WHERE kind = $1 AND month = $2', [kind, month]))?.used ?? 0;
+  }
+
   // The challenge row is locked, so a code cannot be used twice by parallel requests.
   async function consumeChallenge(challengeHash, codeHash, purpose, now = Date.now(), nextPasswordHash = null, expectedUserId = null) {
     return transaction(async (tx) => {
@@ -155,6 +167,7 @@ function createAccounts(q, transaction) {
         await tx.q.run(`DELETE FROM ${table} WHERE user_id = $1`, [userId]);
       }
       await tx.q.run('DELETE FROM auth_challenges WHERE user_id = $1 OR email = $2', [userId, user.email]);
+      await tx.q.run('DELETE FROM monthly_chat_quotas WHERE kind = $1', [`chat:${userId}`]);
       const { count } = await tx.q.one('SELECT COUNT(*) AS count FROM orders WHERE user_id = $1', [userId]);
       if (count === 0) {
         await tx.q.run('DELETE FROM users WHERE id = $1', [userId]);
@@ -199,7 +212,7 @@ function createAccounts(q, transaction) {
   async function lockUser(userId) { await q.one('SELECT id FROM users WHERE id = $1 FOR UPDATE', [userId]); }
 
   return { createUser, findUserByEmail, findUserById, saveSession, userForSession, deleteSession, saveDisplayName,
-    getBirthProfile, saveBirthProfile, issueChallenge, deleteChallenge, consumeChallenge, consumeDailyQuota, dailyQuotaUsed, refundDailyQuota, lockUser, pruneExpired, deleteAccount, exportAccount };
+    getBirthProfile, saveBirthProfile, issueChallenge, deleteChallenge, consumeChallenge, consumeDailyQuota, dailyQuotaUsed, refundDailyQuota, consumeMonthlyChatQuota, refundMonthlyChatQuota, monthlyChatQuotaUsed, lockUser, pruneExpired, deleteAccount, exportAccount };
 }
 
 function storeApi(q, transaction) {

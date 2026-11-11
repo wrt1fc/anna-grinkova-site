@@ -4,7 +4,7 @@ import { $, app, birth, planLine, refreshPlan, screenEl, setNote, visitorName } 
 import { closeSheet, node, openSheet } from './sheet.js';
 
 const PERIOD_LABEL = { 30: 'На месяц', 90: 'На 3 месяца' };
-const FEATURES = ['Прогноз на день и на неделю', 'Больше вопросов Фортуне каждый день', 'Разбор натальной карты', 'Ответ по методике Фортуны'];
+const FEATURES = ['Прогноз на день и на неделю', '30 вопросов Фортуне в месяц', 'Разбор натальной карты', 'Ответ по методике Фортуны'];
 const PAY_HOST = 'payform.ru';
 const POLL_MS = 4000;
 const price = (value) => `${new Intl.NumberFormat('ru-RU').format(value)} ₽`;
@@ -73,7 +73,7 @@ function watchPayment() {
     stop();
     await refreshPlan();
     $('#paid-text').textContent = plan.expiresAt ? `Подписка активна до ${new Date(plan.expiresAt).getDate()} ${MONTHS_GEN[new Date(plan.expiresAt).getMonth()]}` : 'Подписка активна';
-    $('#paid-count').textContent = plan.unlimitedChat ? '∞' : String(plan.dailyChatMessages);
+    $('#paid-count').textContent = plan.unlimitedChat ? '∞' : String(plan.monthlyChatMessages || plan.dailyChatMessages);
     app.go('paid');
   }, POLL_MS);
 }
@@ -100,7 +100,7 @@ export async function enterProfile() {
   const until = sub.ok && sub.data.plan?.expiresAt && sub.data.plan.id !== 'free' ? `до ${formatDate(new Date(sub.data.plan.expiresAt).toISOString())}` : '';
   $('#profile-plan').textContent = [plan?.label, until].filter(Boolean).join(' · ');
   $('#profile-quota').textContent = plan?.welcomeBonus?.active ? planLine()
-    : plan ? (plan.unlimitedChat ? 'Безлимитные вопросы' : `${plan.dailyChatMessages} вопросов в день`) : '';
+    : plan ? (plan.unlimitedChat ? 'Безлимитные вопросы' : `${plan.monthlyChatMessages || plan.dailyChatMessages} вопросов в ${plan.monthlyChatMessages ? "месяц" : "день"}`) : '';
   const profile = birth();
   $('#profile-chart').textContent = profile ? `${visitorName()} · ${formatDate(profile.birthDate)}, ${profile.birthPlace}` : 'Данные рождения пока не заполнены.';
 }

@@ -11,7 +11,8 @@
     "subscription": {
       "label": "Подписка",
       "maxPeople": 1,
-      "dailyChatMessages": 60,
+      "dailyChatMessages": 0,
+      "monthlyChatMessages": 30,
       "dailyTarotReadings": 5,
       "relations": []
     },
