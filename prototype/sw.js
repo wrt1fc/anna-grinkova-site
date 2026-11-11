@@ -2,7 +2,7 @@
 // Pages: network first, the last copy when offline. Static files: served from cache and refreshed in the background.
 // API calls (auth, chat stream, payments) are never cached or intercepted.
 // v3: /index.html now redirects to /, and a redirected response cannot answer a page load, so only / is kept.
-const CACHE = 'anna-shell-v4';
+const CACHE = 'anna-shell-v5';
 const SHELL = ['/', './manifest.webmanifest', './assets/app/icon-192.png', './assets/institute-emblem-gold.svg'];
 const STATIC = /\.(?:css|js|svg|png|jpg|webp|woff2)$/;
 const OFFLINE_PAGE = `<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">

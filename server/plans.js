@@ -1,4 +1,5 @@
 import planConfig from '../config/plans.json' with { type: 'json' };
+import { moscowDate } from './daily-forecast.js';
 
 // maxPeople counts the account owner too: "partner" is the owner plus one, "family" the owner plus two.
 export const PLANS = planConfig.plans;
@@ -19,6 +20,11 @@ export function publicPlan(name, user = null) {
 }
 
 export async function accountPlan(store, name, user) {
-  return { ...publicPlan(name, user), welcomeBonus: { ...await store.welcomeBonus(user.id),
+  const month = moscowDate().slice(0, 7);
+  const monthly = planFor(name).monthlyChatMessages;
+  const used = monthly ? await store.monthlyChatQuotaUsed(`chat:${user.id}`, month) : 0;
+  const [year, monthNumber] = month.split('-').map(Number);
+  const next = new Date(Date.UTC(year, monthNumber, 1) - 3 * 3600000);
+  return { ...publicPlan(name, user), ...(monthly ? { chatUsage: { used, limit: monthly, remaining: Math.max(0, monthly - used), resetsAt: next.toISOString() } } : {}), welcomeBonus: { ...await store.welcomeBonus(user.id),
     active: name === DEFAULT_PLAN && user.chatUnlimited !== true } };
 }

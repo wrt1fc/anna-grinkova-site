@@ -64,3 +64,10 @@
 .telegram-miniapp .screen { padding-top: max(16px, var(--telegram-top, 0px), env(safe-area-inset-top)); }
 .telegram-miniapp .screen.has-nav { padding-bottom: calc(var(--nav-h) + 40px + max(var(--telegram-bottom, 0px), env(safe-area-inset-bottom))); }
 .telegram-miniapp .tabbar { bottom: max(12px, var(--telegram-bottom, 0px), env(safe-area-inset-bottom)); }
+
+.profile-payments { margin-top: 24px; }
+.payment-history-row { padding: 16px 0; border-bottom: 1px solid #6c542d; }
+.payment-history-row:last-child { border-bottom: 0; }
+.person-natal-wheel { width: min(100%, 420px); aspect-ratio: 1; margin: 16px auto; }
+.person-natal-section { padding: 18px 0; border-top: 1px solid #6c542d; }
+.person-natal-section h3 { margin: 0 0 8px; }

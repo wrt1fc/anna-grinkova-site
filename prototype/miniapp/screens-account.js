@@ -1,6 +1,7 @@
 // Subscription, payment, profile and the list of close people.
 import { api, formatDate, MONTHS_GEN } from './api.js';
 import { $, app, birth, planLine, refreshPlan, screenEl, setNote, visitorName } from './state.js?v=3';
+import { drawWheel } from './wheel.js';
 import { closeSheet, node, openSheet } from './sheet.js';
 
 const PERIOD_LABEL = { 30: 'На месяц', 90: 'На 3 месяца' };
@@ -101,6 +102,24 @@ export async function enterProfile() {
   $('#profile-plan').textContent = [plan?.label, until].filter(Boolean).join(' · ');
   $('#profile-quota').textContent = plan?.welcomeBonus?.active ? planLine()
     : plan ? (plan.unlimitedChat ? 'Безлимитные вопросы' : `${plan.monthlyChatMessages || plan.dailyChatMessages} вопросов в ${plan.monthlyChatMessages ? "месяц" : "день"}`) : '';
+  const current = sub.ok ? sub.data.plan : plan;
+  if (current?.chatUsage && !current.unlimitedChat) {
+    const q = current.chatUsage;
+    const reset = new Intl.DateTimeFormat('ru-RU', {timeZone:'Europe/Moscow', day:'numeric', month:'long'}).format(new Date(q.resetsAt));
+    $('#profile-quota').textContent = `Осталось ${q.remaining} из ${q.limit} вопросов · обновление ${reset}`;
+  }
+  const orders = $('#profile-orders');
+  const history = sub.ok ? (sub.data.orders ?? []) : [];
+  orders.replaceChildren();
+  if (!sub.ok) orders.append(node('p','block-note','Не удалось загрузить историю оплат. Открой профиль повторно.'));
+  else if (!history.length) orders.append(node('p','block-note','Здесь появятся ваши оплаты подписки. Пока оплат нет.'));
+  else for (const order of history) {
+    const row = node('div','payment-history-row');
+    const status = {paid:'Оплачено',pending:'Ожидает оплаты',canceled:'Отменено',failed:'Не оплачено',refunded:'Возврат'}[order.status] ?? 'Обрабатывается';
+    const date = new Intl.DateTimeFormat('ru-RU',{timeZone:'Europe/Moscow',day:'numeric',month:'long',year:'numeric'}).format(new Date(order.paidAt ?? order.createdAt));
+    row.append(node('strong','',`${order.periodDays} дней · ${new Intl.NumberFormat('ru-RU',{style:'currency',currency:order.currency || 'RUB'}).format(order.amount)}`),node('p','block-note',`${date} · ${status}`));
+    orders.append(row);
+  }
   const profile = birth();
   $('#profile-chart').textContent = profile ? `${visitorName()} · ${formatDate(profile.birthDate)}, ${profile.birthPlace}` : 'Данные рождения пока не заполнены.';
 }
@@ -128,13 +147,29 @@ export async function enterPeople() {
   list.replaceChildren(...rows);
   const free = data.plan.relations.length === 0;
   $('#people-add').dataset.locked = String(free);
-  $('#people-note').textContent = free ? 'Добавлять близких можно по подписке.' : `Можно добавить до ${data.plan.maxPeople} карт по подписке`;
+  $('#people-note').textContent = free ? 'Добавлять близких можно по подписке.' : `Можно добавить ${data.plan.maxPeople - 1} близкого человека. Вопросы используют общий лимит подписки.`;
   app.relations = { allowed: data.plan.relations, labels: data.relationLabels };
 }
 
 function personSheet(item, labels) {
   const body = node('div');
   body.append(node('p', 'sheet-text', `${labels?.[item.relation] ?? item.relation} · ${formatDate(item.birthDate)}, ${item.birthTime}, ${item.birthPlace}`));
+  const chart = node('button','btn btn-gold','Натальная карта'); chart.type='button';
+  chart.disabled = !!item.locked;
+  chart.addEventListener('click', async () => {
+    chart.disabled=true;
+    const result=await api(`/api/natal/profiles/${item.id}`).catch(()=>({ok:false,data:{}}));
+    chart.disabled=false;
+    if (!result.ok) { body.append(node('p','form-note',result.data.message || 'Не удалось загрузить карту.')); return; }
+    const view=node('div','person-natal-view');
+    const wheel=node('div','person-natal-wheel');view.append(wheel);drawWheel(wheel,result.data.natal);
+    for(const section of result.data.natal.sections) {
+      const entry=node('article','person-natal-section');entry.append(node('h3','',section.title),node('p','gold',section.sign),node('p','',section.lead),node('p','block-note',section.text));view.append(entry);
+    }
+    openSheet(`Натальная карта · ${item.label}`,view);
+  });
+  body.append(chart);
+  if(item.locked) body.append(node('p','hint','Для просмотра карты нужна действующая подписка.'));
   const remove = node('button', 'btn btn-line', 'Удалить карту'); remove.type = 'button';
   remove.addEventListener('click', async () => {
     const { ok } = await api(`/api/profiles/${item.id}`, { method: 'DELETE' });

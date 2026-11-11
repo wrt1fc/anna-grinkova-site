@@ -10,11 +10,11 @@
     },
     "subscription": {
       "label": "Подписка",
-      "maxPeople": 1,
+      "maxPeople": 2,
       "dailyChatMessages": 0,
       "monthlyChatMessages": 30,
       "dailyTarotReadings": 5,
-      "relations": []
+      "relations": ["partner", "child", "parent", "sibling", "other"]
     },
     "individual": {
       "label": "Индивидуальный",

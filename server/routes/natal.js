@@ -1,5 +1,6 @@
 import { parseBirthInput } from '../birth-input.js';
 import { publicNatal } from '../natal-public.js';
+import { profilesWithAccess } from './profiles.js';
 
 const DEFAULT_BIRTH_TIME = '12:00';
 
@@ -7,6 +8,15 @@ const DEFAULT_BIRTH_TIME = '12:00';
 // birth data can ask for its own chart without sending anything.
 export function createNatalRoutes({ store, metrics }) {
   return async function handleNatalRoutes({ req, res, path, user, json, readJson }) {
+    const person = /^\/api\/natal\/profiles\/(\d{1,12})$/.exec(path);
+    if (person && req.method === 'GET') {
+      if (!user) return json(res, 401, { error: 'login_required' }), true;
+      const profile = (await profilesWithAccess(store, user.id)).find(p => p.id === Number(person[1]));
+      if (!profile) return json(res, 404, { error: 'not_found' }), true;
+      if (profile.locked) return json(res, 403, { error: 'plan_limit', message: 'Карта близкого доступна по подписке.' }), true;
+      if (!profile.birthUtc) return json(res, 400, { error: 'missing_birth_data' }), true;
+      return json(res, 200, { profile, natal: publicNatal({ birthUtc: profile.birthUtc, latitude: profile.birthLatitude, longitude: profile.birthLongitude }) }), true;
+    }
     if (path === '/api/natal' && req.method === 'POST') {
       const body = await readJson(req);
       const timeKnown = body?.timeUnknown !== true;

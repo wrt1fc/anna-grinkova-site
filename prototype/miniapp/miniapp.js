@@ -7,7 +7,7 @@ import { pickCity, pickDate, pickTime } from './pickers.js';
 import { bindInfo, enterDay, enterHome, enterNatal, enterWeek } from './screens-info.js?v=5';
 import { bindChat, enterChat, resetChat } from './screens-chat.js?v=10';
 import { bindCard, enterCard, resetCard } from './screens-card.js?v=9';
-import { bindPay, bindPeople, enterPay, enterPeople, enterPlan, enterProfile } from './screens-account.js?v=5';
+import { bindPay, bindPeople, enterPay, enterPeople, enterPlan, enterProfile } from './screens-account.js?v=6';
 
 const PUBLIC = new Set(['home', 'day', 'week', 'card', 'chat', 'login', 'register', 'code', 'help', 'install']);
 const AUTH_SCREENS = new Set(['login', 'register', 'code']);
