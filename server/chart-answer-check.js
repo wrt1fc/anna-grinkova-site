@@ -71,9 +71,9 @@ export function wrongCalculatedClaim(answer, chart) {
     return /транзит|дирекц|прогресс/iu.test(answer.slice(start,end<0?undefined:index+end));
   };
   const point = (name) => { const key=keyFor(name); return facts.positions[key] ?? facts.angles?.[key]; };
-  const claimSign = new RegExp(`(${PLANET})(?: и (${PLANET}))?(?: у тебя)?(?: стоит| находится)? (?:в|во) (${SIGN})(?!\\p{L})`, 'giu');
+  const claimSign = new RegExp(`(${PLANET})(?: и (${PLANET}))?(?: у тебя)?(?: стоит| стоят| находится| находятся)? (?:в|во) (${SIGN})(?!\\p{L})`, 'giu');
   for (const m of answer.matchAll(claimSign)) if (!timed(m.index)) for (const name of [m[1],m[2]].filter(Boolean)) if (point(name)?.sign !== signFor(m[3])) return true;
-  const claimHouse = new RegExp(`(${PLANET})(?: и (${PLANET}))?(?: у тебя)?\\s*(?:[,—–-]\\s*)?(?:(?:стоит|находится)\\s+)?(?:в|во) (?:${SIGN} (?:в|во) )?(${HOUSE}) доме`, 'giu');
+  const claimHouse = new RegExp(`(${PLANET})(?: и (${PLANET}))?(?: у тебя)?\\s*(?:[,—–-]\\s*)?(?:(?:стоит|стоят|находится|находятся)\\s+)?(?:в|во) (?:${SIGN} (?:в|во) )?(${HOUSE}) доме`, 'giu');
   for (const m of answer.matchAll(claimHouse)) if (!timed(m.index)) for (const name of [m[1],m[2]].filter(Boolean)) if (point(name)?.house !== (ORDINALS[m[3].toLowerCase()] ?? parseInt(m[3],10))) return true;
   const checkAspect = (a,b,aspect) => facts.aspects.some(f=> f.aspect===aspectFor(aspect)
     && ((f.first===keyFor(a)&&f.second===keyFor(b))||(f.first===keyFor(b)&&f.second===keyFor(a))));
@@ -96,12 +96,20 @@ export function wrongCalculatedClaim(answer, chart) {
   if (Array.isArray(rulerFacts)) {
     // This parser is intentionally bounded to named ruler assertions. House
     // positions in the intervening explanation are not new ruler declarations.
-    const rulerAnswer = answer.replace(/‘[^’]*’|'[^'\n]*'/gu,' ').replace(/[^.!?;\n]+/gu, sentence => {
+    const rulerAnswer = answer.replace(/‘[^’]*’|'[^'\n]*'/gu, quoted => quoted.replace(/[^\r\n]/g,' ')).replace(/[^.!?;\n]+/gu, sentence => {
       // Framing «если говорить о личности» does not make the preceding ruler
       // assertion hypothetical; a real «если бы куспид...» still does.
       const assertion = sentence.replace(/(?<!\p{L})если\s+(?:говорить|смотреть|сказать\s+проще)(?!\p{L})/giu,' ');
-      return /(?<!\p{L})(?:если|допустим|предположим|неверно|неправда|не факт)(?!\p{L})|(?:не|нельзя)\s+(?:считать|утверждать|говорить)|(?<!\p{L})не\s+управител/iu.test(assertion) ? ' ' : sentence;
+      return /(?<!\p{L})(?:если|допустим|предположим|неверно|неправда|не факт)(?!\p{L})|(?:не|нельзя)\s+(?:считать|утверждать|говорить)|(?<!\p{L})не\s+управител/iu.test(assertion) ? sentence.replace(/[^\r\n]/g,' ') : sentence;
     });
+    // A collective placement asserts the house of every ruler. Do not apply
+    // this to named lists where each planet has its own separate placement.
+    const collective = new RegExp(`управители\\s+(${RULER_HOUSE})\\s+дома\\s+(?:у тебя\\s+)?(?:стоят|находятся|расположены)\\s+(?:в|во)\\s+(${HOUSE})\\s+доме`,'giu');
+    for (const m of rulerAnswer.matchAll(collective)) {
+      if (timed(m.index)) continue;
+      const entry=rulerFacts.find(item=>item.house===houseNumber(m[1]));
+      if(entry&&entry.rulers.some(ruler=>ruler.house!==houseNumber(m[2]))) return true;
+    }
     const rulerName = new RegExp(`управител\\p{L}*\\s+(${RULER_HOUSE})\\s*дома\\s*(?:—|–|-|:|,)?\\s*(?:это\\s+)?(${PLANET})(?:\\s*(?:,|и)\\s*(${PLANET}))?`, 'giu');
     for (const m of rulerAnswer.matchAll(rulerName)) {
       const entry = rulerFacts.find((item) => item.house === houseNumber(m[1]));

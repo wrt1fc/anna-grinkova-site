@@ -8,6 +8,15 @@ import { forecastForDate } from '../server/daily-forecast.js';
 const profile={birthUtc:'1990-05-15T09:30:00Z',birthTime:'12:30',birthLatitude:55.75,birthLongitude:37.62};
 const chart=chartContext(profile,'Что означает мой Сатурн?').chart;
 
+test('plural planetary and collective ruler placements cannot hide a wrong house or sign',()=>{
+ const subject={calculated:{positions:{sun:{sign:'Телец',house:11},moon:{sign:'Близнецы',house:12}},aspects:[],houseRulers:[{house:2,sign:'Рак',rulers:[{planet:'moon',house:12},{planet:'sun',house:11}]}]}};
+ for(const answer of ['Луна и Солнце стоят в 12 доме.','Луна и Солнце находятся в Тельце.','Управители 2 дома стоят в 11 доме.'])assert.equal(wrongCalculatedClaim(answer,subject),true,answer);
+ for(const answer of ['Луна стоит в 12 доме, Солнце находится в 11 доме.','Управители 2 дома: Луна стоит в 12 доме, Солнце стоит в 11 доме.','Луна и Солнце не стоят в 12 доме.','Транзитные Луна и Солнце стоят в 12 доме.'])assert.equal(wrongCalculatedClaim(answer,subject),false,answer);
+ for(const answer of ['Неверно, что управители 2 дома стоят в 11 доме.','Если управители 2 дома стоят в 11 доме, это другой пример, не твоя карта.'])assert.equal(wrongCalculatedClaim(answer,subject),false,answer);
+ assert.equal(wrongCalculatedClaim('Неверно, что это приговор. Транзитные управители 2 дома стоят в 11 доме.',subject),false);
+ assert.equal(wrongCalculatedClaim('Неверно, что это приговор. Управители 2 дома стоят в 11 доме.',subject),true);
+});
+
 test('explicit natal signs, angles, houses and aspects are compared with calculated facts',()=>{
   for(const answer of ['Сатурн у тебя в Овне.','Луна в Козероге в 8 доме.','Сатурн в восьмом доме.',
     'Трин Солнца и MC помогает карьере.','Солнце и асцендент соединены с MC.',
