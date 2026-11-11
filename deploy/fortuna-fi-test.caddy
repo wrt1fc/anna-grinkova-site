@@ -1,10 +1,11 @@
-https://fortuna-nl.144-31-92-162.sslip.io:9443 {
+https://fortuna-fi.13-143-164-147.sslip.io:9443 {
     tls {
         alpn http/1.1
     }
     header X-Robots-Tag "noindex, nofollow"
-    header X-Fortuna-Relay "nl-test"
-    @sameorigin header Origin https://fortuna-nl.144-31-92-162.sslip.io:9443
+    header -Alt-Svc
+    header X-Fortuna-Relay "fi-test"
+    @sameorigin header Origin https://fortuna-fi.13-143-164-147.sslip.io:9443
     request_header @sameorigin Origin https://xn--80axddamoif3i.xn--p1ai
     reverse_proxy https://xn--80axddamoif3i.xn--p1ai {
         header_up Host xn--80axddamoif3i.xn--p1ai
