@@ -2,6 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,mkdtempSync,writeFileSync,rmSync} from 'node:fs';
 import {join,resolve} from 'node:path';
+import {tmpdir} from 'node:os';
 import {execFileSync} from 'node:child_process';
 import {deriveV27Grading,regradeV27Fresh,v27GradingRevision} from '../training/v27-grading-revision.mjs';
 import {learningAnswerProblems} from '../training/learning-quality.mjs';
@@ -106,7 +107,7 @@ test('fresh-only sidecar preserves raw attempts, failures, non-content errors an
 });
 
 test('CLI consumes the saved derivation and refuses changed source bytes, code hashes and saved targets',()=>{
- const root=mkdtempSync(join(process.env.TMPDIR||'E:/ai-site-intl-tmp','v27-grading-cli-'));
+ const root=mkdtempSync(join(tmpdir(),'v27-grading-cli-'));
  try{
   const card=make('support'),cards=join(root,'original.jsonl'),report=join(root,'old-report.json'),frozen=join(root,'frozen');
   writeFileSync(cards,JSON.stringify(card)+'\n');
