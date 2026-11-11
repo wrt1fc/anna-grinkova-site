@@ -5,8 +5,8 @@ import { $, app, birth, refreshMe, screenEl, setNote } from './state.js?v=3';
 import { node } from './sheet.js';
 import { pickCity, pickDate, pickTime } from './pickers.js';
 import { bindInfo, enterDay, enterHome, enterNatal, enterWeek } from './screens-info.js?v=5';
-import { bindChat, enterChat, resetChat } from './screens-chat.js?v=11';
-import { bindCard, enterCard, resetCard } from './screens-card.js?v=9';
+import { bindChat, enterChat, resetChat } from './screens-chat.js?v=12';
+import { bindCard, enterCard, resetCard } from './screens-card.js?v=10';
 import { bindPay, bindPeople, enterPay, enterPeople, enterPlan, enterProfile } from './screens-account.js?v=6';
 
 const PUBLIC = new Set(['home', 'day', 'week', 'card', 'chat', 'login', 'register', 'code', 'help', 'install']);

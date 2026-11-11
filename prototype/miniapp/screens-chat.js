@@ -36,6 +36,20 @@ function syncHistoryControls() {
 
 const transcript = () => $('#transcript');
 const input = () => $('#chat-input');
+let scrollPending = false;
+
+// Scroll to the natural end, beyond the sticky composer, after layout updates.
+function scrollChatToEnd() {
+  if (scrollPending) return;
+  scrollPending = true;
+  const selected = contextSnapshot();
+  requestAnimationFrame(() => {
+    scrollPending = false;
+    if (sameContext(selected) && !$('[data-screen="chat"]').hidden) {
+      $('#chat-end').scrollIntoView({ block: 'end', behavior: 'instant' });
+    }
+  });
+}
 
 function clearTranscript() {
   transcript().querySelectorAll('.msg:not(#chat-welcome)').forEach((row) => row.remove());
@@ -48,7 +62,7 @@ function say(role, text, className = '') {
   row.append(bubble);
   transcript().hidden = false;
   transcript().append(row);
-  row.scrollIntoView({ block: 'end', behavior: 'smooth' });
+  scrollChatToEnd();
   return bubble;
 }
 
@@ -275,7 +289,7 @@ async function send(text) {
     let final = null;
     for await (const { event, data } of readEvents(response)) {
       if (!sameContext(selected)) return;
-      if (event === 'delta') { bubble.classList.remove('is-typing'); bubble.textContent += data.text; bubble.scrollIntoView({ block: 'end' }); }
+      if (event === 'delta') { bubble.classList.remove('is-typing'); bubble.textContent += data.text; scrollChatToEnd(); }
       else if (event === 'done') final = data;
       else if (event === 'error') throw new Error(data.message || 'Не удалось получить ответ.');
     }
@@ -309,6 +323,7 @@ async function send(text) {
       busy = false;
       setIdeasBusy(false);
       syncHistoryControls();
+      scrollChatToEnd();
       api('/api/plan').then(({ ok, data }) => { if (ok && sameContext(selected)) { app.plan = data; $('#chat-quota').textContent = planLine(); } }).catch(() => {});
     }
   }
@@ -366,7 +381,12 @@ export function bindChat() {
   $('#chat-ask').addEventListener('click', () => showComposer(true));
   bindIdeas(() => ({ owner: app.me?.user?.id, profileId: personId }), (question) => {
     if (busy) return;
-    showComposer(true); input().value = question; autosize(); input().focus();
+    $('#chat-suggestions').open = false;
+    showComposer(true, false); input().value = question; autosize(); input().focus({ preventScroll: true });
+    scrollChatToEnd();
+  });
+  $('#chat-suggestions').addEventListener('toggle', () => {
+    if ($('#chat-suggestions').open) scrollChatToEnd();
   });
   $('#person-switch').addEventListener('click', peopleSheet);
   $('#chat-history-toggle').addEventListener('click', toggleHistoryConsent);

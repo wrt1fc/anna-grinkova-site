@@ -12,7 +12,7 @@ function harness() {
       append(...items) { for (const item of items) item.parent = this; this.children.push(...items); }, replaceChildren(...items) { this.children = items; },
       querySelectorAll() { return this.children.filter((item) => item.className?.startsWith('msg ')); },
       remove() { if (this.parent) this.parent.children = this.parent.children.filter((item) => item !== this); },
-      focus() {}, scrollIntoView() {}, closest() { return this.parent ?? this; } };
+      focus() {}, scrollIntoView(options) { this.scrolls ??= []; this.scrolls.push(options); }, closest() { return this.parent ?? this; } };
   }
   const $ = (selector) => { if (!elements.has(selector)) elements.set(selector, element()); return elements.get(selector); };
   const requests = [], storage = new Map();
@@ -20,17 +20,49 @@ function harness() {
   const context = vm.createContext({ $, app, node: (_tag, _cls, text = '') => Object.assign(element(), { textContent: text, className: _cls }),
     api: (path, options) => new Promise((resolve, reject) => requests.push({ path, options, resolve, reject })),
     readEvents: async function* () {}, planLine: () => '', visitorName: () => 'Я',
-    bindIdeas() {}, refreshIdeas() {}, resetIdeas() {}, setIdeasBusy() {}, activeIdeaDraw: () => null,
+    bindIdeas(_context, select) { context.selectIdea = select; }, refreshIdeas() {}, resetIdeas() {}, setIdeasBusy() {}, activeIdeaDraw: () => null,
+    requestAnimationFrame: (callback) => { frames.push(callback); },
     closeSheet() {}, openSheet: (_title, body) => { context.sheet = body; },
     localStorage: { getItem: (key) => storage.get(key), setItem: (key, value) => storage.set(key, value) },
     AbortController, Intl, Date, fetch: async () => { throw new Error('network'); },
   });
+  const frames = [];
+  context.flushFrames = () => { while (frames.length) frames.shift()(); };
   const source = readFileSync(new URL('../prototype/miniapp/screens-chat.js', import.meta.url), 'utf8')
     .replace(/^import .*;\r?\n/gm, '').replace(/export /g, '');
   vm.runInContext(source + '\n globalThis.chat = { enterChat, resetChat, loadSaved, consentSheet, send, bindChat, peopleSheet };', context);
   return { ...context, context, $, requests, storage, app };
 }
 const tick = () => new Promise((resolve) => setImmediate(resolve));
+
+test('long final answer scrolls after layout with composer visible', async () => {
+  const h = harness();
+  h.context.fetch = async () => ({ headers: { get: () => 'text/event-stream' } });
+  h.context.readEvents = async function* () {
+    yield { event: 'delta', data: { text: 'Начало' } }; h.context.flushFrames();
+    h.$('#chat-end').scrolls = [];
+    yield { event: 'done', data: { answer: 'Длинный ответ. '.repeat(500) } };
+  };
+  await h.chat.send('Вопрос'); h.context.flushFrames();
+  assert.ok(h.$('#chat-end').scrolls.length > 0);
+  assert.equal(h.$('#chat-end').scrolls.at(-1).block, 'end');
+});
+
+test('selecting an idea collapses suggestions and scrolls to resized composer', () => {
+  const h = harness(); h.chat.bindChat();
+  h.$('#chat-suggestions').open = true;
+  h.context.selectIdea('Как выбирать работу?'); h.context.flushFrames();
+  assert.equal(h.$('#chat-input').value, 'Как выбирать работу?');
+  assert.equal(h.$('#chat-suggestions').open, false);
+  assert.ok(h.$('#chat-end').scrolls?.length > 0);
+});
+
+test('opening suggestions scrolls their bottom and composer into view', () => {
+  const h = harness(); h.chat.bindChat();
+  h.$('#chat-suggestions').open = true;
+  h.$('#chat-suggestions').handlers.toggle?.(); h.context.flushFrames();
+  assert.ok(h.$('#chat-end').scrolls?.length > 0);
+});
 
 test('late saved history cannot replace a message just sent', async () => {
   const h = harness();
