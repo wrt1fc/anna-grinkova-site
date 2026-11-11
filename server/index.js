@@ -71,7 +71,7 @@ if (telegramBotToken && !process.env.TELEGRAM_WEBHOOK_SECRET) throw new Error('T
 const telegramBot = createTelegramBot({ token: telegramBotToken, publicUrl: process.env.PUBLIC_URL || `http://${host}:${port}` });
 const server = createServer({ store, mailer, codeSecret, trafficLimiter,
   mailDailyLimit: Number(process.env.MAIL_DAILY_LIMIT ?? 0), forecastWriter, chatWriter, sotisVerifier,
-  chatGate: createConcurrencyGate(Number(process.env.CHAT_MAX_CONCURRENT ?? 2)), metrics: createMetrics(store), knowledge, paymentProviders: { ru: paymentProvider, intl: intlProvider }, prodamusKey: process.env.PRODAMUS_SECRET_KEY || null, prodamusTest: process.env.PRODAMUS_TEST === '1',
+  chatGate: createConcurrencyGate(Number(process.env.CHAT_MAX_CONCURRENT ?? 2)), metrics: createMetrics(store), knowledge, paymentProviders: { ru: paymentProvider, intl: intlProvider }, prodamusKey: process.env.PRODAMUS_SECRET_KEY || null, prodamusTest: process.env.PRODAMUS_TEST === '1', prodamusMonthlyTestEmail: process.env.PRODAMUS_MONTHLY_TEST_EMAIL || '',
   telegramBot, telegramBotToken, telegramWebhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET || null,
   publicUrl: process.env.PUBLIC_URL || `http://${host}:${port}`, requirePrivacyConsent: process.env.REQUIRE_PRIVACY_CONSENT === '1',
   searchVerification: { yandex: process.env.YANDEX_VERIFICATION, google: process.env.GOOGLE_SITE_VERIFICATION },

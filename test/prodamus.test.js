@@ -5,10 +5,33 @@ import { createServer } from '../server/http.js';
 import { createStore } from '../server/store.js';
 import { createTrafficLimiter } from '../server/traffic.js';
 import { hashPassword } from '../server/auth.js';
-import { parseForm, payLink, PRODAMUS_PRODUCTS, signPayload } from '../server/billing/prodamus.js';
+import { createProdamus, parseForm, payLink, PRODAMUS_PRODUCTS, signPayload } from '../server/billing/prodamus.js';
 
 const SECRET = 'prodamus-test-secret';
 const PASSWORD = 'Very-long-password1!';
+
+test('personal monthly rouble offer is isolated, signed, grants 30 days and cannot be repeated', async () => {
+  const store = await createStore('pglite:memory');
+  try {
+    const now = Date.now();
+    const buyer = await store.createUser('test@example.com', 'unused', now, now);
+    const other = await store.createUser('other@example.com', 'unused', now, now);
+    const billing = createProdamus({store, secretKey: SECRET, monthlyTestEmail:'TEST@example.com', now:()=>now});
+    assert.deepEqual(billing.links('other@example.com').map(p=>p.priceRub),[990,2070]);
+    assert.deepEqual(billing.links('test@example.com').map(p=>[p.periodDays,p.priceRub]),[[90,2070],[30,1]]);
+    async function pay(email,id) {
+      const raw = new URLSearchParams({payment_status:'success',order_id:id,sum:'1.00',customer_email:email}).toString();
+      return billing.handle(raw,signPayload(parseForm(raw),SECRET));
+    }
+    assert.equal((await pay('other@example.com','personal-1')).outcome,'unknown_amount');
+    assert.equal((await store.planState(other.id)).plan,'free');
+    assert.equal((await pay('test@example.com','personal-2')).outcome,'paid');
+    assert.equal((await store.planState(buyer.id)).expiresAt,now+30*86400000);
+    assert.equal((await pay('test@example.com','personal-2')).outcome,'duplicate');
+    assert.equal((await pay('test@example.com','personal-3')).outcome,'test_used');
+    assert.equal((await store.planState(buyer.id)).expiresAt,now+30*86400000);
+  } finally { await store.close(); }
+});
 
 async function fixture(run, { webhookLimiter, prodamusTest = false } = {}) {
   const store = await createStore('pglite:memory');

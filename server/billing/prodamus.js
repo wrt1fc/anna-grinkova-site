@@ -75,9 +75,13 @@ export function payLink(product, email) {
 
 // Link payments: the buyer pays on the Prodamus page, Prodamus calls us, and the plan period is granted by email.
 // The 1 RUB test product is accepted only while PRODAMUS_TEST=1: otherwise anyone could buy a day of the plan for a rouble.
-export function createProdamus({ store, secretKey, acceptTest = false, now = Date.now }) {
+export function createProdamus({ store, secretKey, acceptTest = false, monthlyTestEmail = '', now = Date.now }) {
   if (!secretKey) return null;
   const offered = PRODAMUS_PRODUCTS.filter((product) => acceptTest || !product.test);
+  const testEmail = normalizeEmail(monthlyTestEmail);
+  const monthlyTest = { ...PRODAMUS_PRODUCTS.find(p => p.test), id: 'sub-test-month', label: 'Подписка на месяц — тест', periodDays: 30 };
+  const offersFor = email => testEmail && normalizeEmail(email) === testEmail
+    ? [...offered.filter(p => p.periodDays !== 30 && !p.test), monthlyTest] : offered;
 
   // Returns { outcome, paymentId }: paid, duplicate, test_used, ignored, unknown_amount, unknown_user, bad_request or bad_signature.
   async function handle(rawBody, signHeader) {
@@ -93,11 +97,11 @@ export function createProdamus({ store, secretKey, acceptTest = false, now = Dat
     const paymentId = String(payload.order_id ?? payload.payment_id ?? '');
     // The amount may come as "990.00" or "990,00"; it is signed, so reading both forms lets nothing extra through.
     const sumKop = Math.round(Number(String(payload.sum ?? '').trim().replace(',', '.')) * 100);
-    const product = offered.find((item) => sumKop === item.amountKop);
+    const email = normalizeEmail(payload.customer_email);
+    const product = offersFor(email).find((item) => sumKop === item.amountKop);
     if (!paymentId) return 'ignored';
     // The received amount goes to the log so a payment for an unexpected price can be understood and applied by hand.
     if (!product) return { outcome: 'unknown_amount', paymentId, sum: String(payload.sum ?? '').slice(0, 20) };
-    const email = normalizeEmail(payload.customer_email);
     const user = email ? await store.findUserByEmail(email) : null;
     if (!user) return { outcome: 'unknown_user', paymentId };
     const outcome = await store.inTransaction(async (tx) => {
@@ -117,6 +121,6 @@ export function createProdamus({ store, secretKey, acceptTest = false, now = Dat
     return { outcome, paymentId };
   }
 
-  return { handle, links: (email) => offered.map((product) => ({ id: product.id, label: product.label, periodDays: product.periodDays,
+  return { handle, links: (email) => offersFor(email).map((product) => ({ id: product.id, label: product.label, periodDays: product.periodDays,
     priceRub: product.priceRub, payUrl: payLink(product, email) })) };
 }
