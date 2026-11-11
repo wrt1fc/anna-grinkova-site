@@ -136,6 +136,17 @@ export function practicalIntentAnswer(chart, message, length) {
 export function intentAnswerProblem(answer, message) {
   const intent=chatIntent(message), count=requestedStepCount(message);
   if (count && ['workfit','income','growth','promotion','budget','support','rest'].includes(intent) && (answer.replace(/^Привет!\s*/u,'').match(/(?:^|\n)\s*\d+[.)]\s+/gu) ?? []).length !== count) return true;
+  // A list of income sources is not an answer about progress or spending.
+  // Merely repeating «рост»/«навыки» beside that list does not address the task.
+  const incomeSubstitution = /возможные\s+темы\s+заработка|(?:доход|деньги|заработок)[^.!?;]{0,25}(?:связан|приход|ид[её]т|идут|возмож)|управител\p{L}*\s+(?:денежного|2(?:-?го)?|второго)\s+дом/iu.test(answer);
+  const relevant = {
+    growth:/выбери|выбрать|проверь|проверить|попроси|обратн\p{L}*\s+связ|практик|тренир|осво|портфолио|запиши|измер|обсуди|согласуй|отработ|упражнен|упражнён/iu,
+    promotion:/результат|достижени|критери|руководител|ответственност|обсуди|договор[её]нност/iu,
+    budget:/расход|трат|накоп|отклад|покуп|бюджет|лимит|пауза|паузу|уч[её]т|посильн\p{L}*\s+сумм/iu,
+    support:/поддерж|тревог|тревож|страх|боюсь|пережив|выслуш|поговор|психолог/iu,
+    rest:/отдых|нагрузк|восстанов|сон|сна|уведомлен|пауз|устал/iu,
+  };
+  if (incomeSubstitution && relevant[intent] && !relevant[intent].test(answer)) return true;
   // Positive source-of-income language is a known substitution for these questions.
   // Do not reject a negated explanation such as "не нужен список профессий".
   if (['growth','promotion','budget','support','rest'].includes(intent)

@@ -3,6 +3,11 @@ import assert from 'node:assert/strict';
 import {asksAboutMoney} from '../server/anna-method.js';
 import {chatIntent,isClearlyOffTopic,requestedStepCount} from '../server/chat-intent.js';
 
+test('saving inflections stay separate from income sources and postponing tasks',()=>{
+ for(const message of ['Почему мне сложно откладывать деньги?','Почему не получается отложить часть зарплаты?','Как отложить деньги на отпуск?','Как сберечь средства?','Как сохранить часть зарплаты?'])assert.equal(chatIntent(message),'budget',message);
+ for(const message of ['Почему я откладываю важные дела?','Стоит ли отложить разговор?'])assert.notEqual(chatIntent(message),'budget',message);
+});
+
 test('malfunctions do not become money or work questions through substring matches',()=>{
  for(const message of ['Почему не работает отопление?', 'Почему не работает сканер?', 'Телевизор не включается', 'Сломался лифт', 'Как починить неизвестный прибор?', 'Работа двигателя автомобиля']){
   assert.equal(isClearlyOffTopic(message),true,message);

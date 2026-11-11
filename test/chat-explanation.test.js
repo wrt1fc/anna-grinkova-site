@@ -144,6 +144,27 @@ test('a strategy explanation is not replaced by an unrelated list of income rule
   }
  });
 
+ test('live income-source substitutions cannot pass as career growth or a savings explanation',async()=>{
+  const bad=[
+   ['Что поможет мне расти в профессии?','Куспид 10 дома в Рыбах. Управители 2 дома Луна и Солнце стоят в 9 и 11 домах. Луна связана с творчеством, а Солнце указывает на рост через сообщества.'],
+   ['Какие навыки мне развивать для карьерного роста?','Для роста можно развивать работу с людьми и психологическую экспертизу. Управитель 2 дома Луна стоит в 9 доме: деньги идут через творчество. Доход возможен от сообщества.'],
+   ['Почему мне сложно откладывать деньги?','Куспид 2 дома в Раке. Луна в 9 доме, Солнце в 11 доме. Деньги могут приходить из творческих сфер, знакомств и соцсетей.'],
+  ];
+  for(const [message,answer]of bad){
+   const chat=createLocalChat({model:'fixture',fetchImpl:async()=>stream(answer)});
+   const result=await chat.answer({message,history:[],forecast,chart});
+   assert.equal(result.model,null,message);assert.equal(result.explanationFiltered,true,message);
+   assert.doesNotMatch(result.answer,/управител|Возможные темы заработка/iu,message);
+  }
+  for(const [message,answer]of [
+   ['Что поможет мне расти в профессии?','Один из управителей денежного дома стоит в 11 доме. Для роста выбери рабочий навык, проверь его на практике и запроси обратную связь.'],
+   ['Почему мне сложно откладывать деньги?','Доход возможен от разных занятий, но для накоплений сначала запиши расходы и выбери посильную сумму, которую можно отложить.'],
+  ]){
+   let calls=0;const chat=createLocalChat({model:'fixture',fetchImpl:async()=>{calls++;return stream(answer);}});
+   const result=await chat.answer({message,history:[],forecast,chart});assert.equal(calls,1);assert.equal(result.model,'fixture');
+  }
+ });
+
  test('household malfunctions are refused before generation, with stale money chart',async()=>{
   for(const message of ['Почему не работает отопление?', 'Интернет пропал, как починить?', 'Почему не работает код на Python?', 'Кран перестал работать, что делать?', 'Как работает двигатель автомобиля?']){
    const chat=createLocalChat({model:'fixture',fetchImpl:async()=>{throw Error('offtopic must not generate');}});
