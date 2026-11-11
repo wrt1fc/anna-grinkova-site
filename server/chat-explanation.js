@@ -146,6 +146,10 @@ export function intentAnswerProblem(answer, message) {
     support:/поддерж|тревог|тревож|страх|боюсь|пережив|выслуш|поговор|психолог/iu,
     rest:/отдых|нагрузк|восстанов|сон|сна|уведомлен|пауз|устал/iu,
   };
+  if (intent === 'growth' && !relevant.growth.test(answer)
+      && !/переговор|презентац|аналитическ|управлени\p{L}*\s+(?:времен|проект)|активн\p{L}*\s+слушан/iu.test(answer)) return true;
+  if (intent === 'budget' && /почему|как|что\s+поможет/iu.test(message)
+      && !/запиши|записать|сравни|пересмотри|проверь|планируй|посчитай|выдели|выбери|откладывай|отложи|сберегай|сбереги|распредели|пауз|уч[её]т\s+расход|вести\s+(?:уч[её]т|бюджет)|посильн\p{L}*\s+сумм|автоматическ\p{L}*\s+(?:перевод|отчислен)|расскажи|причин[^.!?]{0,30}(?:нельзя|не\s+определ)|(?:нельзя|невозможно)\s+(?:точно\s+)?определ\p{L}*[^.!?]{0,25}причин|(?:какие|сколько|что)[^.!?]{0,45}(?:расход|трат|покуп)[^.!?]{0,30}\?/iu.test(answer)) return true;
   if (incomeSubstitution && relevant[intent] && !relevant[intent].test(answer)) return true;
   // Positive source-of-income language is a known substitution for these questions.
   // Do not reject a negated explanation such as "не нужен список профессий".
