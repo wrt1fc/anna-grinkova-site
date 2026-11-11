@@ -1,9 +1,10 @@
 // The «Фортуна» mini-app: routes, sign-in and registration, birth data, help and install screens.
 import { api, formatDate } from './api.js';
+import { startTelegram, updateTelegramBack } from './telegram-app.js?v=1';
 import { $, app, birth, refreshMe, screenEl, setNote } from './state.js?v=3';
 import { node } from './sheet.js';
 import { pickCity, pickDate, pickTime } from './pickers.js';
-import { bindInfo, enterDay, enterHome, enterNatal, enterWeek } from './screens-info.js?v=4';
+import { bindInfo, enterDay, enterHome, enterNatal, enterWeek } from './screens-info.js?v=5';
 import { bindChat, enterChat, resetChat } from './screens-chat.js?v=9';
 import { bindCard, enterCard, resetCard } from './screens-card.js?v=9';
 import { bindPay, bindPeople, enterPay, enterPeople, enterPlan, enterProfile } from './screens-account.js?v=5';
@@ -39,6 +40,7 @@ const address = (name) => `/#/${name}`;
 function currentName() { return /^#\/([a-z]+)/.exec(location.hash)?.[1] ?? SCREEN_OF_PATH[location.pathname] ?? ''; }
 
 function show(name) {
+  updateTelegramBack(name);
   for (const section of document.querySelectorAll('[data-screen]')) section.hidden = section.dataset.screen !== name;
   const section = screenEl(name);
   const tab = TAB_OF[name];
@@ -268,5 +270,6 @@ function bindShell() {
 }
 
 bindLogin(); bindRegister(); bindCode(); bindBirth(); bindInfo(); bindChat(); bindCard(); bindPay(); bindPeople(); bindShell();
+await startTelegram(() => app.back());
 await refreshMe().catch(() => { $('#offline').hidden = false; });
 render();

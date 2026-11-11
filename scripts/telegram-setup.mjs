@@ -8,5 +8,11 @@ if (!token || !secret || !/^https:\/\/[^/]+/.test(publicUrl ?? '')) {
   process.exit(1);
 }
 const bot = createTelegramBot({ token, publicUrl });
-await bot.configure({ webhookUrl: `${publicUrl.replace(/\/$/, '')}/api/telegram/webhook`, secret });
-console.log('Telegram is set up: webhook, menu button, commands.');
+try {
+  await bot.configure({ webhookUrl: `${publicUrl.replace(/\/$/, '')}/api/telegram/webhook`, secret });
+  console.log('Telegram is set up: webhook, menu button, commands.');
+} catch {
+  // Network exception stacks may contain the request URL, including the token.
+  console.error('Telegram setup failed. Check the token, HTTPS address and connection, then run again.');
+  process.exitCode = 1;
+}

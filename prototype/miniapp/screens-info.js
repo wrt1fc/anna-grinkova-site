@@ -47,45 +47,144 @@ export async function enterNatal() {
   }));
 }
 
-export async function enterDay() {
-  setNote('day');
-  $('#day-personal').hidden = !!birth();
-  const { ok, data } = await api('/api/forecast/day?draw=0');
-  if (!ok) { setNote('day', data.message || 'Не удалось загрузить прогноз.'); return; }
-  const moon = data.astronomy;
-  const [year, month, day] = data.date.split('-').map(Number);
-  const date = new Date(year, month - 1, day);
-  $('#day-date').textContent = `${['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'][date.getDay()]}, ${day} ${MONTHS_GEN[month - 1]}`;
-  const sky = moon.transit ?? moon;
-  $('#day-moon-title').textContent = `☽ Луна ${inSign(sky.moon?.sign, data.reading.body, 'Луна')}`.trim();
-  $('#day-moon-phase').textContent = moon.moonPhase;
-  $('#day-sun').textContent = `☉ Солнце ${inSign(sky.sun?.sign, data.reading.body, 'Солнце')}`.trim();
-  $('#day-body').textContent = data.reading.body;
-  $('#day-action').textContent = data.reading.action;
+let dayRequest = 0;
+let weekRequest = 0;
+let activeDay = null;
+let activeWeek = null;
+let selectedWeekDate = null;
+const PLANET_NAMES = { sun: 'Солнце', moon: 'Луна', mercury: 'Меркурий', venus: 'Венера', mars: 'Марс', jupiter: 'Юпитер', saturn: 'Сатурн' };
+const ASPECT_NAMES = { conjunction: 'соединение', sextile: 'секстиль', square: 'квадрат', trine: 'трин', opposition: 'оппозиция' };
+const localDate = (iso) => new Date(`${iso}T12:00:00Z`);
+const dateLabel = (iso, weekday = false) => new Intl.DateTimeFormat('ru-RU', { timeZone: 'UTC', ...(weekday ? { weekday: 'long' } : {}), day: 'numeric', month: 'long' }).format(localDate(iso));
+const skyOf = (forecast) => forecast.astronomy.transit ?? forecast.astronomy;
+const moscowTime = (iso) => new Intl.DateTimeFormat('ru-RU', { timeZone: 'Europe/Moscow', hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
+
+function skyEvents(forecast) {
+  const events = [
+    ...(forecast.astronomy.moonIngresses ?? []).map(e => ({ at: e.at, text: `Луна переходит из знака ${e.from} в ${e.to}.` })),
+    ...(forecast.astronomy.exactAspects ?? []).map(e => ({ at: e.at, text: `${PLANET_NAMES[e.first] ?? e.first} и ${PLANET_NAMES[e.second] ?? e.second} — ${ASPECT_NAMES[e.aspect] ?? e.aspect}.` })),
+  ].sort((a, b) => a.at.localeCompare(b.at));
+  return events.length ? events : [{ at: forecast.calculatedFor, text: 'Луна не меняет знак; точных аспектов из отслеживаемого набора в этот день нет.' }];
 }
 
-export function enterWeek() {
+export async function enterDay() {
+  const request = ++dayRequest;
+  activeDay = null;
+  setNote('day');
+  $('#day-personal').hidden = !!birth();
+  $('#day-content').hidden = true;
+  $('#day-loading').hidden = false;
+  $('#day-retry').hidden = true;
+  const selected = app.forecastDate;
+  try {
+    const { ok, data } = await api(`/api/forecast/day?draw=0${selected ? `&date=${encodeURIComponent(selected)}` : ''}`);
+    if (request !== dayRequest) return;
+    if (!ok) throw new Error(data.message || 'Не удалось загрузить прогноз.');
+    activeDay = data;
+    const sky = skyOf(data);
+    $('#day-date').textContent = `${dateLabel(data.date, true)} · ${data.scope === 'personal' ? 'личный прогноз' : 'общий прогноз'}`;
+    $('#day-moon-title').textContent = `☽ Луна ${inSign(sky.moon?.sign, data.reading.body, 'Луна')}`.trim();
+    $('#day-moon-phase').textContent = data.astronomy.moonPhase;
+    $('#day-sun').textContent = `☉ Солнце ${inSign(sky.sun?.sign, data.reading.body, 'Солнце')}`.trim();
+    $('#day-theme').textContent = data.tarot.focus || data.reading.theme;
+    $('#day-body').textContent = data.reading.body;
+    $('#day-action').textContent = data.reading.action;
+    $('#day-question').textContent = data.reading.question;
+    $('#day-events').replaceChildren(...skyEvents(data).map(event => {
+      const li = node('li');
+      const time = node('time', '', `${moscowTime(event.at)} МСК`); time.dateTime = event.at;
+      li.append(time, node('p', '', event.text)); return li;
+    }));
+    $('#day-content').hidden = false;
+  } catch (error) {
+    if (request !== dayRequest) return;
+    setNote('day', error.message || 'Не удалось загрузить прогноз. Проверьте связь.');
+    $('#day-retry').hidden = false;
+  } finally { if (request === dayRequest) $('#day-loading').hidden = true; }
+}
+
+function selectWeekDate(date, focus = false) {
+  const forecast = activeWeek?.days.find(day => day.date === date);
+  if (!forecast) return;
+  selectedWeekDate = date;
+  for (const button of $('#week-days').children) {
+    const chosen = button.dataset.date === date;
+    button.setAttribute('aria-pressed', String(chosen));
+    button.tabIndex = chosen ? 0 : -1;
+    if (chosen && focus) button.focus();
+  }
+  const sky = skyOf(forecast);
+  $('#week-selected-date').textContent = dateLabel(date, true);
+  $('#week-selected-moon').textContent = `Луна ${inSign(sky.moon?.sign, forecast.reading.body, 'Луна')}`;
+  $('#week-selected-phase').textContent = `${forecast.astronomy.moonPhase} · ${forecast.scope === 'personal' ? 'учтена твоя карта' : 'общий прогноз'}`;
+  $('#week-selected-action').textContent = forecast.reading.action;
+  $('#week-selected-question').textContent = forecast.reading.question;
+}
+
+export async function enterWeek() {
+  const request = ++weekRequest;
+  activeWeek = null;
   setNote('week');
-  const today = new Date();
-  const monday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - ((today.getDay() + 6) % 7));
-  const days = Array.from({ length: 7 }, (_, index) => new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + index));
-  const label = (date) => `${date.getDate()} ${MONTHS_GEN[date.getMonth()]}`;
-  $('#week-range').textContent = `${label(days[0])} — ${label(days[6])}`;
-  $('#week-days').replaceChildren(...days.map((date, index) => {
-    const item = node('button');
-    item.type = 'button';
-    item.disabled = true;
-    item.classList.toggle('is-today', date.toDateString() === today.toDateString());
-    item.append(node('span', '', String(date.getDate())), node('small', '', WEEKDAYS[index]));
-    return item;
-  }));
+  $('#week-content').hidden = true;
+  $('#week-loading').hidden = false;
+  $('#week-retry').hidden = true;
+  try {
+    const { ok, data } = await api('/api/forecast/week');
+    if (request !== weekRequest) return;
+    if (!ok) throw new Error(data.message || 'Не удалось загрузить неделю.');
+    activeWeek = data;
+    $('#week-range').textContent = `${dateLabel(data.weekStart)} — ${dateLabel(data.weekEnd)} · ${data.scope === 'personal' ? 'личный разбор' : 'общий разбор'}`;
+    $('#week-title').textContent = data.reading.title;
+    $('#week-body').textContent = data.reading.body;
+    $('#week-personal-note').textContent = data.reading.personalNote;
+    $('#week-question').textContent = data.reading.question;
+    $('#week-recommendations').replaceChildren(...data.reading.recommendations.map(period => {
+      const section = node('article', 'weekly-period');
+      section.append(node('p', 'period-date', period.label), node('h3', '', `Луна в знаке ${period.sign}`), node('p', '', period.text));
+      return section;
+    }));
+    $('#week-days').replaceChildren(...data.days.map((forecast, index) => {
+      const button = node('button'); button.type = 'button'; button.dataset.date = forecast.date;
+      button.classList.toggle('is-today', forecast.date === data.today);
+      if (forecast.date === data.today) button.setAttribute('aria-current', 'date');
+      button.setAttribute('aria-label', `${dateLabel(forecast.date, true)}${forecast.date === data.today ? ', сегодня' : ''}`);
+      button.append(node('span', '', String(localDate(forecast.date).getUTCDate())), node('small', '', WEEKDAYS[index]));
+      button.addEventListener('click', () => selectWeekDate(forecast.date));
+      return button;
+    }));
+    selectWeekDate(data.days.some(day => day.date === selectedWeekDate) ? selectedWeekDate : data.today);
+    $('#week-content').hidden = false;
+  } catch (error) {
+    if (request !== weekRequest) return;
+    setNote('week', error.message || 'Не удалось загрузить неделю. Проверьте связь.');
+    $('#week-retry').hidden = false;
+  } finally { if (request === weekRequest) $('#week-loading').hidden = true; }
 }
 
 export function bindInfo() {
+  $('#day-retry').addEventListener('click', enterDay);
+  $('#week-retry').addEventListener('click', enterWeek);
+  $('#week-open-day').addEventListener('click', () => { app.forecastDate = selectedWeekDate; app.go('day'); });
+  for (const button of document.querySelectorAll('[data-go="day"]')) button.addEventListener('click', () => { app.forecastDate = null; });
+  $('#week-days').addEventListener('keydown', event => {
+    const buttons = [...$('#week-days').children];
+    const current = buttons.findIndex(button => button.dataset.date === selectedWeekDate);
+    let index;
+    if (event.key === 'ArrowRight') index = (current + 1) % buttons.length;
+    else if (event.key === 'ArrowLeft') index = (current + buttons.length - 1) % buttons.length;
+    else if (event.key === 'Home') index = 0;
+    else if (event.key === 'End') index = buttons.length - 1;
+    else return;
+    if (!buttons.length) return;
+    event.preventDefault(); selectWeekDate(buttons[index].dataset.date, true);
+  });
   $('#natal-ask').addEventListener('click', () => { app.pendingQuestion = 'Что главное в моей натальной карте?'; app.go('chat'); });
   for (const link of document.querySelectorAll('[data-ask]')) {
     link.addEventListener('click', () => {
-      app.pendingQuestion = link.dataset.ask === 'week' ? 'Что мне важно учесть на этой неделе?' : 'Что значит мой прогноз на сегодня?';
+      app.pendingQuestion = link.dataset.ask === 'week' && activeWeek
+        ? `Помоги понять мой разбор на ${activeWeek.weekStart} — ${activeWeek.weekEnd}. Тема: ${activeWeek.reading.title}. ${activeWeek.reading.body} Что мне важно учесть?`
+        : activeDay ? `Помоги понять прогноз на ${activeDay.date}. ${activeDay.reading.body} Совет: ${activeDay.reading.action} Как применить его к своей ситуации?`
+          : 'Что мне важно учесть в моём прогнозе?';
       app.go('chat');
     });
   }

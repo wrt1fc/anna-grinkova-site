@@ -9,6 +9,7 @@ import { createLoginGuard } from './login-guard.js';
 import { searchCities } from './cities.js';
 import { parseBirthInput } from './birth-input.js';
 import { personalForecastForDate } from './personal-forecast.js';
+import { calculatedDay, validForecastDate, weekDates, weeklyForecast } from './weekly-forecast.js';
 import { createConcurrencyGate, createHistorySigner } from './chat-safety.js';
 import { createChatRoutes } from './routes/chat.js';
 import { handleProfileRoutes } from './routes/profiles.js';
@@ -28,7 +29,7 @@ const FORECAST_RETRY_MS = 60_000;
 const MAIL_PER_IP_PER_DAY = 10;
 const MAIL_PER_ADDRESS_PER_DAY = 5;
 const CONTENT_SECURITY_POLICY = [
-  "default-src 'self'", "script-src 'self'", "style-src 'self'",
+  "default-src 'self'", "script-src 'self' https://telegram.org", "style-src 'self'",
   "font-src 'self'", "img-src 'self' data:", "connect-src 'self'",
   "manifest-src 'self'", "worker-src 'self'",
   "form-action 'self'", "base-uri 'self'", "object-src 'none'", "frame-ancestors 'none'",
@@ -88,6 +89,8 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
   const dailyDrawCache = new Map();
   let personalCacheDay = null;
   const personalCache = new Map();
+  let weekCacheStart = null;
+  const weekCache = new Map();
   // Issues a code and its mail. Besides the site-wide daily budget, each address and each visitor IP gets
   // its own small daily cap, so one visitor cannot spend everyone's budget or mail strangers in bulk.
   async function prepareCode({ purpose, mailPurpose = purpose, email, userId = null, passwordHash = null, ip, policyVersion = null }) {
@@ -196,6 +199,15 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
           }
           const draw = drawParameters.length ? Number(drawParameters[0]) : 0;
           const day = moscowDate();
+          const dates = url.searchParams.getAll('date');
+          if (dates.length) {
+            const selected = dates[0];
+            if (dates.length !== 1 || !validForecastDate(selected) || !weekDates(day).includes(selected)) {
+              return json(res, 400, { error: 'invalid_forecast_date', message: 'Выбери дату текущей недели, с понедельника по воскресенье.' });
+            }
+            const profile = user ? await store.getBirthProfile(user.id) : null;
+            return json(res, 200, calculatedDay(selected, { userId: user?.id ?? null, profile, draw }));
+          }
           if (dailyCache?.date !== day) {
             const calculated = forecastForDate(day);
             const promise = (async () => {
@@ -265,7 +277,16 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
           return json(res, 200, general);
         }
         if (path === '/api/forecast/week' && req.method === 'GET') {
-          return json(res, 501, { error: 'forecast_unavailable', message: 'Прогноз на неделю пока готовится.' });
+          const today = moscowDate();
+          const monday = weekDates(today)[0];
+          if (weekCacheStart !== monday) { weekCache.clear(); weekCacheStart = monday; }
+          const profile = user ? await store.getBirthProfile(user.id) : null;
+          const key = `${user?.id ?? 'guest'}:${profile?.updatedAt ?? ''}:${profile?.birthUtc ?? ''}:${profile?.birthLatitude ?? ''}:${profile?.birthLongitude ?? ''}`;
+          if (!weekCache.has(key)) {
+            if (weekCache.size >= 100) weekCache.delete(weekCache.keys().next().value);
+            weekCache.set(key, weeklyForecast(today, { userId: user?.id ?? null, profile }));
+          }
+          return json(res, 200, { ...weekCache.get(key), today });
         }
         if (path === '/api/auth/register' && req.method === 'POST') {
           const body = await readJson(req);
@@ -400,6 +421,9 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
       }
       const route = seoRoute(path);
       if (route) {
+        // Telegram web clients host Mini Apps in an iframe. Other origins stay blocked.
+        res.removeHeader('X-Frame-Options');
+        res.setHeader('Content-Security-Policy', CONTENT_SECURITY_POLICY.replace("frame-ancestors 'none'", 'frame-ancestors https://web.telegram.org'));
         const shell = (await readFile(resolve(rootPath, 'miniapp/index.html'))).toString('utf8').replaceAll('__PUBLIC_URL__', publicOrigin);
         if (req.method === 'GET' && pageViewLimiter.check(clientAddress(req, trustProxy)).allowed) metrics.pageView(req, trustProxy);
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
@@ -414,6 +438,10 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
       if (target !== resolve(rootPath) && !target.startsWith(resolve(rootPath) + sep)) { res.writeHead(403); return res.end(); }
       try {
         const file = await readFile(target);
+        if (target === resolve(rootPath, 'miniapp/index.html')) {
+          res.removeHeader('X-Frame-Options');
+          res.setHeader('Content-Security-Policy', CONTENT_SECURITY_POLICY.replace("frame-ancestors 'none'", 'frame-ancestors https://web.telegram.org'));
+        }
         // Counted only within a per-address budget, so a flood of page loads cannot grow the counters without bound.
         if (extname(target) === '.html' && req.method === 'GET' && pageViewLimiter.check(clientAddress(req, trustProxy)).allowed) {
           metrics.pageView(req, trustProxy);
