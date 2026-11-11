@@ -15,9 +15,16 @@ export function astroFactProblems(answer,{question='',chart=null}={}){
   const sign=Object.keys(SIGN_RULERS).find(sign=>problem===`incorrect ruler of ${sign}`||problem===`incorrect ruler role of ${sign}`);
   if(!sign)throw new Error('Unknown source-grounded theory diagnostic: '+problem);
   const describe=sign=>{const names=SIGN_RULERS[sign].map(key=>POINT_NAMES[key]);return `${sign}: главный управитель — ${names[0]}${names.length>1?`, соуправитель — ${names[1]}`:''}`;};
-  return {code:'incorrect_ruler_'+sign,correction:'По таблице методики Анны '+[sign,...Object.keys(SIGN_RULERS).filter(other=>other!==sign)].map(describe).join('; ')+'. Порядок главного управителя и соуправителя менять нельзя.'};
+  return {code:'incorrect_ruler_'+sign,correction:'По таблице методики Анны '+describe(sign)+'. Порядок главного управителя и соуправителя менять нельзя.'};
  });
  const add=(code,correction)=>{if(!issues.some(x=>x.code===code))issues.push({code,correction});};
+ // A bounded observed dignity error: the source ruler table assigns the Sun
+ // to Leo. An explicit Sun-in-Taurus domicile claim contradicts that table.
+ const dignityClauses = answer.replace(/«[^»]*»|“[^”]*”|"[^"\n]*"|'[^'\n]*'/gu, ' ').split(/[.!?;\n]/u);
+ for (const clause of dignityClauses) {
+  if (/Солнц\p{L}*\s+в\s+Тельце[^.!?;]{0,35}(?:стоит\s+|находится\s+)?в\s+обители/iu.test(clause)
+    && !/(?<!\p{L})(?:не|неверно|ошибочно|нельзя|если)(?!\p{L})/iu.test(clause)) add('sun_domicile', 'Обитель Солнца — Лев. Солнце в Тельце — другое положение, оно не называется его обителью.');
+ }
  const orb=orbExample(question);
  if(incorrectOrbClaim(answer,orb))add('incorrect_orb_arithmetic',orbCorrection(orb));
  const clauses=answer.replace(/\s+/gu,' ').split(/[.!?;\n]/u);

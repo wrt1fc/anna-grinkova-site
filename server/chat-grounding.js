@@ -3,8 +3,9 @@
 // and the training set builder, so the tuned model learns on exactly the prompt it is served with.
 import { asksAboutChart, chartForPrompt, chartSectionsFor, natalChart, POINT_NAMES } from './astro-chart.js';
 import { ELEMENT_NAMES, SIGN_PREPOSITIONAL, asksAboutMoney, elementOf, formulasForPrompt, houseFormulas, houseMentions, houseQueries, houseRulers, houseRulersForPrompt, methodQueries, moneyForPrompt, moneyProfile } from './anna-method.js';
-import { groundingQuestion, isPartnerPreferenceQuestion, isRelationshipQuestion } from './chat-topics.js';
+import { groundingQuestion, isPartnerPreferenceQuestion, isRelationshipQuestion, personalSolarSignQuestion } from './chat-topics.js';
 import { relationshipContext } from './relationship-context.js';
+import { isClearlyOffTopic } from './chat-intent.js';
 import {isNatalSuggestion} from './chat-suggestions.js';
 import { isGeneralAstrologyQuestion } from './chat-grounding-scope.js';
 
@@ -33,6 +34,7 @@ function partnerForPrompt(own, partner) {
 }
 
 export function chartContext(profile, message, now = new Date(), { partner = null, history = [] } = {}) {
+  if (isClearlyOffTopic(message)) return { chart: null, queries: [] };
   const question = groundingQuestion(message, history);
   if (isGeneralAstrologyQuestion(question)) return { chart: null, queries: [] };
   // groundingQuestion appends this suffix only for a dependent follow-up. Match the
@@ -44,6 +46,14 @@ export function chartContext(profile, message, now = new Date(), { partner = nul
   if (!profile?.birthUtc) return { chart: { missing: 'Данные рождения не заполнены в личном кабинете, натальная карта не рассчитана.' }, queries: [] };
   const natal = chartOf(profile);
   const chart = chartForPrompt(natal, now, { include: chartSectionsFor(question) });
+  // Unknown time uses a placeholder instant. Near an ingress, do not turn it
+  // into an asserted own solar sign; a conservative one-day margin is explicit.
+  if (personalSolarSignQuestion(question) && profile.birthTime === null) {
+    const instant = new Date(profile.birthUtc).getTime();
+    const signs = [-1, 0, 1].map(day => chartOf({ ...profile, birthUtc: new Date(instant + day * 86400000).toISOString() }).planets.sun.sign);
+    chart.solarSignUncertain = new Set(signs).size > 1;
+  }
+
   // Rulers of all twelve houses and the house-to-house formulas: ground truth for any sphere,
   // so the model quotes Anna's ruler table instead of guessing from general astrology.
   const rulers = houseRulers(natal);

@@ -2,6 +2,7 @@
 // rulers with co-rulers, the ruler of the 2nd house and where it stands, MC sign, elements of personal planets
 // and the financial strategy. Rules are taken from her instructions; open points are marked, not guessed.
 import { SIGNS, POINT_NAMES } from './astro-chart.js';
+import {chatIntent} from './chat-intent.js';
 import moneyRules from '../config/money-rules.json' with { type: 'json' };
 
 // Her table: each sign has one or two rulers (modern and traditional).
@@ -172,12 +173,9 @@ export function moneyForPrompt(money) {
   };
 }
 
-const MONEY_TOPIC = /деньг|денеж|копить|копл|накоп|трат[иая]|финанс|доход|зараб|зарпла|богатств|миллион|разбогат|бизнес|професси|карьер|работ[аеуыой]|призвани|предназначени|стратеги|2 дом|втор(ой|ого) дом|\bmc\b|10 дом/i;
+// Context eligibility is broader than an income explanation; completeness is intent-specific.
 export function asksAboutMoney(message) {
-  // Mentioning work while asking about rest or emotions is not an income question.
-  if (/восстанов|отдох|отдых|устал|выгоран|раздраж|эмоци|ссор/iu.test(message)
-    && !/деньг|денеж|доход|зараб|зарплат|финанс|бюджет|копить|накоп/iu.test(message)) return false;
-  return MONEY_TOPIC.test(message);
+  return ['income','budget','workfit','growth','promotion'].includes(chatIntent(message));
 }
 
 // Houses the question names, by digit («5 дом») or ordinal word («пятый дом»).

@@ -11,10 +11,22 @@ export const isPersonalLifeApplication = (message) => hasPersonalReference(messa
 export const isPersonalLifeQuestion = (message) => hasPersonalReference(message)
   && (isRelationshipQuestion(message) || LIFE_TOPIC.test(message) || PLANET_TOPIC.test(message)) || isPartnerPreferenceQuestion(message);
 
-// Only short dependent questions inherit a topic. A new complete question must stand on its own.
+// Match the whole message: a named new subject must never inherit an old topic.
+// The same predicate skips dependent history turns, preserving the last real
+// user question through a chain of clarifications and intervening assistant text.
+const DEPENDENT_QUESTION = /^\s*(?:(?:а|и|ну|тогда)\s+)?(?:подробнее|конкретнее|почему\s+(?:это|так)|что\s+(?:это|с\s+этим)\s+(?:значит|делать)|что\s+(?:именно\s+)?(?:сделать|делать)(?:\s+(?:сначала|вначале|в\s+первую\s+очередь))?|с\s+чего\s+начать|как\s+(?:это|с\s+этим)\s+(?:исправить|работать|связано)|можно\s+(?:подробнее|пример)|дай\s+пример|объясни\s+(?:подробнее|проще))[?!.,…]*\s*$/iu;
 export function groundingQuestion(message, history = []) {
-  if (!/^\s*(?:(?:а|и|ну|тогда)\s+)?(?:подробнее[?!.,…]*|почему (?:это|так)[?!.,…]*|что (?:это|с этим) (?:значит|делать)[?!.,…]*|как (?:это|с этим) (?:исправить|работать|связано)[?!.,…]*|можно (?:подробнее|пример)[?!.,…]*|объясни (?:подробнее|проще)[?!.,…]*)\s*$/iu.test(message)) return message;
+  if (!DEPENDENT_QUESTION.test(message)) return message;
   const previous = [...history].reverse().find((item) => item.role === 'user' && typeof item.content === 'string'
-    && !/^\s*(а |и )?(подробнее|почему так|что это значит|можно пример)/iu.test(item.content));
+    && !DEPENDENT_QUESTION.test(item.content));
   return previous ? `${previous.content}\nУточнение: ${message}` : message;
+}
+
+// Explicit own-sign requests stand alone, including corrections of an earlier topic.
+export function personalSolarSignQuestion(message) {
+  const text = String(message);
+  if (/асцендент|лунн\p{L}*\s+знак|знак\p{L}*\s+Лун/iu.test(text)) return false;
+  return /кто\s+я\s+по\s+гороскопу|под\s+каким\s+знаком\s+я\s+родил/iu.test(text)
+    || /(?:знак\p{L}*\s+зодиак\p{L}*|солнечн\p{L}*\s+знак|знак\p{L}*\s+Солнц)/iu.test(text)
+      && (hasPersonalReference(text) || /я\s+спрашиваю|назови\s+(?:только\s+)?(?:его|знак)/iu.test(text));
 }

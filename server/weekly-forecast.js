@@ -38,8 +38,8 @@ const GUIDANCE = {
 
 const shortDate = (day) => new Intl.DateTimeFormat('ru-RU', { timeZone: 'UTC', day: 'numeric', month: 'short' }).format(new Date(`${day}T12:00:00Z`));
 
-// Weekly reading is derived from all seven calculated days. No random favourable-day scores
-// or fabricated model output; each recommendation names the actual lunar sign behind it.
+// Personal recommendations follow natal calculations; guest recommendations follow lunar signs.
+// Neither path assigns random favourable-day scores or predicts inevitable events.
 export function weeklyForecast(day, { userId = null, profile = null, generalDays = null } = {}) {
   const dates = weekDates(day);
   const days = dates.map((date, i) => calculatedDay(date, { userId, profile, general: generalDays?.[i] }));
@@ -52,23 +52,35 @@ export function weeklyForecast(day, { userId = null, profile = null, generalDays
   }
   const frequencies = new Map();
   for (const f of days) frequencies.set(f.reading.theme, (frequencies.get(f.reading.theme) ?? 0) + 1);
-  const dominant = [...frequencies].sort((a, b) => b[1] - a[1])[0][0];
+  const leadingThemes = [...frequencies].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([theme]) => theme);
+  const dominant = leadingThemes[0];
   const personal = days[0].scope === 'personal';
-  const recommendations = periods.map((p) => ({
+  const recommendations = personal ? days.map(f => ({
+    start: f.date, end: f.date, label: shortDate(f.date), theme: f.reading.theme,
+    text: f.reading.action, basis: f.personalThemes[0]?.basis ?? null,
+    facts: f.personalThemes.map(theme => theme.fact),
+  })) : periods.map((p) => ({
     ...p, label: p.start === p.end ? shortDate(p.start) : `${shortDate(p.start)} — ${shortDate(p.end)}`,
     text: GUIDANCE[p.sign],
   }));
-  const personalThemes = personal ? [...new Set(days.map(f => f.reading.focus))].slice(0, 3) : [];
+  const highlights = personal ? leadingThemes.slice(0, 2).map(theme => {
+    const closest = days.filter(f => f.reading.theme === theme)
+      .sort((a, b) => (a.personalThemes[0]?.basis.orb ?? Infinity) - (b.personalThemes[0]?.basis.orb ?? Infinity))[0];
+    return { date: closest.date, theme, basis: closest.personalThemes[0]?.basis ?? null };
+  }).sort((a, b) => a.date.localeCompare(b.date)) : [];
   return {
     weekStart: dates[0], weekEnd: dates[6], scope: personal ? 'personal' : 'general',
     updatedFor: `${dates[0]}T00:00:00+03:00`, timeZone: 'Europe/Moscow', days,
     generation: { kind: 'rules', basis: 'seven-daily-calculations' },
     reading: {
       title: dominant.charAt(0).toUpperCase() + dominant.slice(1),
-      body: `На этой неделе Луна на полдень проходит знаки: ${periods.map(p => p.sign).join(' → ')}. Основная тема по лунным положениям — ${dominant}. Распредели дела по силам: рекомендации ниже можно использовать как вопросы к своему плану, а не как обещание событий.`,
-      personalNote: personal ? `В дневных расчётах учтены твои данные рождения. Среди личных тем недели: ${personalThemes.join('; ')}. Выбери день в календаре, чтобы прочитать его разбор.` : 'Это общий разбор. С данными рождения дневные прогнозы внутри недели учитывают твою карту.',
+      body: personal
+        ? `Главные личные темы недели: ${leadingThemes.join('; ')}. Ориентиры в календаре: ${highlights.map(item => `${shortDate(item.date)} — ${item.theme}`).join('; ')}. Они опираются на личные дневные расчёты на 12:00 МСК. Советы для каждого дня — ниже; соотнеси их со своими обстоятельствами.`
+        : `На этой неделе Луна на полдень проходит знаки: ${periods.map(p => p.sign).join(' → ')}. Основная тема по лунным положениям — ${dominant}. Распредели дела по силам: рекомендации ниже можно использовать как вопросы к своему плану, а не как обещание событий.`,
+      personalNote: personal ? 'В расчётах учтены твои данные рождения. Выбери день в календаре, чтобы прочитать личный разбор. Даты — ориентиры для планирования, без обещания определённых событий.' : 'Это общий разбор. С данными рождения дневные прогнозы внутри недели учитывают твою карту.',
+      highlights,
       recommendations,
-      question: 'Что на этой неделе для меня главное, а что можно отложить?',
+      question: personal ? `Какая из личных тем недели — ${leadingThemes.join('; ')} — сейчас важнее для моего плана?` : 'Что на этой неделе для меня главное, а что можно отложить?',
     },
   };
 }

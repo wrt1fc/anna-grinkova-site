@@ -132,3 +132,61 @@ test('a strategy explanation is not replaced by an unrelated list of income rule
  // Factual claims still undergo validation even when the question is about a strategy.
  assert.equal(wrongMoneyRulerClaim('Луна в 11 доме.',chart,'Объясни финансовую стратегию.'),true);
 });
+
+ test('career, budgeting and emotional replies are not forced into income ruler explanations', async () => {
+  for (const message of ['Как расти в выбранной профессии?', 'Какие навыки мне развить для работы?', 'Как получить повышение?', 'Почему мне трудно копить?', 'Как перестать тратить импульсивно?', 'Я тревожусь о доходе. Поддержи меня', 'Как восстановиться после работы?', 'Не перечисляй профессии, назови три конкретных шага для роста']) {
+    assert.equal(incompleteMoneyExplanation('Выбери одну задачу и проверь результат через неделю.',chart,message,'medium'),false,message);
+    let calls=0;
+    const chat=createLocalChat({model:'fixture',fetchImpl:async()=>{calls++;return stream(/три конкретных шага/u.test(message) ? '1. Выбери навык.\n2. Проверь его на практике.\n3. Запроси обратную связь.' : 'Выбери одну задачу и проверь результат через неделю.');}});
+    const reply=await chat.answer({message,history:[],forecast,chart});
+    assert.equal(calls,1,message);assert.equal(reply.model,'fixture',message);
+    assert.doesNotMatch(reply.answer,/Возможные темы заработка/u,message);
+  }
+ });
+
+ test('household malfunctions are refused before generation, with stale money chart',async()=>{
+  for(const message of ['Почему не работает отопление?', 'Интернет пропал, как починить?', 'Почему не работает код на Python?', 'Кран перестал работать, что делать?', 'Как работает двигатель автомобиля?']){
+   const chat=createLocalChat({model:'fixture',fetchImpl:async()=>{throw Error('offtopic must not generate');}});
+   const reply=await chat.answer({message,history:[],forecast,chart,length:'detailed'});
+   assert.match(reply.answer,/С этой темой не помогу/u);assert.equal(reply.learningSuggested,false);
+  }
+ });
+
+ test('counted practical steps and repeated income substitutions get appropriate fallbacks',async()=>{
+  for(const message of ['Как расти в профессии? Дай три конкретных шага.', 'Как меньше тратить? Дай два шага.', 'Как восстановиться после работы? Дай три шага.']){
+   let calls=0;const deltas=[];
+   const chat=createLocalChat({model:'fixture',fetchImpl:async()=>{calls++;return stream('Возможные темы заработка: творчество и зарубежные темы.');}});
+   const result=await chat.answer({message,history:[],forecast,chart,onDelta:d=>deltas.push(d)});
+   assert.equal(calls,2);assert.equal(result.model,null);
+   assert.equal((result.answer.replace(/^Привет!\s*/u,'').match(/(?:^|\n)\s*\d+[.)]\s+/gu)??[]).length,/два шага/u.test(message)?2:3);
+   assert.doesNotMatch(result.answer,/Возможные темы заработка|управител/iu);assert.deepEqual(deltas,[result.answer]);
+  }
+ });
+
+ test('service refusals become clarifications rather than money templates',async()=>{
+  let calls=0;const chat=createLocalChat({model:'fixture',fetchImpl:async()=>{calls++;return stream('Я разбираюсь в астрологии. С этой темой не помогу.');}});
+  const result=await chat.answer({message:'Почему не работает вход в Фортуну?',history:[],forecast,chart});
+  assert.equal(calls,2);assert.match(result.answer,/шаг|ошибк/u);assert.doesNotMatch(result.answer,/С этой темой не помогу|управител|заработ/u);
+ });
+
+ test('local chat resolves the personal solar sign directly before generation',async()=>{
+  const chat=createLocalChat({model:'fixture',fetchImpl:async()=>{throw Error('solar sign must be calculated');}});
+  const result=await chat.answer({message:'Какой у меня знак зодиака?',history:[],forecast,chart});
+  assert.match(result.answer,/Лев/u);assert.equal(result.model,null);
+  const missing=await chat.answer({message:'Кто я по гороскопу?',history:[],forecast,chart:null});
+  assert.match(missing.answer,/рождени/u);
+ });
+
+ test('detailed practical fallbacks remain substantial without money substitutions',async()=>{
+  for(const message of ['Как расти в профессии?', 'Как восстановиться после работы?', 'Тревожусь о доходе', 'Как перестать тратить импульсивно?']){
+   const chat=createLocalChat({model:'fixture',fetchImpl:async()=>stream('Возможные темы заработка: сообщества и творчество.')});
+   const result=await chat.answer({message,history:[],forecast,chart,length:'detailed'});
+   assert.ok(result.answer.length>=400,message);assert.doesNotMatch(result.answer,/Возможные темы заработка|управител/u);
+  }
+ });
+
+ test('explicit action counts survive the short fallback publication budget',async()=>{
+  const chat=createLocalChat({model:'fixture',fetchImpl:async()=>stream('Возможные темы заработка: сообщества и творчество.')});
+  const result=await chat.answer({message:'Как расти в профессии? Дай пять шагов.',history:[],forecast,chart,length:'short'});
+  assert.ok(result.answer.length<=400);assert.equal((result.answer.replace(/^Привет!\s*/u,'').match(/(?:^|\n)\s*\d+[.)]\s+/gu)??[]).length,5);
+ });

@@ -1,0 +1,56 @@
+// Conservative shared intent routing. Unknown topics stay with the conversational model.
+// Refusals require a positive unrelated task, never merely absence of astrology words.
+const SERVICE = /фортун|личн\p{L}*\s+кабинет|приложени|подписк|тариф|оплат|(?<!\p{L})вход(?!\p{L})|авторизац|регистрац|код\s+(?:входа|подтверждения)|войти|сайт/iu;
+const ASTRO = /(?:моей|мою|моих|своей|свою|своих)\s+(?:натальн\p{L}*\s+)?карт|астролог|гороскоп|натальн|зодиак|асцендент|куспид|управител|планет|таро|карт\p{L}*\s+(?:дня|рождения)|по\s+(?:моей\s+)?карте|прогноз/iu;
+const UNRELATED = /отоплен|батаре\p{L}*\s+(?:холод|не\s+гре)|кран|сантехни|чайник|холодильник|стиральн|автомобил|двигател|машин\p{L}*\s+(?:не\s+завод|слом)|интернет|роутер|wi-?fi|python|javascript|(?<!\p{L})код(?!\p{L})|программирован|рецепт|приготовить|переведи|перевод\p{L}*\s+текст|напиши\s+(?:скрипт|программу)|реши\s+(?:задачу|уравнение)/iu;
+const WORK = /(?<!\p{L})(?:работ(?:а|ы|е|у|ой|ою|ах|ам|ами|ать|аю|аешь|аем|ают|ал|ала|али)|труд(?:а|е|у|ом)?|трудов\p{L}*)(?!\p{L})|професси|карьер|призвани|предназначени|бизнес|\bmc\b|10\s*дом/iu;
+const MONEY = /деньг|денеж|финанс|доход|зараб|зарплат|богатств|миллион|разбогат|стратеги|(?:2|втор(?:ой|ого))\s*дом/iu;
+const BUDGET = /(?<!\p{L})(?:копить|копл|накоп|сбереж|бюджет|эконом|импульсивн\p{L}*\s+(?:трат|покуп)|трат|расход)/iu;
+const REST = /восстанов|отдох|отдых|устал|выгоран|сил\p{L}*\s+нет|нет\s+сил/iu;
+const SUPPORT = /поддерж|тревож|тревог|страшно|боюсь|страх|пережива|успоко/iu;
+const GROWTH = /расти|рост|разви|навык|компетенц|следующ\p{L}*\s+шаг|продви|дальше/iu;
+
+const CAREER_FRAME = /карьер|професси|призвани|предназначени|зараб|доход|навык|компетенц|кем\s+(?:мне\s+)?работать|(?:хочу|могу|мне|начать)\s+работать|работ(?:а|ать)\s+(?:в\s+интернете|программист|с\s+python)|нетворкинг/iu;
+export function isClearlyOffTopic(message) {
+  if (SERVICE.test(message) || ASTRO.test(message) || CAREER_FRAME.test(message)) return false;
+  if (SUPPORT.test(message) && /поддержи(?:\s+(?:меня|нас)|\s*[.!?]*$)|можно\s+поговорить|поговори\s+со\s+мной|успокой\s+меня|справиться\s+с\s+тревог/iu.test(message)) return false;
+  if (UNRELATED.test(message)) return true;
+  const malfunction = /(?:не\s+работает|перестал[ао]?\s+работать|сломал[ао]?сь|сломался|починить|не\s+включается|не\s+запускается)/iu;
+  if (!malfunction.test(message) || /отношени|метод|подход|план|стратеги|сотрудник|коллег|команд|мотивац|чувств|границ|отдых|тревог|воображени/iu.test(message)) return false;
+  // A bare "почему не работает?" has no identified unrelated object. Let the
+  // ordinary conversation/history resolver clarify it instead of refusing.
+  const object = message.replace(malfunction,' ').replace(/(?<!\p{L})(?:почему|как|что|делать|у|меня|мне|это|он|она|оно|ничего|мой|моя|моё|мое)(?!\p{L})/giu,' ');
+  return /\p{L}/u.test(object);
+}
+export function chatIntent(message) {
+  if (SERVICE.test(message)) return 'service';
+  if (isClearlyOffTopic(message)) return 'offtopic';
+  if (REST.test(message)) return 'rest';
+  if (SUPPORT.test(message)) return 'support';
+  if (/повышени|повысить\s+(?:в\s+должности|должность)|нов\p{L}*\s+должност/iu.test(message)) return 'promotion';
+  if (GROWTH.test(message) && (WORK.test(message) || /професси|навык|компетенц/iu.test(message))) return 'growth';
+  if (BUDGET.test(message)) return 'budget';
+  if (MONEY.test(message)) return 'income';
+  if (WORK.test(message)) return 'workfit';
+  return 'other';
+}
+export function requestedStepCount(message) {
+  const m = /(?<!\p{L})([1-5]|один|два|две|три|четыре|пять)\s+(?:конкретн\p{L}*\s+|практическ\p{L}*\s+)?(?:шаг|действи|совет|пункт)/iu.exec(message);
+  return m ? ({один:1,два:2,две:2,три:3,четыре:4,пять:5}[m[1].toLowerCase()] ?? Number(m[1])) : null;
+}
+export function incomeRulerExplanation(message) {
+  return chatIntent(message) === 'income' && !requestedStepCount(message);
+}
+const GUIDANCE = {
+ workfit:'Вопрос о выборе занятия и рабочих условий. Свяжи подходящие рассчитанные показатели и материалы с реальной деятельностью; не своди ответ к перечислению управителей 2 дома.',
+ growth:'Вопрос о развитии в уже выбранной работе. Обсуди конкретный навык, практику и проверку результата. Не повторяй список профессий или источников заработка.',
+ promotion:'Вопрос о повышении в должности: обсуди результаты работы, расширение ответственности и разговор о критериях повышения. Не обещай повышение по карте.',
+ budget:'Вопрос о сохранении денег и тратах. Обсуди учёт расходов, паузу перед покупкой или посильное накопление. Доходные направления и список денежных управителей не отвечают на этот вопрос. Методические образы не превращай в финансовые обещания.',
+ support:'Сначала поддержи переживание и предложи посильный шаг. Не превращай тревогу о доходе в список профессий и планет. Не обещай, что деньги или здоровье обязательно наладятся.',
+ rest:'Вопрос о восстановлении и нагрузке: предложи отдых, границы и уменьшение нагрузки. Не заменяй ответ источниками дохода или карьерным выбором. Не давай диагнозов.',
+ service:'Это разрешённый вопрос о Фортуне и приложении. Ответь по известным сведениям сервиса или уточни, на каком шаге возникла проблема. Не отказывай как на постороннюю тему и не подставляй натальную карту.',
+};
+export function intentGuidance(message) {
+ const intent=chatIntent(message), count=requestedStepCount(message);
+ return (GUIDANCE[intent] ? '\n'+GUIDANCE[intent] : '') + (count ? `\nЧеловек просит ровно ${count} конкретных шагов. Дай ${count} пронумерованных действий по текущей теме, без списка профессий и обязательного перечисления управителей.` : '');
+}

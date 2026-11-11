@@ -240,7 +240,9 @@ test('five-card draw returns the chosen card consistently to guest and account',
   for (let draw = 0; draw < 5; draw++) personal.push((await request(`/api/forecast/day?draw=${draw}`, 'GET', null, cookie)).data);
   assert.equal(new Set(personal.map((item) => item.tarot.number)).size, 5);
   assert.equal(personal[2].scope, 'personal');
-  assert.equal(personal[2].reading.theme, general[2].reading.theme);
+  assert.equal(personal[2].reading.theme, personal[0].reading.theme);
+  assert.equal(personal[2].reading.action, personal[0].reading.action);
+  assert.ok(personal[2].personalThemes.length > 0);
   assert.equal(personal[2].tarot.position, 2);
   assert.equal((await request('/api/forecast/day?draw=2', 'GET', null, cookie)).data.tarot.number, personal[2].tarot.number);
   const personalPreview = await request('/api/forecast/card?draw=2', 'GET', null, cookie);
@@ -250,6 +252,8 @@ test('five-card draw returns the chosen card consistently to guest and account',
   assert.equal(personalPreview.data.card.number, personal[2].tarot.number);
   assert.equal(personalPreview.data.card.name, personal[2].tarot.name);
   assert.ok(personalPreview.data.card.focus && personalPreview.data.card.action && personalPreview.data.card.question);
+  assert.equal(personalPreview.data.card.action, personal[2].tarot.action);
+  assert.equal(personalPreview.data.card.question, personal[2].tarot.question);
 }));
 
 test('local writer refines each selected general card once, including concurrent requests', async () => {

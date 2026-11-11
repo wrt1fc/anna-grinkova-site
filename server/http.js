@@ -25,6 +25,11 @@ import { NULL_METRICS } from './metrics.js';
 const SESSION_AGE = 30 * 24 * 60 * 60;
 // How long the plain calculated forecast is reused before the model is asked again after a failure.
 const FORECAST_RETRY_MS = 60_000;
+// Profile writes can share a timestamp. Cache the actual calculation inputs,
+// including coordinates and whether houses may be calculated.
+const forecastProfileKey = profile => profile ? [profile.updatedAt, profile.birthUtc,
+  profile.birthDate, profile.birthTime, profile.birthLatitude, profile.birthLongitude,
+  profile.timeKnown, profile.birthTimeKnown, profile.timeUnknown, profile.birthTimeUnknown] : null;
 // Per-visitor and per-address caps on code mails, on top of MAIL_DAILY_LIMIT for the whole site.
 const MAIL_PER_IP_PER_DAY = 10;
 const MAIL_PER_ADDRESS_PER_DAY = 5;
@@ -261,7 +266,7 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
           const profile = dailyUser ? await store.getBirthProfile(dailyUser.id) : null;
           if (profile?.birthUtc) {
             if (personalCacheDay !== day) { personalCache.clear(); personalCacheDay = day; }
-            const key = `${dailyUser.id}:${profile.updatedAt}:${profile.birthUtc}:${draw}`;
+            const key = JSON.stringify([dailyUser.id, forecastProfileKey(profile), draw]);
             if (!personalCache.has(key)) {
               const personal = personalForecastForDate(day, profile, dailyUser.id, general, draw);
               if (personalCache.size >= 1000) personalCache.delete(personalCache.keys().next().value);
@@ -281,7 +286,7 @@ export function createServer({ store, mailer = null, codeSecret, root = new URL(
           const monday = weekDates(today)[0];
           if (weekCacheStart !== monday) { weekCache.clear(); weekCacheStart = monday; }
           const profile = user ? await store.getBirthProfile(user.id) : null;
-          const key = `${user?.id ?? 'guest'}:${profile?.updatedAt ?? ''}:${profile?.birthUtc ?? ''}:${profile?.birthLatitude ?? ''}:${profile?.birthLongitude ?? ''}`;
+          const key = JSON.stringify([user?.id ?? 'guest', forecastProfileKey(profile)]);
           if (!weekCache.has(key)) {
             if (weekCache.size >= 100) weekCache.delete(weekCache.keys().next().value);
             weekCache.set(key, weeklyForecast(today, { userId: user?.id ?? null, profile }));

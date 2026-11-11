@@ -86,7 +86,7 @@ export async function enterDay() {
     $('#day-moon-title').textContent = `☽ Луна ${inSign(sky.moon?.sign, data.reading.body, 'Луна')}`.trim();
     $('#day-moon-phase').textContent = data.astronomy.moonPhase;
     $('#day-sun').textContent = `☉ Солнце ${inSign(sky.sun?.sign, data.reading.body, 'Солнце')}`.trim();
-    $('#day-theme').textContent = data.tarot.focus || data.reading.theme;
+    $('#day-theme').textContent = data.reading.theme;
     $('#day-body').textContent = data.reading.body;
     $('#day-action').textContent = data.reading.action;
     $('#day-question').textContent = data.reading.question;
@@ -117,6 +117,12 @@ function selectWeekDate(date, focus = false) {
   $('#week-selected-date').textContent = dateLabel(date, true);
   $('#week-selected-moon').textContent = `Луна ${inSign(sky.moon?.sign, forecast.reading.body, 'Луна')}`;
   $('#week-selected-phase').textContent = `${forecast.astronomy.moonPhase} · ${forecast.scope === 'personal' ? 'учтена твоя карта' : 'общий прогноз'}`;
+  let body = $('#week-selected-body');
+  if (!body) {
+    body = node('p'); body.id = 'week-selected-body';
+    $('#week-selected-action').before(body);
+  }
+  body.textContent = forecast.reading.body;
   $('#week-selected-action').textContent = forecast.reading.action;
   $('#week-selected-question').textContent = forecast.reading.question;
 }
@@ -140,7 +146,7 @@ export async function enterWeek() {
     $('#week-question').textContent = data.reading.question;
     $('#week-recommendations').replaceChildren(...data.reading.recommendations.map(period => {
       const section = node('article', 'weekly-period');
-      section.append(node('p', 'period-date', period.label), node('h3', '', `Луна в знаке ${period.sign}`), node('p', '', period.text));
+      section.append(node('p', 'period-date', period.label), node('h3', '', period.theme || `Луна в знаке ${period.sign}`), node('p', '', period.text));
       return section;
     }));
     $('#week-days').replaceChildren(...data.days.map((forecast, index) => {

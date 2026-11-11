@@ -85,3 +85,43 @@ test('forecast APIs validate dates, expose a complete week, and do not mix perso
     assert.notDeepEqual(updated.data.days[0].astronomy.natal, personal.data.days[0].astronomy.natal);
   } finally { await new Promise(resolve => server.close(resolve)); await store.close(); }
 });
+
+test('personal weekly summary follows all seven natal readings, not the shared sky or account id', () => {
+  const week = weeklyForecast('2026-11-11', { userId: 1, profile });
+  const changed = weeklyForecast('2026-11-11', { userId: 1, profile: { ...profile, birthUtc: '1984-07-21T16:10:00Z' } });
+  const guest = weeklyForecast('2026-11-11');
+  assert.notEqual(week.reading.body, changed.reading.body);
+  assert.notDeepEqual(week.reading.recommendations, changed.reading.recommendations);
+  assert.notEqual(week.reading.body, guest.reading.body);
+  assert.equal(week.reading.recommendations.length, 7);
+  for (const [i, item] of week.reading.recommendations.entries()) {
+    assert.equal(item.start, week.days[i].date);
+    assert.equal(item.text, week.days[i].reading.action);
+    assert.deepEqual(item.basis, week.days[i].personalThemes[0]?.basis ?? null);
+  }
+  assert.deepEqual(week.reading, weeklyForecast('2026-11-11', { userId: 2, profile }).reading);
+});
+
+test('weekly personal recommendations use birth location only through calculated houses', () => {
+  const first = weeklyForecast('2026-11-11', { userId: 1, profile });
+  const moved = weeklyForecast('2026-11-11', { userId: 1, profile: { ...profile, birthLatitude: 40.7, birthLongitude: -74 } });
+  assert.notEqual(first.reading.body, moved.reading.body);
+  assert.notDeepEqual(first.reading.recommendations, moved.reading.recommendations);
+  assert.deepEqual(first.days.map(day => day.astronomy.transitAspects), moved.days.map(day => day.astronomy.transitAspects));
+  const unknown = weeklyForecast('2026-11-11', { userId: 1, profile: { ...profile, timeUnknown: true } });
+  const unknownMoved = weeklyForecast('2026-11-11', { userId: 1, profile: { ...profile, timeUnknown: true, birthLatitude: 40.7, birthLongitude: -74 } });
+  assert.deepEqual(unknown.reading, unknownMoved.reading);
+});
+
+test('weekly introduction is concise and anchors at most two of the seven dated recommendations', () => {
+  const forecast = weeklyForecast('2026-11-11', { userId: 1, profile });
+  assert.ok(forecast.reading.body.length < 850);
+  assert.doesNotMatch(forecast.reading.body, /орб|°/);
+  assert.ok(forecast.reading.highlights.length > 0 && forecast.reading.highlights.length <= 2);
+  for (const item of forecast.reading.highlights) {
+    const day = forecast.days.find(day => day.date === item.date);
+    assert.equal(item.theme, day.reading.theme);
+    assert.deepEqual(item.basis, day.personalThemes[0]?.basis ?? null);
+  }
+  assert.equal(forecast.reading.recommendations.length, 7);
+});

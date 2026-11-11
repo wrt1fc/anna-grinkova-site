@@ -15,11 +15,12 @@ const SOLAR_SIGN = `(?:${[...Object.keys(SOLAR_GENITIVE), ...Object.values(SOLAR
 function wrongOwnerSolarSign(answer, expected) {
   if (!expected) return false;
   answer = answer.replace(/‘[^’]*’|'[^'\n]*'/gu, ' ');
-  const claims = new RegExp(`(?<!\\p{L})(?:(?:ты|вы)\\s+родил(?:ась|ся|ись)\\s+под\\s+знаком|твой\\s+солнечный\\s+знак\\s*[—–:-]?)\\s*(${SOLAR_SIGN})(?!\\p{L})`, 'giu');
+  const claims = new RegExp(`(?<!\\p{L})(?:(?:ты|вы)\\s+родил(?:ась|ся|ись)\\s+под\\s+знаком|(?:твой|ваш|у тебя|у вас)\\s+(?:солнечный\\s+знак|знак\\s+зодиака)\\s*[—–:-]?|(?:ты|вы)\\s*[—–:-]?)\\s*(${SOLAR_SIGN})(?!\\p{L})`, 'giu');
   for (const match of answer.matchAll(claims)) {
     const start = Math.max(...['.','!','?',';','\n'].map(separator => answer.lastIndexOf(separator,match.index - 1))) + 1;
     const before = answer.slice(start,match.index);
     const after = answer.slice(match.index + match[0].length);
+    if (/^\s+по\s+(?:асцендент\p{L}*|Лун\p{L}*)/iu.test(after)) continue;
     // A conditional, a question or a rejected/reported claim is not a fact about
     // this chart's owner. Subjectless and third-person phrases never match.
     if (/(?<!\p{L})(?:если|когда бы|допустим|предположим|возможно|неверно|неправда|не факт|не означает|не значит|сказал\p{L}*|говорил\p{L}*)(?!\p{L})/iu.test(before)
@@ -72,7 +73,7 @@ export function wrongCalculatedClaim(answer, chart) {
   const point = (name) => { const key=keyFor(name); return facts.positions[key] ?? facts.angles?.[key]; };
   const claimSign = new RegExp(`(${PLANET})(?: и (${PLANET}))?(?: у тебя)?(?: стоит| находится)? (?:в|во) (${SIGN})(?!\\p{L})`, 'giu');
   for (const m of answer.matchAll(claimSign)) if (!timed(m.index)) for (const name of [m[1],m[2]].filter(Boolean)) if (point(name)?.sign !== signFor(m[3])) return true;
-  const claimHouse = new RegExp(`(${PLANET})(?: и (${PLANET}))?(?: у тебя)?\\s*(?:[—–-]\\s*)?(?:(?:стоит|находится)\\s+)?(?:в|во) (?:${SIGN} (?:в|во) )?(${HOUSE}) доме`, 'giu');
+  const claimHouse = new RegExp(`(${PLANET})(?: и (${PLANET}))?(?: у тебя)?\\s*(?:[,—–-]\\s*)?(?:(?:стоит|находится)\\s+)?(?:в|во) (?:${SIGN} (?:в|во) )?(${HOUSE}) доме`, 'giu');
   for (const m of answer.matchAll(claimHouse)) if (!timed(m.index)) for (const name of [m[1],m[2]].filter(Boolean)) if (point(name)?.house !== (ORDINALS[m[3].toLowerCase()] ?? parseInt(m[3],10))) return true;
   const checkAspect = (a,b,aspect) => facts.aspects.some(f=> f.aspect===aspectFor(aspect)
     && ((f.first===keyFor(a)&&f.second===keyFor(b))||(f.first===keyFor(b)&&f.second===keyFor(a))));
@@ -118,6 +119,10 @@ export function wrongCalculatedClaim(answer, chart) {
     }
     // Claims without a house number («В 11 доме у тебя Лев. Его управители Солнце и Плутон.») are attributed
     // to the house last mentioned in the answer before the claim; without any house mention they cannot be checked.
+    // A cusp followed by its own named ruler establishes the same discourse topic
+    // as «управитель второго дома». The ruler's placement is not a topic switch.
+    const cuspDeclarations=[...rulerAnswer.matchAll(new RegExp(`(?:куспид\\p{L}*|начало)\\s+(${RULER_HOUSE})\\s+дома([^.!?;\\n]{0,90}?)(?<!\\p{L})(?:его|её|ее)\\s+управител\\p{L}*\\s*(?:[—–,:-]\\s*)?(${PLANET})`,'giu'))]
+      .filter(m=>!new RegExp(PLANET,'iu').test(m[2])&&!new RegExp(`${RULER_HOUSE}\\s+дом`,'iu').test(m[2]));
     const implicit = new RegExp(`(?:(второй|третий|четвёртый|четвертый|другой|ещ[её] один)\\s+)?управител\\p{L}*(?:\\s+(?:его|её|этого дома|этой темы|дома))?\\s*(?:—|–|-|:|,)?\\s*(?:это\\s+)?(${PLANET})(?:\\s*(?:,|и)\\s*(${PLANET}))?`, 'giu');
     for (const m of rulerAnswer.matchAll(implicit)) {
       if (new RegExp(`^управител\\p{L}*\\s+\\d`, 'iu').test(m[0])) continue; // explicit claims are checked above
@@ -126,13 +131,19 @@ export function wrongCalculatedClaim(answer, chart) {
       // not another ruler of the previously discussed house.
       if (new RegExp(`^управител\\p{L}*\\s+${PLANET}\\s*[,—–:-]\\s*${PLANET}`,'iu').test(rulerAnswer.slice(m.index))) continue;
       const declared = [...before.matchAll(new RegExp(`управител\\p{L}*\\s+(${RULER_HOUSE}|денежного)\\s+дома`,'giu'))].at(-1);
+      const cusp=cuspDeclarations.filter(c=>c.index+c[0].length<=m.index).at(-1);
+      const cuspOffset=cusp?cusp.index-Math.max(0,m.index-2000):-1;
+      const declaration=cusp&&cuspOffset>=0&&(!declared||cuspOffset>declared.index)?{index:cuspOffset,text:cusp[0],house:houseNumber(cusp[1]),cusp:true}
+        :declared?{index:declared.index,text:declared[0],house:declared[1].toLowerCase()==='денежного'?2:houseNumber(declared[1])}:null;
       const mentioned = [...before.matchAll(new RegExp(`(${RULER_HOUSE})\\s+дом`,'giu'))];
       if (!mentioned.length) continue;
       let house = houseNumber(mentioned.at(-1)[1]);
-      if (m[1] && declared) {
-        const afterDeclaration = before.slice(declared.index + declared[0].length);
-        const newTopic = [...afterDeclaration.matchAll(new RegExp(`(?:теперь|далее|перейд[её]м к|что касается|у|для)\\s+(${RULER_HOUSE})\\s+дом`,'giu'))].at(-1);
-        house = newTopic ? houseNumber(newTopic[1]) : declared[1].toLowerCase() === 'денежного' ? 2 : houseNumber(declared[1]);
+      if (m[1] && declaration) {
+        const afterDeclaration = before.slice(declaration.index + declaration.text.length);
+        const newTopic = [...afterDeclaration.matchAll(new RegExp(`(?:(?:теперь|далее)(?:\\s+(?:о|про|у))?|перейд[её]м к|что касается|куспид\\p{L}*|начало|у|для|[.!?;\\n])\\s*(${RULER_HOUSE})\\s+дом`,'giu'))].at(-1);
+        const dispositor=declaration.cusp?[...afterDeclaration.matchAll(new RegExp(`(?:управител\\p{L}*\\s+${PLANET}\\s*[,—–:-]\\s*${PLANET}|диспозитор\\p{L}*)`,'giu'))].at(-1):null;
+        if(dispositor&&(!newTopic||dispositor.index>newTopic.index))continue;
+        house = newTopic ? houseNumber(newTopic[1]) : declaration.house;
       } else if (!m[1] && !/управители|управител\p{L}*\s+дома/iu.test(m[0])) {
         // Singular «его управитель» after a planet is ambiguous; only
         // accept this implicit form immediately after an explicit house topic.
@@ -156,7 +167,10 @@ const MEANINGS = { sun:'Солнце связывают с тем, как чел
   saturn:'Сатурн связывают с ответственностью, границами и навыками, которые растут с практикой', uranus:'Уран связывают с самостоятельностью и готовностью пробовать новое',
   neptune:'Нептун связывают с воображением, восприимчивостью и поиском смысла', pluto:'Плутон связывают с глубокими переменами и отношением к контролю' };
 export function groundedNatalAnswer(chart, message, length='medium') {
-  const facts=chart.calculated;
+  const facts=chart?.calculated;
+  if (!facts?.positions) return 'Заполни дату, время (если известно) и место рождения в личном кабинете — тогда можно будет разобрать твою карту.';
+  if (/сильн\p{L}*\s+сторон|талант|способност/iu.test(message)) return groundedStrengths(facts);
+  if (/тревог|тревож|выгор|устал|восстанов|отдых/iu.test(message)) return groundedSupport(facts);
   const keys=Object.keys(MEANINGS).filter(key=>new RegExp(FORMS[key],'iu').test(message));
   const selected=[...new Set([...(keys.length?keys:['sun','moon']), ...(length==='detailed'?['sun','moon','mercury','venus']:[])])]
     .filter(key=>facts.positions[key]).slice(0,length==='short'?1:length==='detailed'?4:2);
@@ -169,4 +183,28 @@ export function groundedNatalAnswer(chart, message, length='medium') {
   const positions=selected.map(key=>{const p=facts.positions[key];return `${POINT_NAMES[key]} в ${SIGN_PREPOSITIONAL[p.sign]}${p.house?`, в ${p.house}-м доме`:''}`;});
   const meaning=selected.map(key=>MEANINGS[key]).join('. ');
   return `В твоей карте ${positions.join('; ')}. ${meaning}.${length==='short'?'':' Это опоры для разбора твоего вопроса, а не готовый приговор: проявление этих качеств зависит и от твоего опыта.'}`;
+}
+
+export function personalSolarSignAnswer(chart) {
+  const sign = chart?.calculated?.positions?.sun?.sign;
+  if (!sign) return 'Чтобы назвать твой солнечный знак, заполни дату и место рождения в личном кабинете. Время укажи, если оно известно: на границе знаков оно может понадобиться.';
+  if (chart.solarSignUncertain) return 'Дата рождения близка к переходу Солнца в другой знак, а время рождения не указано. По сохранённым данным нельзя уверенно назвать один солнечный знак. Уточни время рождения в личном кабинете.';
+  return `Твой знак зодиака — ${sign}. В рассчитанной карте Солнце в ${SIGN_PREPOSITIONAL[sign]}.`;
+}
+
+// Practical hypotheses tied to the calculated element, never diagnoses or guarantees.
+const STRENGTHS = {
+  Овен: 'начинать дело и проверять идеи действием', Лев: 'представлять свои идеи и брать ответственность за результат', Стрелец: 'видеть перспективу и связывать работу с понятной целью',
+  Телец: 'последовательно доводить дело до осязаемого результата', Дева: 'замечать детали и улучшать рабочий процесс', Козерог: 'планировать долгую работу и выстраивать последовательные шаги',
+  Близнецы: 'собирать сведения и объяснять их другим', Весы: 'сопоставлять разные позиции и искать договорённость', Водолей: 'находить новые подходы и обмениваться идеями',
+  Рак: 'замечать потребности людей и создавать поддерживающую среду', Скорпион: 'внимательно исследовать сложный вопрос', Рыбы: 'использовать воображение и замечать оттенки переживаний',
+};
+function groundedStrengths(facts) {
+  const sun = facts.positions.sun;
+  if (!sun || !STRENGTHS[sun.sign]) return 'Назови занятие, в котором ты чувствуешь себя уверенно: разберём, какие навыки помогают получать результат.';
+  return `Солнце в ${SIGN_PREPOSITIONAL[sun.sign]} даёт тему для проверки: способность ${STRENGTHS[sun.sign]}. Это астрологическая гипотеза, а не оценка твоих реальных навыков. Вспомни два случая, когда у тебя это получилось: какие действия помогли, какой получился результат и что можно повторить в ближайшей задаче? Так сильная сторона станет конкретным действием.`;
+}
+function groundedSupport(facts) {
+  const moon = facts.positions.moon;
+  return `${moon ? `Луна в ${SIGN_PREPOSITIONAL[moon.sign]} — один из показателей для разговора об эмоциональной опоре. ` : ''}Причину тревоги или усталости по карте установить нельзя. На сегодня попробуй убрать одну необязательную задачу, выделить спокойное время для отдыха и записать, что именно сейчас тревожит. Выбери из списка одну вещь, на которую можешь повлиять, и самый небольшой следующий шаг. Если сил мало, начни с отдыха и поддержки близкого человека.`;
 }

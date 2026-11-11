@@ -89,6 +89,35 @@ test('co-ruler keeps the explicit money-house topic across the first ruler place
   assert.equal(wrongCalculatedClaim(first+'Теперь у 1 дома другой управитель — Юпитер.',moneyChart),true);
 });
 
+test('a cusp topic qualified by its first ruler anchors later co-rulers rather than planet placement houses',()=>{
+  const facts={calculated:{positions:{jupiter:{house:12},neptune:{house:2},moon:{house:4},sun:{house:11},mars:{house:4},pluto:{house:8},venus:{house:9}},aspects:[],houseRulers:[
+    {house:2,rulers:[{planet:'jupiter',house:12},{planet:'neptune',house:2}]},
+    {house:4,rulers:[{planet:'venus',house:9}]},
+    {house:7,rulers:[{planet:'mars',house:4},{planet:'pluto',house:8}]},
+    {house:12,rulers:[{planet:'moon',house:4}]},
+  ]}};
+  const first='Куспид 2 дома в Стрельце, а его управитель Юпитер стоит в 12 доме. ';
+  assert.equal(wrongCalculatedClaim(first+'Второй управитель, Нептун, стоит во 2 доме.',facts),false);
+  assert.equal(wrongCalculatedClaim(first+'Другой управитель — Нептун — стоит во втором доме.',facts),false);
+  assert.equal(wrongCalculatedClaim(first+'Второй управитель, Марс, стоит в 4 доме.',facts),true);
+  assert.equal(wrongCalculatedClaim(first+'Второй управитель, Нептун, стоит в 4 доме.',facts),true);
+  assert.equal(wrongCalculatedClaim(first+'Теперь у седьмого дома второй управитель — Плутон, он стоит в 8 доме.',facts),false);
+  assert.equal(wrongCalculatedClaim(first+'Теперь седьмой дом. Второй управитель — Нептун, он стоит во 2 доме.',facts),true);
+  assert.equal(wrongCalculatedClaim(first+'Седьмой дом. Второй управитель — Плутон, он стоит в 8 доме.',facts),false);
+  assert.equal(wrongCalculatedClaim(first+'Куспид седьмого дома в Овне. Второй управитель — Плутон, он стоит в 8 доме.',facts),false);
+  assert.equal(wrongCalculatedClaim(first+'Куспид седьмого дома в Овне. Второй управитель — Нептун, он стоит во 2 доме.',facts),true);
+  assert.equal(wrongCalculatedClaim(first+'Управитель Юпитера — Марс. Его второй управитель — Плутон.',facts),false);
+  // A dash before a placement is still a co-ruler assertion, not a dispositor transition.
+  assert.equal(wrongCalculatedClaim(first+'Второй управитель Нептун — во 2 доме. Третий управитель — Марс.',facts),true);
+  assert.equal(wrongCalculatedClaim(first+'Второй управитель Нептун, стоит во 2 доме. Третий управитель — Марс.',facts),true);
+  assert.equal(wrongCalculatedClaim(first+'Второй управитель Нептун — во 2 доме.',facts),false);
+  // Merely mentioning a cusp and another planet does not establish whose ruler follows.
+  assert.equal(wrongCalculatedClaim('Куспид 2 дома в Стрельце. Венера стоит в 9 доме. Её управитель Марс.',facts),false);
+  const cancer=structuredClone(facts);cancer.calculated.houseRulers[0].rulers=[{planet:'moon',house:4},{planet:'sun',house:11}];
+  assert.equal(wrongCalculatedClaim('Куспид 2 дома в Раке, его управитель Луна стоит в 4 доме. Второй управитель, Солнце, стоит в 11 доме.',cancer),false);
+  assert.equal(wrongCalculatedClaim('Начало второго дома в Раке, его управитель Луна стоит в 4 доме. Другой управитель — Юпитер.',cancer),true);
+});
+
 test('ruler claims are checked against the calculated table for all twelve houses',()=>{
   // 1990-05-15 chart: the 1st house (Дева) is ruled by Mercury, which stands in the 9th house.
   assert.equal(wrongCalculatedClaim('Управитель 1 дома — Меркурий, он стоит в 9 доме.',chart),false);

@@ -14,13 +14,14 @@ import {financialDecisionReply} from './financial-safety.js';
 import { SAFE_FALLBACK_ANSWER } from './chat-safety.js';
 import { isRelationshipQuestion } from './chat-topics.js';
 import { groundedRelationshipAnswer, relationshipAnswerProblems } from './relationship-context.js';
-import { groundedNatalAnswer, wrongCalculatedClaim } from './chart-answer-check.js';
+import { groundedNatalAnswer, wrongCalculatedClaim, personalSolarSignAnswer } from './chart-answer-check.js';
 import { groundingQuestion } from './chat-topics.js';
 import { isGeneralAstrologyQuestion } from './chat-grounding-scope.js';
 import { extractLearningSignal, learningSignalDiagnostics, LEARNING_SIGNAL, LEARNING_SIGNAL_INSTRUCTION } from './learning-signals.js';
-import {explanationGuidance, incompleteMoneyExplanation, calculatedMoneyExplanation, wrongMoneyRulerClaim} from './chat-explanation.js';
+import {explanationGuidance, incompleteMoneyExplanation, calculatedMoneyExplanation, wrongMoneyRulerClaim, practicalIntentAnswer, intentAnswerProblem} from './chat-explanation.js';
 import {focusedChart} from './chat-chart-focus.js';
-import {asksAboutMoney} from './anna-method.js';
+import {personalSolarSignQuestion} from './chat-topics.js';
+import {isClearlyOffTopic, incomeRulerExplanation, chatIntent} from './chat-intent.js';
 
 const ENDPOINT = ollamaGenerateUrl();
 const MODEL_TIMEOUT_MS = 45_000;
@@ -105,7 +106,7 @@ export function questionGuidance(message, chart, mode, history = []) {
 
 // Shared with training: a different system instruction teaches a different task.
 export function firstPassSystem({message, chart = null, mode = null, history = [], learningSignals = false, length = DEFAULT_ANSWER_LENGTH}) {
-  const explanation = explanationGuidance(message, chart, mode) + (mode !== TAROT_MODE
+  const explanation = explanationGuidance(groundingQuestion(message, history), chart, mode) + (mode !== TAROT_MODE
     ? '\nРазмер текущего ответа: '+ANSWER_LENGTHS[length].instruction+' Правило 2–4 предложений относится только к обычному среднему ответу; для подробного ответа раскрой тему в заданном объёме. Не повторяй эти указания.' : '');
   // Opt-in for isolated training/evaluation only; production keeps its existing prompt.
   if (learningSignals && mode !== TAROT_MODE && process.env.ANNA_TRAINING_PROMPT_VERSION === '18') {
@@ -193,30 +194,41 @@ export function createLocalChat({ model, fetchImpl = fetch, learningSignals = pr
       const size = answerSize(mode, length);
       if (!size) throw new Error('Unknown answer length');
       const question = groundingQuestion(message, history);
-      const topicFallback = () => chart?.relationship && !chart.partner ? groundedRelationshipAnswer(chart, length)
-        : chart?.calculated && !chart.partner ? chart.money && asksAboutMoney(question)
+      const topicFallback = () => (incomeRulerExplanation(question) ? null : practicalIntentAnswer(chart, question, length)) ?? (chart?.relationship && !chart.partner ? groundedRelationshipAnswer(chart, length)
+        : chart?.calculated && !chart.partner ? chart.money && incomeRulerExplanation(question)
           ? calculatedMoneyExplanation(chart, question, length) : groundedNatalAnswer(chart, question, length)
-          : null;
+          : null);
       // Generated and calculated answers share the same publication contract.
       // Trimming a fallback can remove required facts, so validate after trimming.
       const publishFallback = (text, flags = {}) => {
         let fixed = conversationalOpening(text, history);
-        if (fixed.length > size.maxChars) fixed = lastFullSentence(fixed.slice(0, size.maxChars));
-        if (mode !== TAROT_MODE && length === 'detailed' && fixed.length < 400) throw new Error('Local chat returned an incomplete detailed answer');
+        const truncated = fixed.length > size.maxChars;
+        if (truncated) fixed = lastFullSentence(fixed.slice(0, size.maxChars));
+        if (mode !== TAROT_MODE && length === 'detailed' && chatIntent(question) !== 'service' && fixed.length < 400) throw new Error('Local chat returned an incomplete detailed answer');
         if (fixed.length < MIN_ANSWER_CHARS || hasFormalAddress(fixed)
           || wrongPlanetSign(fixed, chart) || wrongCalculatedClaim(fixed, chart)
           || wrongMoneyRulerClaim(fixed, chart, question) || relationshipAnswerProblems(fixed, chart, length)
-          || mode !== TAROT_MODE && incompleteMoneyExplanation(fixed, chart, question, length)
+          || mode !== TAROT_MODE && (incompleteMoneyExplanation(fixed, chart, question, length) || intentAnswerProblem(fixed, question))
           || process.env.CHAT_FACT_GUARD === '1' && mode !== TAROT_MODE && astroFactProblems(fixed,{question:message,chart}).length) {
           throw new Error('Local chat fallback failed answer validation');
         }
         onDelta?.(fixed, fixed);
-        return {answer:fixed,model:null,length,truncated:false,contextVersion:chatContext.version,groundedFallback:true,learningSuggested:false,...flags};
+        return {answer:fixed,model:null,length,truncated,contextVersion:chatContext.version,groundedFallback:true,learningSuggested:false,...flags};
       };
       const urgent=urgentHealthReply(message,history);
       if(urgent){onDelta?.(urgent.answer,urgent.answer);return {...urgent,length,contextVersion:chatContext.version};}
       const financial=financialDecisionReply(message,history);
       if(financial){onDelta?.(financial.answer,financial.answer);return {...financial,length,contextVersion:chatContext.version};}
+      if (mode !== TAROT_MODE && isClearlyOffTopic(message)) {
+        const answer = conversationalOpening(scopePolicy.reply, history);
+        onDelta?.(answer, answer);
+        return {answer,model:null,length,truncated:false,contextVersion:chatContext.version,learningSuggested:false,scopeFiltered:true};
+      }
+      if (mode !== TAROT_MODE && personalSolarSignQuestion(question)) {
+        const answer = conversationalOpening(personalSolarSignAnswer(chart), history);
+        onDelta?.(answer, answer);
+        return {answer,model:null,length,truncated:false,contextVersion:chatContext.version,learningSuggested:false,groundedFallback:true};
+      }
       if (!signalProtocol && mode !== TAROT_MODE && chart?.missing && isRelationshipQuestion(message)) {
         const answer = conversationalOpening('Чтобы разобрать твои отношения по натальной карте, добавь дату, время и город рождения в кабинете. А пока расскажи: ты сейчас в паре или хочешь встретить партнёра?', history);
         onDelta?.(answer, answer);
@@ -233,7 +245,7 @@ export function createLocalChat({ model, fetchImpl = fetch, learningSignals = pr
           // Fixed context size: Ollama reloads the model whenever num_ctx changes between requests.
           options: { temperature, num_predict: size.numPredict, num_ctx: 8192 },
           system: firstPassSystem({message, chart, mode, history, learningSignals:signalProtocol, length})
-            + (explanationRetry ? '\nВ предыдущем ответе пропущен управитель денежного дома. Объясни просто, учти все перечисленные выше планеты и их рассчитанные дома. Не цитируй это указание.' : '')
+            + (explanationRetry ? '\nОтветь на текущее намерение человека и соблюди запрошенное число шагов. Перечисляй денежных управителей только при прямом разборе источников дохода; в этом случае учти каждого из расчёта. Не цитируй это указание.' : '')
             +(factRetry?'\nИсправь конкретную ошибку предыдущего ответа. Проверенный факт: '+factCorrection+' Сохрани вопрос и рассчитанные данные, не цитируй это указание.':'')
             + (lengthRetry ? '\nПредыдущий ответ слишком краток для подробного режима. Раскрой тему в 5–8 содержательных предложениях: объяснение, пример и вывод, не меньше 400 символов. Не повторяй мысли и не добавляй неизвестных фактов.' : '')
             + (styleRetry ? '\nИсправь обращение: только «ты», «тебе», «твой» и глаголы в единственном числе. Сохрани смысл и факты. Разговорный тон, без официальных приветствий и без цитирования этих правил.' : '') + (qualityRetry
@@ -292,7 +304,10 @@ export function createLocalChat({ model, fetchImpl = fetch, learningSignals = pr
       if(factIssues.length){
         const correction=factIssues.slice(0,2).map(x=>x.correction).join(' ');
         if(!factRetry)return createLocalChat({model,fetchImpl,learningSignals,onTrace}).answer({message,history,forecast,visitorName,visitorGender,signal,length,materials,chart,mode,tone,onDelta,temperature:0.1,qualityRetry,styleRetry,factRetry:true,factCorrection:correction,explanationRetry,lengthRetry});
-        return publishFallback(correction,{factFiltered:true});
+        if (isGeneralAstrologyQuestion(question) || !chart && astroReference(question,history)?.topics?.length) return publishFallback(correction,{factFiltered:true});
+        const fallback = topicFallback();
+        if (fallback) return publishFallback(fallback,{factFiltered:true});
+        throw new Error('Local chat repeated an ungrounded fact');
       }
       const repeated = cleanRepeatedSentences(parsed.answer).trim() !== parsed.answer.trim();
       if (wrongPlanetSign(answer, chart) || wrongCalculatedClaim(answer, chart) || wrongMoneyRulerClaim(answer, chart, groundingQuestion(message, history)) || relationshipAnswerProblems(answer, chart, length) || (chart && repeated && !qualityRetry)) {
@@ -303,6 +318,12 @@ export function createLocalChat({ model, fetchImpl = fetch, learningSignals = pr
         }
         return createLocalChat({ model, fetchImpl, learningSignals, onTrace }).answer({ message, history, forecast, visitorName, visitorGender, signal,
           length, materials, chart, mode, tone, onDelta, temperature: 0.1, qualityRetry: true, styleRetry, factRetry, factCorrection, explanationRetry, lengthRetry });
+      }
+      if (mode !== TAROT_MODE && intentAnswerProblem(answer, question)) {
+        if (!explanationRetry) return createLocalChat({model,fetchImpl,learningSignals,onTrace}).answer({message,history,forecast,visitorName,visitorGender,signal,length,materials,chart,mode,tone,onDelta,temperature:0.1,qualityRetry,styleRetry,factRetry,factCorrection,explanationRetry:true,lengthRetry});
+        const fallback = practicalIntentAnswer(chart, question, length);
+        if (fallback) return publishFallback(fallback,{explanationFiltered:true});
+        throw new Error('Local chat did not answer the current question');
       }
       if (mode !== TAROT_MODE && incompleteMoneyExplanation(answer, chart, groundingQuestion(message, history), length)) {
         if (!explanationRetry) return createLocalChat({model,fetchImpl,learningSignals,onTrace}).answer({message,history,forecast,visitorName,visitorGender,signal,length,materials,chart,mode,tone,onDelta,temperature:0.1,qualityRetry,styleRetry,factRetry,factCorrection,explanationRetry:true,lengthRetry});

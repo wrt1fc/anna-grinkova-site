@@ -3,7 +3,7 @@
 // Everything is calculated locally; the chat receives only the compact result.
 import { SiderealTime, e_tilt, MakeTime } from 'astronomy-engine';
 import { chartAt } from './astro-personal.js';
-import { isPersonalLifeQuestion } from './chat-topics.js';
+import { isPersonalLifeQuestion, personalSolarSignQuestion } from './chat-topics.js';
 
 export const SIGNS = ['Овен', 'Телец', 'Близнецы', 'Рак', 'Лев', 'Дева', 'Весы', 'Скорпион', 'Стрелец', 'Козерог', 'Водолей', 'Рыбы'];
 export const POINT_NAMES = { sun: 'Солнце', moon: 'Луна', mercury: 'Меркурий', venus: 'Венера', mars: 'Марс', jupiter: 'Юпитер',
@@ -210,7 +210,7 @@ export function chartForPrompt(natal, instant = new Date(), { include = ['natal'
 
 const CHART_TOPIC = /натал|карт[аеуы] рождени|гороскоп|асцендент|(?<!\p{L})асц(?!\p{L})|\bmc\b|середин[аеу] неба|\d+(?:-?(?:й|го|м))?\s*дом|(?:перв|втор|треть|четв[её]рт|пят|шест|седьм|восьм|девят|десят|одиннадцат|двенадцат)[а-яё]*\s+дом|куспид|аспект|ретроград|транзит|дирекци|прогресси|солнечн(ая|ой) дуг|узл|лилит|(солнц|лун|меркури|венер|марс|юпитер|сатурн|уран|нептун|плутон)\S* в /iu;
 export function asksAboutChart(message) {
-  return CHART_TOPIC.test(message) || isPersonalLifeQuestion(message);
+  return CHART_TOPIC.test(message) || isPersonalLifeQuestion(message) || personalSolarSignQuestion(message);
 }
 export function chartSectionsFor(message) {
   const include = ['natal'];

@@ -68,7 +68,7 @@ export function sourceGroundedTheoryProblems(answer,{question=''}={}){
   }
  }
  let previousSign;
- const role='(?:главн\\p{L}*|основн\\p{L}*|соуправител\\p{L}*|втор\\p{L}*\\s+управител\\p{L}*)';
+ const role='(?:(?:главн|основн|втор)\\p{L}*\\s+управител\\p{L}*|соуправител\\p{L}*)';
  for(const sentence of answer.split(/(?<=[.!?;])\s+|\n+/u)){
   const signs=[...sentence.matchAll(new RegExp(signPattern,'giu'))];
   const contextSign=signs.length===1?findKey(signStems,signs[0][0]):undefined;
