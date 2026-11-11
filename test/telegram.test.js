@@ -6,7 +6,7 @@ import { createStore } from '../server/store.js';
 import { createTrafficLimiter } from '../server/traffic.js';
 import { verifyInitData } from '../server/telegram/init-data.js';
 import { createTelegramBot } from '../server/telegram/bot.js';
-import { BRAND, COMMANDS } from '../server/telegram/branding.js';
+import { BRAND, COMMANDS, VPN_APP_URL } from '../server/telegram/branding.js';
 
 const TOKEN = '123456:test-token';
 const SECRET = 'webhook-secret_1';
@@ -94,6 +94,17 @@ test('profile avatar uses an actual multipart upload', async () => {
   assert.ok(photo instanceof FormData);
   assert.deepEqual(JSON.parse(photo.get('photo')), { type: 'static', photo: 'attach://avatar' });
   assert.equal(await photo.get('avatar').text(), 'test-photo');
+});
+
+test('every bot entry offers a separate Finland VPN button and preserves its target screen', () => {
+  const bot = createTelegramBot({ token: TOKEN, publicUrl: 'https://anna.example/' });
+  for (const { command } of COMMANDS) {
+    const reply = bot.webhookReply({ message: { chat: { id: 9, type: 'private' }, text: `/${command}` } });
+    const vpn = reply.reply_markup.inline_keyboard[1][0];
+    assert.equal(vpn.text, 'Подключение с VPN');
+    assert.equal(vpn.web_app.url, ['start', 'help'].includes(command) ? VPN_APP_URL : `${VPN_APP_URL}#/${command}`);
+    assert.ok(reply.reply_markup.inline_keyboard[0][0].web_app.url.startsWith('https://anna.example/'));
+  }
 });
 
 async function fixture(run, { enabled = true } = {}) {

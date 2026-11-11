@@ -1,3 +1,5 @@
+export const VPN_APP_URL = 'https://fortuna-fi.13-143-164-147.sslip.io:9443/';
+
 export const BRAND = {
   name: 'МояФортуна',
   shortDescription: 'Карта дня, прогноз на неделю и вопросы о себе. По подходу Анны Гриньковой.',

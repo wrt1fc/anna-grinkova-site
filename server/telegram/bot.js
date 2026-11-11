@@ -1,4 +1,4 @@
-import { BRAND, COMMANDS, HELP, WELCOME } from './branding.js';
+import { BRAND, COMMANDS, HELP, WELCOME, VPN_APP_URL } from './branding.js';
 const API = 'https://api.telegram.org';
 
 // A thin client of the Telegram Bot API. `fetchImpl` is replaceable, so tests never touch the network.
@@ -16,7 +16,8 @@ export function createTelegramBot({ token, publicUrl, fetchImpl = fetch }) {
   }
   const base = publicUrl.replace(/\/$/, '');
   const button = (text, screen = '') => ({ text, web_app: { url: screen ? `${base}/#/${screen}` : publicUrl } });
-  const openApp = { inline_keyboard: [[button('Открыть приложение')], [button('Карта дня', 'card'), button('Прогноз на неделю', 'week')]] };
+  const vpnButton = (screen = '') => ({ text: 'Подключение с VPN', web_app: { url: screen ? `${VPN_APP_URL}#/${screen}` : VPN_APP_URL } });
+  const openApp = { inline_keyboard: [[button('Открыть приложение')], [vpnButton()], [button('Карта дня', 'card'), button('Прогноз на неделю', 'week')]] };
   function webhookReply(update) {
     const message = update?.message;
     if (!message?.chat || typeof message.text !== 'string' || (message.chat.type && message.chat.type !== 'private')) return null;
@@ -31,7 +32,7 @@ export function createTelegramBot({ token, publicUrl, fetchImpl = fetch }) {
     const section = sections[command];
     return { method: 'sendMessage', chat_id: message.chat.id,
       text: section ? section[0] : command === 'help' ? HELP : WELCOME,
-      reply_markup: section ? { inline_keyboard: [[button(section[1], section[2])]] } : openApp };
+      reply_markup: section ? { inline_keyboard: [[button(section[1], section[2])], [vpnButton(section[2])]] } : openApp };
   }
 
   return {
