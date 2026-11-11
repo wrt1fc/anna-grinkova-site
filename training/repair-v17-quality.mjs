@@ -3,11 +3,11 @@ import {SIGN_RULERS} from '../server/anna-method.js';
 import {POINT_NAMES} from '../server/astro-chart.js';
 const groups={
  modality:[['кардинальн'],['фиксирован|устойчив'],['мутабельн|подвижн']],
- progression:[['день|дня|дней|сутк'],['год|лет'],['после рождения|послеродов|после момента рождения|после твоего рождения']],
+ progression:[['день|дня|дней|сут(?:к|ок)'],['год|лет'],['после рождения|послеродов|после момента рождения|после твоего рождения|(?:момент(?:а)?\\s+рождения|рождени[яе])\\s*(?:плюс|\\+)\\s*\\d+\\s*сут(?:ок|ки)']],
  relocation:[['планет'],['сохран|не меня|оста[ею]тся|остаются|прежн'],['дом|угл|асцендент']],
  ruler:[['куспид|начал.{0,12}дома'],['знак'],['управител|хозяин']],
  orb:[['отклонени|допуск|разниц'],['аспект|угл|угол']],
- direction:[['солнечн.{0,12}дуг|символическ.{0,20}сдвиг|сдвиг.{0,20}дуг'],['прогрессивн.{0,15}Солнц|прогрессирующ.{0,15}Солнц|временн.{0,10}ключ']],
+ direction:[['солнечн.{0,12}дуг|символическ.{0,20}сдвиг|сдвиг.{0,20}дуг'],['прогрессивн\\p{L}*.{0,15}Солнц|прогрессирующ.{0,15}Солнц|временн.{0,10}ключ']],
 };
 const genitive={Овен:'Овна',Телец:'Тельца',Близнецы:'Близнецов',Рак:'Рака',Лев:'Льва',Дева:'Девы',Весы:'Весов',Скорпион:'Скорпиона',Стрелец:'Стрельца',Козерог:'Козерога',Водолей:'Водолея',Рыбы:'Рыб'};
 const normalize=text=>text.replace(/^\s*Привет[!.,]?\s*/iu,'').replace(/\s+/gu,' ').trim();
@@ -28,10 +28,10 @@ export function repair17AnswerProblems(answer,card){
  if(topic==='orb'&&/как называется|что подразумевают под орбисом/iu.test(card.question)&&!/орбис/iu.test(answer))errors.push('v17: orb name missing');
  if(card.progressedAge!==undefined){
   if(!Number.isInteger(card.progressedAge)||card.progressedAge<1||card.progressedAge>100)throw Error('Invalid progression example');
-  const expected=new RegExp(`(?<!\\d)${card.progressedAge}(?:-?(?:й|ый|го|х))?\\s*(?:послеродовой\\s+)?(?:день|дня|дней|сутк)`,'iu');
+  const expected=new RegExp(`(?<!\\d)${card.progressedAge}(?:-?(?:й|ый|го|х))?\\s*(?:послеродовой\\s+)?(?:день|дня|дней|сут(?:к|ок))`,'iu');
   if(!expected.test(answer))errors.push('v17: progression example missing expected day');
  }
- if(topic==='clarification'&&!/(?:како[йе]|о чём|что именно|уточни|напомни|какие).{0,80}\?|(?:расскажи|уточни|напомни|напиши),?\s+(?:како[йе]|название|что именно)/iu.test(answer))errors.push('v17: clarification question missing');
+ if(topic==='clarification'&&!/(?:како[йе]|о чём|что именно|уточни|напомни|какие).{0,80}\?|(?:расскажи|уточни|напомни|напиши),?\s+(?:како[йе]|название|что именно|о ч[её]м именно)/iu.test(answer))errors.push('v17: clarification question missing');
  if(card.expectSupport&&!/расскажи|я рядом|можно поговорить|можешь рассказать|давай поговорим|что сейчас|что тебе сейчас/iu.test(answer))errors.push('v17: support request was not engaged');
  if(/Хочешь разобраться глубже|Институт прогрессивной психологии|пройди курс|обучение у Анны/iu.test(answer))errors.push('v17: unsolicited course text');
  if(/Пока не получается дать точный ответ/iu.test(answer))errors.push('v17: fallback instead of answer');

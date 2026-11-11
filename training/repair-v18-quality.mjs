@@ -4,10 +4,19 @@ import {POINT_NAMES} from '../server/astro-chart.js';
 import {repair17AnswerProblems} from './repair-v17-quality.mjs';
 const signForms={Овен:'Овном',Телец:'Тельцом',Близнецы:'Близнецами',Рак:'Раком',Лев:'Львом',Дева:'Девой',Весы:'Весами',Скорпион:'Скорпионом',Стрелец:'Стрельцом',Козерог:'Козерогом',Водолей:'Водолеем',Рыбы:'Рыбами'};
 const planetNames=Object.values(POINT_NAMES).join('|');
+const signReference=String.raw`(?:знак|Овн|Тельц|Близнец|Рак|Льв|Дев|Вес|Скорпион|Стрельц|Козерог|Водоле|Рыб)\p{L}*`;
+// Grader revision 2026-11-10-semantic-forms: applies to new evaluations only.
+// Frozen serving reports retain their original grader and must not be rewritten.
+export const repair18GraderRevision='2026-11-10-semantic-forms';
+
+function writtenSubtraction(answer, first, second, difference) {
+ const unit=String.raw`\s*(?:°|градус\p{L}*)?`;
+ return new RegExp(String.raw`(?<![\d−-])${first}${unit}\s*(?:минус|[−-])\s*${second}${unit}\s*(?:,?\s*(?:то есть|это)|равн\p{L}*|=)\s*${difference}\s*(?:°|градус)(?!\d)`, 'iu').test(answer);
+}
 export function basicFactProblems(answer) {
  const problems=[],text=answer.replace(/\s+/gu,' ');
  for(const clause of text.split(/[.!?;\n]/u)){
-  if(/Лун[аы] в кармине/iu.test(clause)&&!/термин.{0,15}Лун[аы] в кармине.{0,20}(?:нет|не существует)|не.{0,45}придумыв.{0,20}термин/iu.test(clause))problems.push('unknown dignity: кармин');
+  if(/Лун[аы] в кармине/iu.test(clause)&&!/термин.{0,15}Лун[аы] в кармине.{0,20}(?:нет|не существует)|не.{0,45}придумыв.{0,20}термин|без\s+придуманн\p{L}*\s+термин\p{L}*\s+вроде\s+[«"]?Лун[аы] в кармине/iu.test(clause))problems.push('unknown dignity: кармин');
   if(/Луна в Сатурне/iu.test(clause))problems.push('planet used as a sign');
   if(/(?:модальности.{0,40}(?:называются|группы знаков:)\s*|три качества(?: определяют знак)?\s*[:—-]\s*)(?:огнен|земн|воздуш|водн|огонь|земля|воздух|вода)/iu.test(clause))problems.push('modalities confused with elements');
   if(/скопление планет[^.!?]{0,50}называют обителью|обитель — скопление/iu.test(clause))problems.push('stellium confused with domicile');
@@ -37,6 +46,13 @@ export function repair18AnswerProblems(answer,card) {
   if(e==='v17: support request was not engaged'&&/лечени|доз/iu.test(card.question)&&/нельзя.{0,40}(?:лечени|доз)|задача врача/iu.test(answer))return false;
   // Naming the three groups isn't required to explain their already-given meanings.
   if(/^v17: modality missing fact/.test(e)&&/запуск|начало/iu.test(answer)&&/удерж|сохран/iu.test(answer)&&/приспособ|адапт|смен/iu.test(answer)&&!/назов|перечисл|сколько|чем отличаются модальности/iu.test(card.question)&&!basicFactProblems(answer).includes('modalities confused with elements'))return false;
+  if(/^v17: modality missing fact/.test(e)&&/количеств|сколько/iu.test(card.question)&&!/назов|перечисл|как\p{L}* называ/iu.test(card.question)
+   &&/(?:в каждой модальност\p{L}*|на модальност\p{L}*)\s+(?:по\s+)?(?:4|четыре)(?![\p{L}\d])\s+знак/iu.test(answer)
+   &&/(?:в каждой стихи\p{L}*|на стихи\p{L}*)\s+(?:по\s+)?(?:3|три)(?![\p{L}\d])(?:\s+знак)?/iu.test(answer))return false;
+  // A planet's dispositor is a sign ruler; a house cusp is irrelevant unless asked.
+  if(/^v17: ruler missing fact [12]$/.test(e)&&/диспозитор/iu.test(card.question)&&!/дом|куспид/iu.test(card.question)
+   &&new RegExp(`диспозитор[^.!?]{0,70}управител\\p{L}*\\s+${signReference}`,'iu').test(answer)
+   &&!/диспозитор[^.!?]{0,70}(?<!\p{L})(?:не|нельзя|неверно)(?!\p{L})[^.!?]{0,35}управител/iu.test(answer))return false;
   if(e==='v17: direction missing fact 2'&&/прогрессивн\p{L}*(?: и натальн\p{L}*)? Солнц/iu.test(answer))return false;
   if(e==='v17: progression example missing expected day'&&card.progressedAge&&new RegExp(`(?<!\\d)${card.progressedAge}\\s+сут(?:ок|ки)`,'iu').test(answer))return false;
   return true;
@@ -52,14 +68,16 @@ export function repair18AnswerProblems(answer,card) {
  if(card.rubricTopic==='progression'&&/день рождения считают первым|а не по возрасту в годах|со скоростью одна на двенадцать дней/iu.test(answer))keep.push('v18: false progression calculation');
  if(card.orbExample){
   const {actual,exact,limit}=card.orbExample,difference=Math.abs(actual-exact);
-  const explicit=new RegExp(`(?:отклонени\\p{L}*|разниц\\p{L}*|орбис)[^.!?]{0,140}?(?:составля\\p{L}*|равн\\p{L}*|=)\\s*${difference}\\s*(?:°|градус)`,'iu').test(answer)||new RegExp(`(?:отклонени\\p{L}*|разниц\\p{L}*|орбис)\\s*[:—-]?\\s*${difference}\\s*(?:°|градус)`,'iu').test(answer);
+  const explicit=new RegExp(`(?:отклонени\\p{L}*|разниц\\p{L}*|орбис)[^.!?]{0,140}?(?:составля\\p{L}*|равн\\p{L}*|=)\\s*${difference}\\s*(?:°|градус)`,'iu').test(answer)||new RegExp(`(?:отклонени\\p{L}*|разниц\\p{L}*|орбис)\\s*[:—-]?\\s*${difference}\\s*(?:°|градус)`,'iu').test(answer)
+   ||writtenSubtraction(answer,Math.max(actual,exact),Math.min(actual,exact),difference);
   const excluded=limit!==undefined&&difference>limit&&new RegExp(`${exact-limit}\\s*[–—-]\\s*${exact+limit}`,'u').test(answer)&&/не входит|вне допуска|выходит за/iu.test(answer);
   if(!explicit&&!excluded)keep.push('v18: orb example missing correct difference');
   if(limit!==undefined&&difference>limit&&!/вне допуска|не (?:входит|попадает|укладывается)|превышает (?:допуск|предел)/iu.test(answer))keep.push('v18: orb example missing exclusion');
  }
  if(card.solarArcExample){
   const {natal,progressed}=card.solarArcExample,arc=(progressed-natal+360)%360;
-  if(!new RegExp(`(?:дуга|разниц\\p{L}*|=)[^.!?]{0,35}(?<!\\d)${arc}\\s*(?:°|градус)`,'iu').test(answer))keep.push('v18: solar arc example missing correct difference');
+  if(!new RegExp(`(?:дуга|разниц\\p{L}*|=)[^.!?]{0,35}(?<!\\d)${arc}\\s*(?:°|градус)`,'iu').test(answer)
+   &&!writtenSubtraction(answer,progressed,natal,arc))keep.push('v18: solar arc example missing correct difference');
  }
  return [...new Set(keep)];
 }

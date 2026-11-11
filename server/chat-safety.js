@@ -45,10 +45,28 @@ const UNSAFE_PATTERNS = [
   // ("Венера стоит в 7 доме", "Солнце стоит на 12°").
   /(?<!\p{L})(?:стоимость|цена|стоит|обойд[её]тся)(?![^.!?]{0,40}?\d+(?:-?[а-я]{1,2})?\s*(?:дом|°|градус))[^.!?]{0,40}(?:\d|тысяч|сотен|сотни)/iu,
   /https?:\/\/|www\.|t\.me\/|(?<![\p{L}\d.])@[a-z0-9_]{3,}/iu,
-  // A promise of an outcome; an honest negation ("не гарантирует") is fine.
-  // The negation may stand one short word earlier: «не о гарантированных сферах», «нет никаких гарантий».
-  /(?<!(?:(?:не|нет)\s{1,3}(?:\p{L}{1,7}\s{1,3})?|без\s{1,3}))гарантир|(?<!не\s{1,3})непременно\s+(?:случится|произойд)|(?<!не\s{1,3})обязательно\s+(?:случится|произойд|сбудет)/iu,
 ];
+
+// Inspect each promise separately: a denial cannot hide a later affirmative
+// promise after a sentence boundary or «но». Only bounded denial forms count.
+function promisesOutcome(answer) {
+  const claims = /гарантир\p{L}*|непременно\s+(?:случится|произойд\p{L}*)|обязательно\s+(?:случится|произойд\p{L}*|сбудет\p{L}*)/giu;
+  for (const claim of answer.matchAll(claims)) {
+    const before = answer.slice(Math.max(0,claim.index-160),claim.index)
+      .split(/[.!?;\n]|,?\s+(?:но|однако|зато|а)(?!\p{L})/iu).at(-1);
+    // «не могу не гарантировать» and «нельзя не гарантировать» assert
+    // the outcome. Do not mistake their final «не» for a denial.
+    if (/(?<!\p{L})(?:(?:не\s+(?:могу|можем|может|могут|буду|будем)|нельзя|невозможно)\s+(?:\p{L}+\s+){0,2}не|не\s+(?:совсем\s+)?(?:нельзя|невозможно)|не\s+(?:только|просто))\s*(?:(?:заранее|точно|уверенно|обоснованно)\s+){0,2}$/iu.test(before)) return true;
+    // A new coordinated first-person predicate is the assistant's own
+    // assertion, not part of the preceding «не обещаю, что ...» denial.
+    if (/^гарантир(?:ую|уем)$/iu.test(claim[0]) && /(?<!\p{L})(?:и|также)\s+(?:(?:заранее|точно|уверенно|обоснованно)\s+){0,2}$/iu.test(before)) return true;
+    const directDenial = /(?<!\p{L})(?:(?:не|нет)\s+(?:\p{L}{1,7}\s+)?|без\s+)$/iu.test(before);
+    const inability = /(?<!\p{L})(?:нельзя|невозможно|нет\s+оснований)\s+(?:(?:заранее|точно|уверенно|обоснованно)\s+){0,2}$/iu.test(before);
+    const deniedAssertion = /(?<!\p{L})(?:не\s+(?:обещаю|утверждаю)|без\s+вывода),?\s+что\s+(?:(?!(?:не|нельзя|невозможно)(?!\p{L})|гарантир)[\p{L}\d«»—–-]+\s+){0,12}$/iu.test(before);
+    if (!directDenial && !inability && !deniedAssertion) return true;
+  }
+  return false;
+}
 
 // Model-agnostic check before an answer is shown: no impersonation, prices, links, invented dates or promises.
 // Anna's materials are private: the model sees fragments of them, but a visitor must not get them back word for word
@@ -69,9 +87,7 @@ export function copiesMaterials(answer, materials = []) {
 }
 
 export function unsafeChatAnswer(answer, forecastDate) {
-  // A denied promise is not a promise: keep all other checks on the original text.
-  const promiseText=answer.replace(/не (?:обещаю|утверждаю),? что [^.!?\n]{0,60}?гарантир\p{L}*/giu,'');
-  if (UNSAFE_PATTERNS.slice(0,-1).some((pattern) => pattern.test(answer)) || UNSAFE_PATTERNS.at(-1).test(promiseText)) return true;
+  if (UNSAFE_PATTERNS.some((pattern) => pattern.test(answer)) || promisesOutcome(answer)) return true;
   const [year, month, day] = String(forecastDate).split('-').map(Number);
   for (const match of answer.matchAll(/(?<!\d)((?:19|20)\d{2})(?!\d)/gu)) {
     if (Number(match[1]) !== year) return true;

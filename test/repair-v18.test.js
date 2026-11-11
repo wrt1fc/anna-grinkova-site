@@ -6,6 +6,7 @@ import {learningAnswerProblems} from '../training/learning-quality.mjs';
 import {chartClaimProblems} from '../training/natal-lib.js';
 import {evaluateAnswer} from '../training/eval-checks.js';
 import {curriculum18} from '../training/curriculum-v18.mjs';
+import {repair18GraderRevision} from '../training/repair-v18-quality.mjs';
 import {unsafeChatAnswer} from '../server/chat-safety.js';
 import {mkdtempSync,mkdirSync,readFileSync,writeFileSync,rmSync} from 'node:fs';
 import {join,resolve} from 'node:path';
@@ -70,6 +71,53 @@ test('worked examples check the number and inequality, not only aspect keywords'
  const card={qualityVersion:18,rubricTopic:'orb',question:'Входит ли в допуск?',orbExample:{actual:94,exact:90,limit:3}};
  assert.ok(learningAnswerProblems('Орбис — отклонение от точного аспекта. Разница 2 градуса, аспект входит в допуск.',card).length);
  assert.deepEqual(learningAnswerProblems('Орбис — отклонение от точного аспекта. Разница 4 градуса превышает допуск 3 градуса, аспект не входит в допуск.',card),[]);
+});
+
+test('separately versioned grader accepts equivalent progression morphology and actual clarification requests',()=>{
+ assert.equal(repair18GraderRevision,'2026-11-10-semantic-forms');
+ const progression={qualityVersion:18,rubricTopic:'progression',progressedAge:42,question:'Через сколько суток после рождения берут положения для 42 лет?'};
+ for(const answer of ['Для 42 лет берут момент рождения плюс 42 суток: день за год.',
+  'Вторичные прогрессии: год жизни соответствует одним суткам после рождения. Для 42 лет берут 42 суток.'])assert.deepEqual(learningAnswerProblems(answer,progression),[],answer);
+ assert.ok(learningAnswerProblems('Для 42 лет берут момент рождения плюс 41 суток: день за год.',progression).length);
+ assert.ok(learningAnswerProblems('Для 42 лет берут 42 суток после переезда, день за год.',progression).length);
+ const clarification={qualityVersion:18,rubricTopic:'clarification',question:'Что значит та мысль?'};
+ assert.deepEqual(learningAnswerProblems('Расскажи, о чём именно, и я поясню.',clarification),[]);
+ for(const answer of ['Сначала нужно понять, какой показатель ты имеешь в виду.',
+  'Без названия группы её значение неизвестно.', 'Можно объяснить слово без предложения курсов.'])assert.ok(learningAnswerProblems(answer,clarification).length,answer);
+ const support={qualityVersion:18,expectSupport:true,question:'Мне одиноко, помоги начать разговор.'};
+ assert.ok(learningAnswerProblems('Одиночество — нормальная реакция. Можно погулять.',support).length);
+});
+
+test('question-specific rubric accepts counts and dispositors without requiring unrelated labels or cusps',()=>{
+ const modality={qualityVersion:18,rubricTopic:'modality',question:'Сколько знаков приходится на модальность и на стихию?'};
+ const counts='В каждой модальности по четыре знака, в каждой стихии по три. Всего двенадцать.';
+ assert.deepEqual(learningAnswerProblems(counts,modality),[]);
+ assert.ok(learningAnswerProblems(counts,{...modality,question:'Назови модальности и скажи, сколько знаков в каждой.'}).length);
+ assert.ok(learningAnswerProblems('В каждой модальности по три знака, в каждой стихии по четыре.',modality).length);
+ for(const answer of ['В каждой модальности по четыре знака, в каждой стихии по тридцать знаков.',
+  'В каждой модальности по четыре знака, в каждой стихии по 30 знаков.'])assert.ok(learningAnswerProblems(answer,modality).length,answer);
+ const dispositor={qualityVersion:18,rubricTopic:'ruler',question:'Чем диспозитор Венеры в Овне отличается от планеты в Овне?'};
+ const explanation='Диспозитор Венеры в Овне — управитель Овна. Это Марс или Плутон. Просто находиться в Овне недостаточно.';
+ assert.deepEqual(learningAnswerProblems(explanation,dispositor),[]);
+ assert.ok(learningAnswerProblems('Диспозитор — любая планета, стоящая в знаке.',dispositor).length);
+ for(const answer of ['Диспозитор — не управитель знака.',
+  'Диспозитор не является управителем знака, в котором стоит планета.'])assert.ok(learningAnswerProblems(answer,dispositor).length,answer);
+ assert.ok(learningAnswerProblems(explanation,{...dispositor,question:'Чем управитель дома на куспиде отличается от диспозитора?'}).length);
+});
+
+test('negated invented terms and arithmetic spoken with digits retain factual checks',()=>{
+ const term={qualityVersion:18,question:'Что такое скопление планет?'};
+ assert.deepEqual(learningAnswerProblems('Это стеллиум, без придуманных терминов вроде «Луна в кармине».',term),[]);
+ assert.ok(learningAnswerProblems('Луна в кармине означает скопление планет.',term).length);
+ assert.ok(learningAnswerProblems('Без придуманных терминов. Луна в кармине означает скопление планет.',term).length);
+ const orb={qualityVersion:18,rubricTopic:'orb',question:'Входит ли угол в допуск?',orbExample:{actual:96,exact:90,limit:3}};
+ assert.deepEqual(learningAnswerProblems('Нет, не входит в допуск. Точный угол аспекта 90 градусов. Отклонение равно 96 минус 90, то есть 6 градусов.',orb),[]);
+ for(const answer of ['Отклонение аспекта: 96 минус 90, то есть 5 градусов. Не входит в допуск.',
+  'Отклонение аспекта: 96 минус 90, то есть 6 градусов. Входит в допуск.'])assert.ok(learningAnswerProblems(answer,orb).length,answer);
+ const arc={qualityVersion:18,rubricTopic:'direction',question:'Как получить солнечную дугу?',solarArcExample:{progressed:101,natal:74}};
+ assert.deepEqual(learningAnswerProblems('Солнечная дуга — разность. Прогрессивное Солнце даёт 101° минус 74° равна 27°. На эту дугу поворачивают точки.',arc),[]);
+ assert.ok(learningAnswerProblems('Солнечная дуга: прогрессивное Солнце даёт 101° плюс 74° равна 27°.',arc).length);
+ assert.ok(learningAnswerProblems('Солнечная дуга: прогрессивное Солнце даёт 101° минус 74° равна 28°.',arc).length);
 });
 test('v18 final report requires both fresh baselines, parent metadata and actual masks',()=>{
  const root=mkdtempSync(join(process.env.TMPDIR||tmpdir(),'repair18-report-'));

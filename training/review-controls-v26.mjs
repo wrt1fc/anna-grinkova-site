@@ -14,7 +14,7 @@ export function deriveReviewControls(original){
   const rubric=revised.get(card.id);if(!rubric)return structuredClone(card);
   for(const key of ['question','answer','learning','split','chartFor'])assert.deepEqual(card[key],rubric[key],'Frozen control identity changed: '+card.id+'/'+key);
   updated++;
-  const next={...structuredClone(card),requiredMeanings:rubric.requiredMeanings,rubricVersion:3};
+  const next={...structuredClone(card),requiredMeanings:rubric.requiredMeanings,rubricVersion:4};
   if(rubric.forbiddenClaims)next.forbiddenClaims=rubric.forbiddenClaims;
   return next;
  });
@@ -28,5 +28,5 @@ if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  const derived=deriveReviewControls(cards).map(card=>JSON.stringify(card)).join('\n')+'\n';
  const sha=value=>createHash('sha256').update(value).digest('hex');
  fs.writeFileSync(output,derived,{flag:'wx'});
- fs.writeFileSync(output+'.revision.json',JSON.stringify({rubricVersion:3,originalSha256:sha(source),derivedSha256:sha(derived),trainingInputsModified:false,questionsAndAnswersUnchanged:true,status:'GRADING_REVISION_NOT_NEW_OR_BLIND_HOLDOUT',reason:'Remove unasked exposition; accept equivalent inflections and conclusions. Factual rejection and original reports preserved.'},null,2),{flag:'wx'});
+ fs.writeFileSync(output+'.revision.json',JSON.stringify({rubricVersion:4,originalSha256:sha(source),derivedSha256:sha(derived),trainingInputsModified:false,questionsAndAnswersUnchanged:true,status:'GRADING_REVISION_NOT_NEW_OR_BLIND_HOLDOUT',reason:'Remove unasked exposition; accept equivalent inflections and conclusions. Factual rejection and original reports preserved.'},null,2),{flag:'wx'});
 }
