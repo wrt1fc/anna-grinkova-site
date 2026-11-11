@@ -1,0 +1,21 @@
+https://fortuna-fi.13-143-164-147.sslip.io:88 {
+    tls {
+        alpn http/1.1
+    }
+    header -Alt-Svc
+    @webhook {
+        path /api/telegram/webhook
+        method POST
+    }
+    handle @webhook {
+        reverse_proxy https://xn--80axddamoif3i.xn--p1ai {
+            header_up Host xn--80axddamoif3i.xn--p1ai
+            transport http {
+                versions 1.1
+            }
+        }
+    }
+    handle {
+        respond 404
+    }
+}

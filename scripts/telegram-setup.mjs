@@ -3,14 +3,14 @@
 import { createTelegramBot } from '../server/telegram/bot.js';
 import { readFile } from 'node:fs/promises';
 
-const { TELEGRAM_BOT_TOKEN: token, TELEGRAM_WEBHOOK_SECRET: secret, PUBLIC_URL: publicUrl } = process.env;
+const { TELEGRAM_BOT_TOKEN: token, TELEGRAM_WEBHOOK_SECRET: secret, PUBLIC_URL: publicUrl, TELEGRAM_WEBHOOK_URL: customWebhook } = process.env;
 if (!token || !secret || !/^https:\/\/[^/]+/.test(publicUrl ?? '')) {
   console.error('Set TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET and PUBLIC_URL=https://… first.');
   process.exit(1);
 }
 const bot = createTelegramBot({ token, publicUrl });
 try {
-  await bot.configure({ webhookUrl: `${publicUrl.replace(/\/$/, '')}/api/telegram/webhook`, secret,
+  await bot.configure({ webhookUrl: customWebhook || `${publicUrl.replace(/\/$/, '')}/api/telegram/webhook`, secret,
     profilePhoto: await readFile(new URL('../prototype/assets/app/icon-512.png', import.meta.url)) });
   console.log('Telegram is set up: webhook, menu button, commands.');
 } catch {
