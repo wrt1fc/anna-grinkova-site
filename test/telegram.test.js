@@ -6,6 +6,7 @@ import { createStore } from '../server/store.js';
 import { createTrafficLimiter } from '../server/traffic.js';
 import { verifyInitData } from '../server/telegram/init-data.js';
 import { createTelegramBot } from '../server/telegram/bot.js';
+import { BRAND, COMMANDS } from '../server/telegram/branding.js';
 
 const TOKEN = '123456:test-token';
 const SECRET = 'webhook-secret_1';
@@ -63,9 +64,36 @@ test('bot: configure sets the webhook, the menu button and the commands; no toke
   const { calls, fetchImpl } = fakeApi();
   const bot = createTelegramBot({ token: TOKEN, publicUrl: 'https://anna.example', fetchImpl });
   await bot.configure({ webhookUrl: 'https://anna.example/api/telegram/webhook', secret: SECRET });
-  assert.deepEqual(calls.map((call) => call.method), ['setWebhook', 'setChatMenuButton', 'setMyCommands']);
+  assert.deepEqual(calls.map((call) => call.method), ['setWebhook', 'setChatMenuButton', 'setMyCommands', 'setMyName', 'setMyDescription', 'setMyShortDescription']);
   assert.equal(calls[0].payload.secret_token, SECRET);
   assert.equal(createTelegramBot({ token: null, publicUrl: 'https://anna.example' }), null);
+});
+
+test('branding fits Telegram limits and each shortcut opens the matching app screen without a network call', () => {
+  assert.ok(BRAND.name.length <= 64);
+  assert.ok(BRAND.description.length <= 512);
+  assert.ok(BRAND.shortDescription.length <= 120);
+  const bot = createTelegramBot({ token: TOKEN, publicUrl: 'https://anna.example/', fetchImpl: () => { throw new Error('must not call API'); } });
+  for (const command of COMMANDS) {
+    assert.ok(command.description.length <= 256);
+    const reply = bot.webhookReply({ message: { chat: { id: 9, type: 'private' }, text: `/${command.command}` } });
+    assert.equal(reply.method, 'sendMessage');
+    const url = reply.reply_markup.inline_keyboard[0][0].web_app.url;
+    assert.equal(url, ['help', 'start'].includes(command.command) ? 'https://anna.example/' : `https://anna.example/#/${command.command}`);
+  }
+  assert.equal(bot.webhookReply({ message: { chat: { id: 9, type: 'group' }, text: '/start' } }), null);
+});
+
+test('profile avatar uses an actual multipart upload', async () => {
+  let photo;
+  const bot = createTelegramBot({ token: TOKEN, publicUrl: 'https://anna.example', fetchImpl: async (url, options) => {
+    if (url.endsWith('/setMyProfilePhoto')) photo = options.body;
+    return { ok: true, json: async () => ({ ok: true, result: true }) };
+  } });
+  await bot.configure({ webhookUrl: 'https://anna.example/api/telegram/webhook', secret: SECRET, profilePhoto: Buffer.from('test-photo') });
+  assert.ok(photo instanceof FormData);
+  assert.deepEqual(JSON.parse(photo.get('photo')), { type: 'static', photo: 'attach://avatar' });
+  assert.equal(await photo.get('avatar').text(), 'test-photo');
 });
 
 async function fixture(run, { enabled = true } = {}) {
@@ -89,8 +117,13 @@ test('webhook: needs the secret header, answers 200 and replies to /start', asyn
     assert.equal((await post('/api/telegram/webhook', update)).status, 403);
     assert.equal((await post('/api/telegram/webhook', update, { 'X-Telegram-Bot-Api-Secret-Token': 'wrong' })).status, 403);
     assert.equal(calls.length, 0);
-    assert.equal((await post('/api/telegram/webhook', update, { 'X-Telegram-Bot-Api-Secret-Token': SECRET })).status, 200);
-    assert.equal(calls.length, 1);
+    const response = await post('/api/telegram/webhook', update, { 'X-Telegram-Bot-Api-Secret-Token': SECRET });
+    assert.equal(response.status, 200);
+    const reply = await response.json();
+    assert.equal(reply.method, 'sendMessage');
+    assert.equal(reply.chat_id, 9);
+    assert.match(reply.text, /Я Фортуна/);
+    assert.equal(calls.length, 0, 'webhook replies do not depend on outbound Telegram access');
   });
 });
 

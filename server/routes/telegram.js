@@ -20,10 +20,16 @@ export function createTelegramRoutes({ bot, botToken, webhookSecret, metrics }) 
         return json(res, 403, { error: 'forbidden' }), true;
       }
       try {
-        metrics.count(`telegram_update_${await bot.handleUpdate(await readJson(req, 64_000))}`);
+        const update = await readJson(req, 64_000);
+        if (bot.webhookReply) {
+          const reply = bot.webhookReply(update);
+          metrics.count(reply ? 'telegram_update_reply' : 'telegram_update_ignored');
+          return json(res, 200, reply ?? { ok: true }), true;
+        }
+        metrics.count(`telegram_update_${await bot.handleUpdate(update)}`);
       } catch (error) {
         // A 200 anyway: Telegram would resend the same update again and again.
-        console.error('Telegram update failed:', error.message);
+        console.error('Telegram update failed');
         metrics.count('telegram_update_error');
       }
       return json(res, 200, { ok: true }), true;
