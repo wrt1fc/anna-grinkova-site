@@ -140,7 +140,7 @@ function toggleHistoryConsent() {
 function consentSheet() {
   const selected = contextSnapshot();
   const body = node('div');
-  body.append(node('p', 'sheet-text', 'Могу сохранять нашу переписку, чтобы разговор не терялся и продолжался с любого устройства. История хранится на сервере в России, и ты можешь удалить её в любой момент.'));
+  body.append(node('p', 'sheet-text', 'Могу сохранять нашу переписку, чтобы разговор не терялся и продолжался с любого устройства.'));
   const keep = node('button', 'btn btn-gold', 'Сохранять переписку'); keep.type = 'button';
   const no = node('button', 'btn btn-line', 'Не сохранять'); no.type = 'button';
   for (const [button, consent] of [[keep, true], [no, false]]) button.addEventListener('click', async () => {
