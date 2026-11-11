@@ -176,7 +176,7 @@ test('profile belongs to its account and stays protected', async () => fixture(a
   assert.equal(personal.data.scope, 'personal');
   assert.equal(personal.data.astronomy.natal.sun.sign, 'Рыбы');
   assert.equal((await request('/api/forecast/day')).data.scope, 'general');
-  assert.equal((await request('/api/forecast/week')).response.status, 501);
+  assert.equal((await request('/api/forecast/week')).response.status, 200);
 }));
 
 test('manual birth place requires coordinates and time zone', async () => fixture(async ({ sent, request }) => {

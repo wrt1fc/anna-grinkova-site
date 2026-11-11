@@ -1,0 +1,66 @@
+/* Fuller day/week screens from the proposal frames on Figma page 08. */
+.forecast-loading { color: var(--muted); margin: 12px 0; }
+.forecast-theme { margin: 0; color: var(--gold-light); font: 500 italic 26px/1.35 var(--accent); }
+.forecast-question > p { margin: 0; font: 500 italic 24px/1.4 var(--accent); }
+.forecast-sky { display: grid; gap: 12px; margin-block: 8px; }
+.sky-event-list { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.sky-event-list li { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 12px; padding-top: 12px; border-top: 1px solid var(--line-soft); font-size: 14px; }
+.sky-event-list time { color: var(--gold-light); font-variant-numeric: tabular-nums; }
+.sky-event-list p { margin: 0; color: var(--muted); }
+.forecast-retry { align-self: flex-start; width: auto; }
+.forecast-disclaimer { margin-top: 20px; max-width: 800px; }
+.week-content { display: grid; gap: 20px; min-width: 0; }
+.week-calendar-hint { margin: -8px 0 0; }
+#week-days button { position: relative; min-width: 0; min-height: 64px; border: 0; border-radius: 12px; padding: 10px 0; cursor: pointer; transition: background .15s; }
+#week-days button:hover { background: rgba(222, 184, 88, .07); }
+#week-days button[aria-pressed='true'] { background: rgba(222, 184, 88, .15); color: var(--gold-light); }
+#week-days button::after { display: none; }
+#week-days button.is-today::before { content: ''; position: absolute; top: 4px; left: calc(50% - 2px); width: 4px; height: 4px; border-radius: 50%; background: var(--gold); }
+.weekly-layout { display: grid; gap: 24px; }
+.weekly-layout > .col { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+.weekly-summary { display: grid; gap: 16px; }
+.weekly-summary h2, .weekly-summary h3 { margin: 0; }
+.weekly-summary h3 { font: 700 28px/1.2 var(--display); }
+.weekly-summary .body-text { font-size: 16px; line-height: 1.6; }
+.weekly-reading { gap: 28px; }
+.weekly-recommendations { display: grid; gap: 16px; }
+#week-recommendations { display: grid; }
+.weekly-period { display: grid; gap: 8px; border-top: 1px solid var(--line-soft); padding-block: 18px; }
+.weekly-period h3 { margin: 0; font: 700 19px/1.3 var(--display); }
+.weekly-period p { margin: 0; font-size: 15px; color: var(--muted); line-height: 1.6; }
+.weekly-period .period-date { color: var(--gold-light); font-size: 13px; }
+.selected-day { gap: 14px; }
+.selected-day .strong-text { border-top: 1px solid var(--line-soft); padding-top: 16px; margin-top: 4px; }
+@media (max-width: 999px) {
+  [data-screen='day'] .forecast-columns { display: flex; flex-direction: column; gap: 20px; }
+  [data-screen='day'] .forecast-columns > .col { display: flex; flex-direction: column; gap: 18px; }
+  #week-days { gap: 2px; padding: 12px 8px; }
+  #week-days button span { font-size: 20px; }
+  #week-days button small { font-size: 12px; }
+  .week-content { display: flex; flex-direction: column; }
+  .weekly-layout, .weekly-layout > .col { display: contents; }
+  #week-days { order: 0; }
+  .week-calendar-hint { order: 1; }
+  .selected-day { order: 2; }
+  .weekly-summary { order: 3; }
+  .weekly-recommendations { order: 4; }
+  .weekly-side > .forecast-chat { order: 5; }
+}
+@media (min-width: 1000px) {
+  [data-screen='day'] .forecast-columns { grid-template-columns: minmax(0, 1.5fr) minmax(320px, 1fr); gap: 32px; }
+  .forecast-columns > .col { gap: 24px; }
+  .forecast-theme { font-size: 34px; }
+  .forecast-question > p { font-size: 28px; }
+  .weekly-layout { grid-template-columns: minmax(0, 1.4fr) minmax(320px, 1fr); gap: 40px; align-items: start; }
+  .weekly-summary h3 { font-size: 36px; }
+  .weekly-summary .body-text { font-size: 18px; }
+  .week-content { gap: 28px; }
+  .weekly-side { position: sticky; top: 24px; }
+  .weekly-side .block { padding: 26px; }
+}
+@media (prefers-reduced-motion: reduce) { #week-days button { transition: none; } }
+
+/* Leave room for the host's native header and bottom controls in a Telegram Mini App. */
+.telegram-miniapp .screen { padding-top: max(16px, var(--telegram-top, 0px), env(safe-area-inset-top)); }
+.telegram-miniapp .screen.has-nav { padding-bottom: calc(var(--nav-h) + 40px + max(var(--telegram-bottom, 0px), env(safe-area-inset-bottom))); }
+.telegram-miniapp .tabbar { bottom: max(12px, var(--telegram-bottom, 0px), env(safe-area-inset-bottom)); }

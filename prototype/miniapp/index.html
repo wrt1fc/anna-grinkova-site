@@ -24,6 +24,7 @@
   <link rel="stylesheet" href="/miniapp/card-day.css?v=2" />
   <link rel="stylesheet" href="/miniapp/chat-suggestions.css?v=4" />
   <link rel="stylesheet" href="/miniapp/subscription-mobile.css?v=2" />
+  <link rel="stylesheet" href="/miniapp/forecasts.css?v=1" />
 </head>
 <body>
 <div class="app" id="app">
@@ -187,25 +188,32 @@
 
     <!-- Прогноз на день -->
     <section class="screen screen-mid has-nav screen-desk" data-screen="day" hidden aria-labelledby="t-day">
-      <div class="bar"><button class="back" type="button" data-back>Назад</button></div>
+      <div class="bar"><button class="back" type="button" data-back>Назад</button><button class="back back-end" type="button" data-go="week">Вся неделя</button></div>
       <h1 id="t-day" class="title-lg left">Прогноз на день</h1>
       <p class="lead left" id="day-date"></p>
-      <div class="cols">
+      <p class="forecast-loading" id="day-loading" role="status">Собираем прогноз…</p>
+      <div class="cols forecast-columns" id="day-content" hidden>
         <div class="col">
           <section class="card moon-card">
             <div class="daily-sun" aria-hidden="true"><img src="/miniapp/assets/icons-3d/sun.webp" alt="" width="110" height="110" /></div>
             <div class="moon-copy"><h2 id="day-moon-title"></h2><p id="day-moon-phase"></p><p class="gold" id="day-sun"></p></div>
           </section>
           <h2 class="eyebrow-title">Фокус дня</h2>
+          <p class="forecast-theme" id="day-theme"></p>
           <p class="body-text" id="day-body"></p>
-          <button class="link-btn start order-5" type="button" data-ask="day">Спросить Фортуну, что это значит</button>
+          <section class="forecast-sky"><h2 class="block-title">Небо в этот день</h2><ul id="day-events" class="sky-event-list"></ul><p class="hint">Время указано по Москве. Положения рассчитаны на 12:00 МСК.</p></section>
+          <button class="card row" type="button" data-go="card"><img class="row-icon" src="/miniapp/assets/icons-3d/card.webp" width="48" height="48" alt="" /><span class="row-text"><strong>Моя карта на сегодня</strong><small>Образ и вопрос к себе</small></span></button>
         </div>
         <div class="col">
-          <section class="card block order-4"><p class="eyebrow">Действие</p><p class="strong-text" id="day-action"></p></section>
+          <section class="card block"><h2 class="eyebrow">Один шаг на этот день</h2><p class="strong-text" id="day-action"></p></section>
+          <section class="card block forecast-question"><h2 class="eyebrow">Вопрос к себе</h2><p id="day-question"></p></section>
+          <section class="card block forecast-chat"><h2 class="block-title">Что это значит для тебя?</h2><p class="block-text">Обсуди прогноз с Фортуной: как связать его со своей ситуацией и что можно попробовать.</p><button class="btn btn-gold" type="button" data-ask="day">Спросить Фортуну</button></section>
           <section class="card block order-6" id="day-personal"><h2 class="block-title">Хотите точнее?</h2><p class="block-text">Добавьте дату рождения, и прогноз учтёт вашу карту.</p><button class="btn btn-gold" type="button" data-go="birth">Сделать прогноз личным</button></section>
         </div>
       </div>
       <p class="form-note order-7" data-note role="alert"></p>
+      <button class="btn btn-line forecast-retry" id="day-retry" type="button" hidden>Повторить загрузку</button>
+      <p class="hint forecast-disclaimer">Разбор — повод для размышления, а не обещание событий.</p>
     </section>
 
     <!-- Restored card day: Figma 243:1702 / 243:6138 -->
@@ -256,10 +264,24 @@
       <div class="bar"><button class="back" type="button" data-back>Назад</button></div>
       <h1 id="t-week" class="title-lg left">Прогноз на неделю</h1>
       <p class="lead left" id="week-range"></p>
-      <section class="card week-days" id="week-days" aria-label="Дни недели"></section>
-      <section class="card block" id="week-soon"><h2 class="block-title">Разбор недели готовится</h2><p class="block-text">Пока можно посмотреть прогноз на каждый день отдельно или спросить Фортуну о вашей неделе.</p></section>
-      <button class="link-btn start" type="button" data-ask="week">Спросить Фортуну о моей неделе</button>
+      <p class="forecast-loading" id="week-loading" role="status">Рассчитываем неделю…</p>
+      <div id="week-content" class="week-content" hidden>
+        <section class="card week-days" id="week-days" role="group" aria-label="Выбери день недели"></section>
+        <p class="hint week-calendar-hint">Выбери дату, чтобы увидеть её прогноз. Неделя обновляется в понедельник по московскому времени.</p>
+        <div class="weekly-layout">
+          <div class="col weekly-reading">
+            <section class="weekly-summary"><h2 class="eyebrow">Главная тема недели</h2><h3 id="week-title"></h3><p class="body-text" id="week-body"></p><p class="block-text" id="week-personal-note"></p></section>
+            <section class="weekly-recommendations"><h2 class="block-title">Как распределить внимание</h2><div id="week-recommendations"></div></section>
+          </div>
+          <div class="col weekly-side">
+            <section class="card block selected-day" id="week-selected-day" aria-live="polite" aria-atomic="true"><p class="eyebrow" id="week-selected-date"></p><h2 class="block-title" id="week-selected-moon"></h2><p class="block-text" id="week-selected-phase"></p><p class="strong-text" id="week-selected-action"></p><p class="block-text" id="week-selected-question"></p><button class="btn btn-line" type="button" id="week-open-day">Читать прогноз на этот день</button></section>
+            <section class="card block forecast-chat"><h2 class="block-title">Собери свой фокус на неделю</h2><p class="block-text" id="week-question"></p><button class="btn btn-gold" type="button" data-ask="week">Обсудить мою неделю</button></section>
+          </div>
+        </div>
+      </div>
       <p class="form-note" data-note role="alert"></p>
+      <button class="btn btn-line forecast-retry" id="week-retry" type="button" hidden>Повторить загрузку</button>
+      <p class="hint forecast-disclaimer">Рекомендации опираются на расчёты положений планет. Они не гарантируют событий и не заменяют консультацию специалиста.</p>
     </section>
 
     <!-- Чат -->
@@ -423,6 +445,6 @@
 </div>
 <script src="/natal-wheel.js?v=3"></script>
 <script src="/pwa.js"></script>
-<script type="module" src="/miniapp/miniapp.js?v=18"></script>
+<script type="module" src="/miniapp/miniapp.js?v=19"></script>
 </body>
 </html>

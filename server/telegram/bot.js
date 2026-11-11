@@ -1,10 +1,10 @@
 const API = 'https://api.telegram.org';
-const WELCOME = 'Здравствуйте! Здесь карта дня, прогноз на неделю и вопросы Анне. Откройте приложение кнопкой ниже.';
+const WELCOME = 'Привет! Я Фортуна. Здесь твоя карта дня, прогноз на неделю и разбор вопросов по твоей натальной карте. Открой приложение кнопкой ниже.';
 const COMMANDS = [
   { command: 'start', description: 'Открыть приложение' },
   { command: 'help', description: 'Что здесь можно сделать' },
 ];
-const HELP = 'Карта дня и прогноз на неделю открываются в приложении. Вопрос Анне и личный кабинет — там же, после входа.';
+const HELP = 'Карта дня и прогнозы открываются бесплатно. Выбирай день в календаре недели или задай вопрос Фортуне. Чтобы использовать свой профиль, войди в тот же аккаунт, что на сайте.';
 
 // A thin client of the Telegram Bot API. `fetchImpl` is replaceable, so tests never touch the network.
 export function createTelegramBot({ token, publicUrl, fetchImpl = fetch }) {

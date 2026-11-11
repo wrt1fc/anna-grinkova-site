@@ -24,6 +24,8 @@ test('the web app manifest, service worker and icons are served with the right t
     const csp = page.headers.get('content-security-policy');
     assert.match(csp, /manifest-src 'self'/);
     assert.match(csp, /worker-src 'self'/);
+    assert.match(csp, /frame-ancestors https:\/\/web\.telegram\.org(?:;|$)/);
+    assert.equal(page.headers.get('x-frame-options'), null);
     const html = await page.text();
     assert.match(html, /rel="manifest"/);
     assert.match(html, /apple-touch-icon/);
