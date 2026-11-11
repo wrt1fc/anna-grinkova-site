@@ -71,8 +71,31 @@ export function wrongCalculatedClaim(answer, chart) {
     return /транзит|дирекц|прогресс/iu.test(answer.slice(start,end<0?undefined:index+end));
   };
   const point = (name) => { const key=keyFor(name); return facts.positions[key] ?? facts.angles?.[key]; };
+  const planetList = `${PLANET}(?:\\s*(?:,|и)\\s*${PLANET}){1,11}`;
+  const signList = `${SIGN}(?:\\s*(?:,|и)\\s*${SIGN}){0,11}`;
+  const unassertedGroup = m => {
+    const before=answer.slice(0,m.index).split(/[.!?;\n]/u).at(-1);
+    const after=answer.slice(m.index+m[0].length);
+    return /(?<!\p{L})(?:неверно|неправда|если|допустим|предположим)(?!\p{L})/iu.test(before)
+      || /^\s+не\s+(?:стоят|находятся|собраны)(?!\p{L})/iu.test(after);
+  };
+  const grouped = new RegExp(`(${planetList})\\s+(?:стоят|находятся|собраны)\\s+(?:в|во)\\s+(${signList})(?:\\s+(?:в|во)\\s+(${HOUSE})\\s+доме)?`, 'giu');
+  const groupedSpans=[];
+  for (const m of answer.matchAll(grouped)) {
+    if (timed(m.index) || unassertedGroup(m)) continue;
+    groupedSpans.push([m.index,m.index+m[0].length]);
+    const signs = [...m[2].matchAll(new RegExp(SIGN,'giu'))].map(value=>signFor(value[0]));
+    for (const name of m[1].matchAll(new RegExp(PLANET,'giu'))) {
+      const p=point(name[0]);
+      if (!signs.includes(p?.sign) || (m[3] && p?.house!==houseNumber(m[3]))) return true;
+    }
+  }
+  const houseGroup = new RegExp(`(?:в|во)\\s+(${HOUSE})\\s+доме\\s*(?:[—–:-]\\s*)?(?:(?:стоят|находятся|собраны)\\s+)?(${planetList})`, 'giu');
+  for (const m of answer.matchAll(houseGroup)) if (!timed(m.index) && !unassertedGroup(m)) {
+    for (const name of m[2].matchAll(new RegExp(PLANET,'giu'))) if (point(name[0])?.house!==houseNumber(m[1])) return true;
+  }
   const claimSign = new RegExp(`(${PLANET})(?: и (${PLANET}))?(?: у тебя)?(?: стоит| стоят| находится| находятся)? (?:в|во) (${SIGN})(?!\\p{L})`, 'giu');
-  for (const m of answer.matchAll(claimSign)) if (!timed(m.index)) for (const name of [m[1],m[2]].filter(Boolean)) if (point(name)?.sign !== signFor(m[3])) return true;
+  for (const m of answer.matchAll(claimSign)) if (!timed(m.index) && !groupedSpans.some(([start,end])=>m.index>=start&&m.index<end)) for (const name of [m[1],m[2]].filter(Boolean)) if (point(name)?.sign !== signFor(m[3])) return true;
   const claimHouse = new RegExp(`(${PLANET})(?: и (${PLANET}))?(?: у тебя)?\\s*(?:[,—–-]\\s*)?(?:(?:стоит|стоят|находится|находятся)\\s+)?(?:в|во) (?:${SIGN} (?:в|во) )?(${HOUSE}) доме`, 'giu');
   for (const m of answer.matchAll(claimHouse)) if (!timed(m.index)) for (const name of [m[1],m[2]].filter(Boolean)) if (point(name)?.house !== (ORDINALS[m[3].toLowerCase()] ?? parseInt(m[3],10))) return true;
   const checkAspect = (a,b,aspect) => facts.aspects.some(f=> f.aspect===aspectFor(aspect)

@@ -27,6 +27,13 @@ test('explicit natal signs, angles, houses and aspects are compared with calcula
   assert.equal(wrongCalculatedClaim('Транзитный трин Солнца и MC рассматривают отдельно.',chart),false);
 });
 
+test('live three-planet lists and inverted house lists validate every named planet',()=>{
+ const subject={calculated:{positions:{sun:{sign:'Телец',house:11},moon:{sign:'Близнецы',house:12},venus:{sign:'Весы',house:12}},aspects:[]}};
+ for(const text of ['Солнце, Луна и Венера стоят в Близнецах и Весах в 12 доме.','Солнце, Луна и Венера стоят в Близнецах в 12 доме.','В 12 доме собраны Солнце, Луна и Венера.','В 12 доме — Солнце и Луна.'])assert.equal(wrongCalculatedClaim(text,subject),true,text);
+ for(const text of ['Луна и Венера стоят в Близнецах и Весах в 12 доме.','В 12 доме собраны Луна и Венера.','Транзитные Солнце, Луна и Венера стоят в Близнецах.','Луна и Венера не стоят в Тельце.'])assert.equal(wrongCalculatedClaim(text,subject),false,text);
+ for(const text of ['В 12 доме Солнце и Луна не стоят.','Неверно, что в 12 доме собраны Солнце, Луна и Венера.','Если в 12 доме собраны Солнце, Луна и Венера, это пример.'])assert.equal(wrongCalculatedClaim(text,subject),false,text);
+});
+
 test('unknown time cannot acquire invented angles/houses and monetary context retains validation facts',()=>{
   const unknown=chartContext({...profile,birthTime:null},'Что означает мой Сатурн?').chart;
   assert.equal(wrongCalculatedClaim('Сатурн в пятом доме.',unknown),true);
