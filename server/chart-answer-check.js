@@ -6,6 +6,9 @@ const FORMS = { sun: 'Солнц[еауем]+', moon: 'Лун(?:а|ы|е|у|ой
   neptune: 'Нептун(?:а|у|ом|е)?', pluto: 'Плутон(?:а|у|ом|е)?', node: 'Северн\\p{L}*\\s+узл\\p{L}*', lilith: 'Лилит\\p{L}*',
   asc: '(?:Асцендент(?:а|у|ом|е)?|ASC|АСЦ)', mc: '(?:MC|МС)' };
 const PLANET = `(?:${Object.values(FORMS).join('|')})`;
+export function namedChartPoints(text) {
+  return Object.keys(FORMS).filter(key=>new RegExp(`(?<!\\p{L})(?:${FORMS[key]})(?!\\p{L})`,'iu').test(text));
+}
 const keyFor = (text) => Object.keys(FORMS).find((key) => new RegExp(`^(?:${FORMS[key]})$`, 'iu').test(text));
 const signFor = (text) => Object.entries(SIGN_PREPOSITIONAL).find(([base, form]) => base.toLowerCase() === text.toLowerCase() || form.toLowerCase() === text.toLowerCase())?.[0];
 const SIGN = `(?:${[...new Set([...Object.keys(SIGN_PREPOSITIONAL), ...Object.values(SIGN_PREPOSITIONAL)])].sort((a,b)=>b.length-a.length).join('|')})`;

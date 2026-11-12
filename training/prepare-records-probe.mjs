@@ -1,0 +1,34 @@
+// Same disclosed cases and exact system prompts; only the chart JSON is projected.
+import fs from 'node:fs';
+import {join} from 'node:path';
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+import {chartContext} from '../server/chat-grounding.js';
+import {chartRecords} from '../server/chart-records.js';
+const [input,out]=process.argv.slice(2);
+assert.ok(input&&out&&!fs.existsSync(out),'Require existing frozen input and NEW output');
+const read=p=>fs.readFileSync(join(input,p),'utf8').trim().split(/\r?\n/u).map(JSON.parse);
+const cards=read('holdout.jsonl'), originals=read('data/heldout.jsonl');
+const byId=new Map(cards.map(c=>[c.id,c]));let changed=0;
+const rows=originals.map(row=>{
+ const c=byId.get(row.id);assert.ok(c,'Missing card');
+ const before=JSON.parse(row.prompt[1].content);assert.equal(before.question,c.question);
+ const profile=c.chartFor?{birthUtc:c.chartFor.birthUtc,birthLatitude:c.chartFor.latitude,birthLongitude:c.chartFor.longitude}:null;
+ const {chart}=chartContext(profile,c.question,new Date('2026-11-12T09:00:00Z'),{history:c.history??[]});
+ const projected=chartRecords(chart,c.question);
+ const after=structuredClone(before);
+ if(projected)after.chart=projected;
+ else delete after.chart;
+ if(JSON.stringify(before.chart)!==JSON.stringify(after.chart))changed++;
+ const copy=structuredClone(row);copy.prompt[1].content=JSON.stringify(after);
+ assert.deepEqual({...before,chart:null},{...after,chart:null});
+ assert.equal(copy.prompt[0].content,row.prompt[0].content);
+ return copy;
+});
+assert.equal(cards.length,48);assert.equal(rows.length,cards.length);
+fs.mkdirSync(out,{recursive:true});fs.mkdirSync(join(out,'data'));
+fs.copyFileSync(join(input,'holdout.jsonl'),join(out,'holdout.jsonl'));
+fs.copyFileSync(join(input,'data/heldout.jsonl'),join(out,'data/heldout-original.jsonl'));
+fs.writeFileSync(join(out,'data/heldout.jsonl'),rows.map(r=>JSON.stringify(r)).join('\n')+'\n');
+fs.writeFileSync(join(out,'probe.json'),JSON.stringify({cases:cards.length,changed,scope:'exposed-v29-comparison; not fresh or blind',instruction:'exact same frozen prompt29 system; only chart JSON changed',sourceSha256:createHash('sha256').update(fs.readFileSync(join(input,'data/heldout.jsonl'))).digest('hex'),automaticDeployment:false},null,2));
+console.log(JSON.stringify({cases:cards.length,changed}));

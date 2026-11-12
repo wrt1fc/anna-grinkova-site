@@ -21,6 +21,7 @@ import { isGeneralAstrologyQuestion } from './chat-grounding-scope.js';
 import { extractLearningSignal, learningSignalDiagnostics, LEARNING_SIGNAL, LEARNING_SIGNAL_INSTRUCTION } from './learning-signals.js';
 import {explanationGuidance, incompleteMoneyExplanation, calculatedMoneyExplanation, wrongMoneyRulerClaim, practicalIntentAnswer, intentAnswerProblem} from './chat-explanation.js';
 import {focusedChart} from './chat-chart-focus.js';
+import {chartRecords} from './chart-records.js';
 import {personalSolarSignQuestion} from './chat-topics.js';
 import {isClearlyOffTopic, incomeRulerExplanation, chatIntent} from './chat-intent.js';
 
@@ -77,7 +78,8 @@ export function chatPrompt({ message, history, forecast, visitorName = null, vis
   // The natal chart block is sent only for chart questions, so ordinary answers keep the trained prompt shape.
   const reference=process.env.ANNA_REFERENCE_KNOWLEDGE==='19'&&mode!==TAROT_MODE?astroReference(message,history):null;
   const methodics=process.env.ANNA_REFERENCE_KNOWLEDGE==='19'&&mode!==TAROT_MODE?methodicReference(message,history):null;
-  const promptChart = process.env.ANNA_CHART_FOCUS === '26' ? focusedChart(chart, groundingQuestion(message, history)) : chart;
+  const promptChart = process.env.ANNA_CHART_FOCUS === '30' ? chartRecords(chart,groundingQuestion(message,history))
+    : process.env.ANNA_CHART_FOCUS === '26' ? focusedChart(chart, groundingQuestion(message, history)) : chart;
   const facts = process.env.ANNA_TRAINING_PROMPT_VERSION==='29' && mode!==TAROT_MODE && !/Институт|(?:курс|обучени)[^.!?]{0,40}Анн|Анн[^.!?]{0,40}(?:курс|обучени)/iu.test(message)
     ? chatContext.facts.filter(fact=>!fact.startsWith('Углублённое изучение астропсихологии можно продолжить')) : chatContext.facts;
   return JSON.stringify({ facts, ...(reference?{reference}:{}), ...(methodics?{methodics}:{}), materials, forecast, ...(promptChart ? { chart: promptChart } : {}), ...(mode ? { mode } : {}), history, visitorName, visitorGender, length,
