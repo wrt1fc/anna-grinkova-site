@@ -3,6 +3,11 @@ import assert from 'node:assert/strict';
 import {asksAboutMoney} from '../server/anna-method.js';
 import {chatIntent,isClearlyOffTopic,requestedStepCount} from '../server/chat-intent.js';
 
+test('observed career paraphrases retain practical intent',()=>{
+ for(const q of ['Как перейти к более сложным задачам?','Какими действиями повысить свой рабочий уровень?','Что освоить, чтобы улучшить результат в профессии?'])assert.equal(chatIntent(q),'growth',q);
+ for(const q of ['Реши сложную задачу на Python','Как повысить уровень воды?','Что означает рабочий орбис?'])assert.notEqual(chatIntent(q),'growth',q);
+});
+
 test('saving inflections stay separate from income sources and postponing tasks',()=>{
  for(const message of ['Почему мне сложно откладывать деньги?','Почему не получается отложить часть зарплаты?','Как отложить деньги на отпуск?','Как сберечь средства?','Как сохранить часть зарплаты?'])assert.equal(chatIntent(message),'budget',message);
  for(const message of ['Почему я откладываю важные дела?','Стоит ли отложить разговор?'])assert.notEqual(chatIntent(message),'budget',message);

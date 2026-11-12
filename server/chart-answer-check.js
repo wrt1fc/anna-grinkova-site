@@ -79,7 +79,7 @@ export function wrongCalculatedClaim(answer, chart) {
     return /(?<!\p{L})(?:неверно|неправда|если|допустим|предположим)(?!\p{L})/iu.test(before)
       || /^\s+не\s+(?:стоят|находятся|собраны)(?!\p{L})/iu.test(after);
   };
-  const grouped = new RegExp(`(${planetList})\\s+(?:стоят|находятся|собраны)\\s+(?:в|во)\\s+(${signList})(?:\\s+(?:в|во)\\s+(${HOUSE})\\s+доме)?`, 'giu');
+  const grouped = new RegExp(`(${planetList})\\s+(?:(?:стоят|находятся|собраны)\\s+)?(?:в|во)\\s+(${signList})(?:\\s+(?:в|во)\\s+(${HOUSE})\\s+доме)?`, 'giu');
   const groupedSpans=[];
   for (const m of answer.matchAll(grouped)) {
     if (timed(m.index) || unassertedGroup(m)) continue;

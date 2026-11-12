@@ -135,6 +135,14 @@ export function practicalIntentAnswer(chart, message, length) {
 
 export function intentAnswerProblem(answer, message) {
   const intent=chatIntent(message), count=requestedStepCount(message);
+  if (['growth','promotion','budget','support','rest','workfit','income'].includes(intent)
+      && answer.split(/[.!?\n]/u).some(sentence=>/Анн\p{L}*\s+Гриньков|Институт\p{L}*\s+прогрессивн\p{L}*\s+психологи/iu.test(sentence)
+        && /обучени|курс|изуч|углубл/iu.test(sentence)
+        && !/не\s+(?:нуж|надо|обязател|предлага|совету|рекоменд|требуется|является\s+(?:условием|обязательн|необходим))/iu.test(sentence))
+      && !/Анн\p{L}*\s+Гриньков|Институт|курс\p{L}*\s+Анн/iu.test(message)) return true;
+  if (intent==='growth'
+      && /(?:нужн\p{L}*|нужна|нужны|необходим\p{L}*)[^.!?]{0,35}(?:карт|данные\s+рождения)/iu.test(answer)
+      && !/выбери|проверь|попроси|запиши|потренируй|возьми|попробуй/iu.test(answer)) return true;
   if (count && ['workfit','income','growth','promotion','budget','support','rest'].includes(intent) && (answer.replace(/^Привет!\s*/u,'').match(/(?:^|\n)\s*\d+[.)]\s+/gu) ?? []).length !== count) return true;
   // A list of income sources is not an answer about progress or spending.
   // Merely repeating «рост»/«навыки» beside that list does not address the task.

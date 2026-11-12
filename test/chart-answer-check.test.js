@@ -29,6 +29,8 @@ test('explicit natal signs, angles, houses and aspects are compared with calcula
 
 test('live three-planet lists and inverted house lists validate every named planet',()=>{
  const subject={calculated:{positions:{sun:{sign:'Телец',house:11},moon:{sign:'Близнецы',house:12},venus:{sign:'Весы',house:12}},aspects:[]}};
+ assert.equal(wrongCalculatedClaim('Солнце, Луна и Венера в Близнецах и Весах в 12 доме.',subject),true);
+ assert.equal(wrongCalculatedClaim('Луна и Венера в Близнецах и Весах в 12 доме.',subject),false);
  for(const text of ['Солнце, Луна и Венера стоят в Близнецах и Весах в 12 доме.','Солнце, Луна и Венера стоят в Близнецах в 12 доме.','В 12 доме собраны Солнце, Луна и Венера.','В 12 доме — Солнце и Луна.'])assert.equal(wrongCalculatedClaim(text,subject),true,text);
  for(const text of ['Луна и Венера стоят в Близнецах и Весах в 12 доме.','В 12 доме собраны Луна и Венера.','Транзитные Солнце, Луна и Венера стоят в Близнецах.','Луна и Венера не стоят в Тельце.'])assert.equal(wrongCalculatedClaim(text,subject),false,text);
  for(const text of ['В 12 доме Солнце и Луна не стоят.','Неверно, что в 12 доме собраны Солнце, Луна и Венера.','Если в 12 доме собраны Солнце, Луна и Венера, это пример.'])assert.equal(wrongCalculatedClaim(text,subject),false,text);

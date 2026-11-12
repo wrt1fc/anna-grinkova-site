@@ -1,12 +1,32 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {chatPrompt, createLocalChat, firstPassSystem} from '../server/local-chat.js';
-import {incompleteMoneyExplanation, wrongMoneyRulerClaim, calculatedMoneyExplanation} from '../server/chat-explanation.js';
+import {incompleteMoneyExplanation, wrongMoneyRulerClaim, calculatedMoneyExplanation, intentAnswerProblem} from '../server/chat-explanation.js';
 
 const forecast = {date:'2026-11-09',scope:'general'};
 const chart = {money:{source:'Управитель 2 дома в 9 доме: обучение. Управитель 2 дома в 11 доме: сообщества.'},
   calculated:{positions:{moon:{sign:'Рак',house:9},sun:{sign:'Лев',house:11}},aspects:[],houseRulers:[{house:2,sign:'Рак',rulers:[{planet:'moon',house:9},{planet:'sun',house:11}]}]}};
 const stream = text => ({ok:true,body:new ReadableStream({start(c){c.enqueue(new TextEncoder().encode(JSON.stringify({response:text,done:true,done_reason:'stop'})+'\n'));c.close();}})});
+
+test('career paraphrases reject unsolicited course promotion and chart-only deferrals',async()=>{
+ assert.equal(intentAnswerProblem('Курс Анны Гриньковой не обязателен. Выбери рабочую задачу и проверь навык на практике.','Как расти в профессии?'),false);
+ assert.equal(intentAnswerProblem('Я не предлагаю обучение у Анны Гриньковой. Выбери навык и потренируй его на практике.','Как расти в профессии?'),false);
+ assert.equal(intentAnswerProblem('Для роста обучение у Анны Гриньковой не требуется. Выбери рабочий навык и проверь его на практике.','Как расти в профессии?'),false);
+ assert.equal(intentAnswerProblem('Обучение в Институте прогрессивной психологии не является условием карьерного роста. Потренируй рабочий навык на практике.','Как расти в профессии?'),false);
+ assert.equal(intentAnswerProblem('Обучение у Анны Гриньковой не требуется. Для роста выбери курс Анны Гриньковой.','Как расти в профессии?'),true);
+ assert.equal(intentAnswerProblem('Уточни программу курса Анны Гриньковой и выбери обучение по своим задачам.','Как выбрать курс Анны Гриньковой для роста в профессии?'),false);
+ for(const [message,answer]of [
+  ['Как перейти к более сложным задачам?','Для углубления можно изучить астропсихологию у Анны Гриньковой в Институте прогрессивной психологии.'],
+  ['Какими действиями повысить свой рабочий уровень?','Для роста выбери курс Анны Гриньковой в Институте прогрессивной психологии.'],
+  ['Что освоить, чтобы улучшить результат в профессии?','Для ответа нужна натальная карта. Можно обсудить профессию, навыки и цели.'],
+ ]){
+  let calls=0;const chat=createLocalChat({model:'fixture',fetchImpl:async()=>{calls++;return stream(answer);}});
+  const result=await chat.answer({message,history:[],forecast,chart:null});
+  assert.equal(calls,2,message);assert.equal(result.model,null);assert.match(result.answer,/Выбери|выбери/u);assert.doesNotMatch(result.answer,/Институт|Анн|нужна натальная карта/u);
+ }
+ const chat=createLocalChat({model:'fixture',fetchImpl:async()=>stream('Для роста выбери небольшой рабочий проект, проверь навык на практике и попроси обратную связь. Курс для этого не обязателен.')});
+ assert.equal((await chat.answer({message:'Что освоить, чтобы улучшить результат в профессии?',history:[],forecast,chart:null})).model,'fixture');
+});
 
 test('plain explanations apply to both the regular and trained production prompts', () => {
   const old = {...process.env};
