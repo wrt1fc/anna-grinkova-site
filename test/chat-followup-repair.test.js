@@ -5,6 +5,7 @@ import{createLocalChat}from'../server/local-chat.js';
 import{plainNatalAnswer}from'../server/chart-answer-check.js';
 import{chatIntent}from'../server/chat-intent.js';
 import{hasInstructionEcho}from'../server/chat-style.js';
+import{astroFactProblems}from'../server/astro-fact-guard.js';
 const profile={birthUtc:'1990-05-15T09:30:00Z',birthTime:'12:30',birthLatitude:55.75,birthLongitude:37.62};
 const stream=text=>({ok:true,body:new ReadableStream({start(c){c.enqueue(new TextEncoder().encode(JSON.stringify({response:text,done:true,done_reason:'stop'})+'\n'));c.close();}})});
 
@@ -30,6 +31,7 @@ test('a simplification cannot merely remove the word main from a repeated natal 
  const previous='Главное — Солнце в Тельце: стремление к надёжности и спокойствию. Эти свойства можно рассматривать как тему для размышления, а не гарантию результата.';
  const repeated=previous.replace('Главное — ','');const history=[{role:'user',content:'Что главное в моей натальной карте?'},{role:'assistant',content:previous}];
  assert.equal(repeatedSimplification(repeated,'Объясни проще.',history),true);
+ assert.equal(repeatedSimplification(repeated.replace('результата','успеха'),'Объясни проще.',history),true);
  assert.equal(repeatedSimplification(repeated,'Кто я по гороскопу?',history),false);
  let calls=0;const chat=createLocalChat({model:'fixture',fetchImpl:async()=>{calls++;return stream(repeated);}});
  const{chart}=chartContext(profile,'Объясни проще.',new Date(),{history});const result=await chat.answer({message:'Объясни проще.',history,chart,forecast:null});
@@ -71,4 +73,13 @@ test('valid numbered actions cannot publish a copied instruction header',async()
  assert.equal(hasInstructionEcho('Сначала запиши расходы и сравни их с планом.'),false);
  assert.equal(hasInstructionEcho('Сначала ответь по делу и приведи пример из своего опыта.'),false);
  assert.equal(hasInstructionEcho('Фраза «Сначала ответь по делу» означает просьбу отвечать кратко.'),false);
+});
+
+test('a repeated false Sun domicile is replaced by a checked personal answer',async()=>{
+ const old=process.env.CHAT_FACT_GUARD;process.env.CHAT_FACT_GUARD='1';
+ try{
+  let calls=0;const chat=createLocalChat({model:'fixture',fetchImpl:async()=>{calls++;return stream('Солнце в Тельце стоит в своём знаке. Это важное положение твоей карты.');}});
+  const message='Что главное в моей натальной карте?';const{chart}=chartContext(profile,message);
+  const result=await chat.answer({message,chart,history:[],forecast:null});assert.equal(calls,2);assert.equal(result.model,null);assert.equal(result.factFiltered,true);assert.deepEqual(astroFactProblems(result.answer,{question:message,chart}),[]);
+ }finally{if(old===undefined)delete process.env.CHAT_FACT_GUARD;else process.env.CHAT_FACT_GUARD=old;}
 });

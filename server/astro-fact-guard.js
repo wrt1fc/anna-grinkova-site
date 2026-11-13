@@ -1,8 +1,9 @@
 // Bounded checks for observed mistakes, not a semantic truth oracle.
 // Only explicit assertions are rejected. Unknown claims remain unknown.
 import {sourceGroundedTheoryProblems} from './astro-reference.js';
-import {SIGN_RULERS} from './anna-method.js';
+import {SIGN_RULERS,SIGN_PREPOSITIONAL} from './anna-method.js';
 import {POINT_NAMES} from './astro-chart.js';
+import {namedChartPoints} from './chart-answer-check.js';
 import {orbExample,orbCorrection,incorrectOrbClaim} from './theory-numerics.js';
 const groups={кардинальная:['Овен','Рак','Весы','Козерог'],фиксированная:['Телец','Лев','Скорпион','Водолей'],мутабельная:['Близнецы','Дева','Стрелец','Рыбы']};
 const modalityCorrection='Модальности: Овен, Рак, Весы и Козерог — кардинальные; Телец, Лев, Скорпион и Водолей — фиксированные; Близнецы, Дева, Стрелец и Рыбы — мутабельные. Это отдельная классификация от четырёх стихий.';
@@ -18,12 +19,15 @@ export function astroFactProblems(answer,{question='',chart=null}={}){
   return {code:'incorrect_ruler_'+sign,correction:'По таблице методики Анны '+describe(sign)+'. Порядок главного управителя и соуправителя менять нельзя.'};
  });
  const add=(code,correction)=>{if(!issues.some(x=>x.code===code))issues.push({code,correction});};
- // A bounded observed dignity error: the source ruler table assigns the Sun
- // to Leo. An explicit Sun-in-Taurus domicile claim contradicts that table.
+ // Explicit observed domicile claims; a later named planet has its own subject.
  const dignityClauses = answer.replace(/«[^»]*»|“[^”]*”|"[^"\n]*"|'[^'\n]*'/gu, ' ').split(/[.!?;\n]/u);
+ const notSunHome=Object.entries(SIGN_PREPOSITIONAL).filter(([sign])=>sign!=='Лев').map(([,form])=>form).join('|');
+ const domicile=new RegExp(`Солнц\\p{L}*\\s+в\\s+(${notSunHome})(?!\\p{L})([^.!?;]{0,70}?)в\\s+(?:обители|сво[её]м\\s+знаке)`,'iu');
  for (const clause of dignityClauses) {
-  if (/Солнц\p{L}*\s+в\s+Тельце[^.!?;]{0,35}(?:стоит\s+|находится\s+)?в\s+обители/iu.test(clause)
-    && !/(?<!\p{L})(?:не|неверно|ошибочно|нельзя|если)(?!\p{L})/iu.test(clause)) add('sun_domicile', 'Обитель Солнца — Лев. Солнце в Тельце — другое положение, оно не называется его обителью.');
+  const claim=domicile.exec(clause);
+  const owner=claim&&/обители$/iu.test(claim[0])?/^\s+(\p{L}+)/u.exec(clause.slice(claim.index+claim[0].length))?.[1]:null;
+  if (claim&&!namedChartPoints(claim[2]).length&&!namedChartPoints(owner??'').some(key=>key!=='sun')
+    && !/(?<!\p{L})(?:не|неверно|ошибочно|нельзя|если)(?!\p{L})/iu.test(clause)) add('sun_domicile', `Обитель Солнца — Лев. Солнце в ${claim[1]} — другое положение, оно не называется его обителью.`);
  }
  const orb=orbExample(question);
  if(incorrectOrbClaim(answer,orb))add('incorrect_orb_arithmetic',orbCorrection(orb));

@@ -39,6 +39,10 @@ test('main chart emphasis does not assert a sign ruler; actual roles remain vali
  assert.doesNotMatch(problems[0].correction,/Овен|Телец|Рыбы/u);
 });
 test('bounded observed Sun dignity assertion is corrected without rejecting its denial or quote', () => {
+ assert.ok(astroFactProblems('Солнце в Весах во втором доме стоит в своём знаке.').some(p=>p.code==='sun_domicile'));
+ assert.ok(astroFactProblems('Солнце в Деве находится в обители.').some(p=>p.code==='sun_domicile'));
+ for(const text of ['Солнце во Льве стоит в своём знаке.','Солнце в Весах не стоит в своём знаке.','Солнце в Весах, а Луна в Раке находится в своём знаке.','«Солнце в Весах стоит в своём знаке» — неверная фраза.'])assert.equal(astroFactProblems(text).some(p=>p.code==='sun_domicile'),false,text);
+ for(const text of ['Солнце в Весах находится в обители Венеры.','Солнце в Овне находится в обители Марса.'])assert.equal(astroFactProblems(text).some(p=>p.code==='sun_domicile'),false,text);
  assert.equal(astroFactProblems('Солнце в Тельце стоит в обители.')[0].code,'sun_domicile');
  for (const answer of ['Солнце в Тельце не стоит в обители.', '«Солнце в Тельце стоит в обители» — ошибка.', 'Солнце во Льве стоит в обители.']) assert.deepEqual(astroFactProblems(answer),[],answer);
 });

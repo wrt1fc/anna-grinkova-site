@@ -25,7 +25,13 @@ export function repeatedSimplification(answer,message,history=[]){
  if(!isSimplificationRequest(message))return false;
  const previous=[...history].reverse().find(row=>row.role==='assistant'&&typeof row.content==='string');
  const normalized=text=>text.replace(/^\s*Привет[!.,]?\s*/iu,'').replace(/^\s*Главное\s*[—–:-]\s*/iu,'').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();
- return !!previous&&normalized(answer).length>60&&normalized(answer)===normalized(previous.content);
+ if(!previous)return false;
+ const after=normalized(answer),before=normalized(previous.content);
+ if(Math.min(after.length,before.length)<=60)return false;
+ if(after===before)return true;
+ const grams=text=>{const words=text.split(' ');return new Set(words.slice(0,-2).map((_,i)=>words.slice(i,i+3).join(' ')));};
+ const a=grams(after),b=grams(before),common=[...a].filter(g=>b.has(g)).length;
+ return a.size+b.size>0&&2*common/(a.size+b.size)>=0.9;
 }
 export function groundingQuestion(message, history = []) {
   if (!DEPENDENT_QUESTION.test(message)) return message;
