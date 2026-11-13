@@ -101,6 +101,17 @@ export function wrongCalculatedClaim(answer, chart) {
   for (const m of answer.matchAll(claimSign)) if (!timed(m.index) && !groupedSpans.some(([start,end])=>m.index>=start&&m.index<end)) for (const name of [m[1],m[2]].filter(Boolean)) if (point(name)?.sign !== signFor(m[3])) return true;
   const claimHouse = new RegExp(`(${PLANET})(?: и (${PLANET}))?(?: у тебя)?\\s*(?:[,—–-]\\s*)?(?:(?:стоит|стоят|находится|находятся)\\s+)?(?:в|во) (?:${SIGN} (?:в|во) )?(${HOUSE}) доме`, 'giu');
   for (const m of answer.matchAll(claimHouse)) if (!timed(m.index)) for (const name of [m[1],m[2]].filter(Boolean)) if (point(name)?.house !== (ORDINALS[m[3].toLowerCase()] ?? parseInt(m[3],10))) return true;
+  // Keep the named subject across a short description, but never cross another
+  // named point: «Марс в ... соединён с ним и стоит во 2 доме».
+  const sameSubject = `(?:(?!(?<!\\p{L})${PLANET}(?!\\p{L})|,\\s*(?:а|но|однако)(?!\\p{L})|(?<!\\p{L})управител)[^.!?;\\n]){0,100}?`;
+  const delayedHouse = new RegExp(`(?<!\\p{L})(${PLANET})\\s+(?:в|во)\\s+${SIGN}(?!\\p{L})${sameSubject}(?:,\\s*|\\s+и\\s+)(?:стоит|находится|расположен[ао]?)\\s+(?:в|во)\\s+(${HOUSE})\\s+доме`,'giu');
+  for(const m of answer.matchAll(delayedHouse))if(!timed(m.index)&&!unassertedGroup(m)&&point(m[1])?.house!==houseNumber(m[2]))return true;
+  const locatedRulers = new RegExp(`(?:в|во)\\s+(${HOUSE})\\s+доме\\s+(?:(?:стоят|находятся)\\s+)?управители\\s+(?:дома\\s+${RULER_HOUSE}|${RULER_HOUSE}\\s+дома)\\s*[—–:-]?\\s*(${planetList})`,'giu');
+  for(const m of answer.matchAll(locatedRulers)){
+    const before=answer.slice(0,m.index).split(/[.!?;\n]/u).at(-1);
+    if(timed(m.index)||unassertedGroup(m)||/(?<!\p{L})не\s*$/iu.test(before))continue;
+    for(const name of m[2].matchAll(new RegExp(PLANET,'giu')))if(point(name[0])?.house!==houseNumber(m[1]))return true;
+  }
   const checkAspect = (a,b,aspect) => facts.aspects.some(f=> f.aspect===aspectFor(aspect)
     && ((f.first===keyFor(a)&&f.second===keyFor(b))||(f.first===keyFor(b)&&f.second===keyFor(a))));
   const consumed=[];

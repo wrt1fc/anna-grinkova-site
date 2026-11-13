@@ -235,3 +235,16 @@ test('a strategy explanation is not replaced by an unrelated list of income rule
   const result=await chat.answer({message:'Как расти в профессии? Дай пять шагов.',history:[],forecast,chart,length:'short'});
   assert.ok(result.answer.length<=400);assert.equal((result.answer.replace(/^Привет!\s*/u,'').match(/(?:^|\n)\s*\d+[.)]\s+/gu)??[]).length,5);
  });
+
+ test('small numbered savings actions cannot become a job search',async()=>{
+  assert.equal(intentAnswerProblem('1. Запиши расходы.\n2. Отложи посильную сумму.\n3. Найди одну работу с гибким графиком.','Дай три шага для накоплений.'),true);
+  for(const answer of ['Чтобы копить, не нужно искать новую работу. Запиши расходы.','Необязательно найти другую работу: запиши расходы.','«Найди новую работу» — это другой вопрос. Запиши расходы.'])assert.equal(intentAnswerProblem(answer,'Как начать копить?'),false,answer);
+  assert.equal(intentAnswerProblem('Найди подработку без крупных расходов и проверь бюджет.','Как найти подработку и начать копить?'),false);
+  for(const message of ['Теперь предложи три небольших действия для накоплений.','Дай два простых шага, чтобы начать копить.']){
+   let calls=0;const chat=createLocalChat({model:'fixture',fetchImpl:async()=>{calls++;return stream('Выбери три небольшие задачи: составить список покупок, отложить сумму и найти одну работу с гибким графиком.');}});
+   const result=await chat.answer({message,history:[{role:'user',content:'Какая работа мне подходит?'},{role:'assistant',content:'Проверь интересные занятия на практике.'}],forecast,chart});
+   assert.equal(calls,2);assert.equal(result.model,null);
+   assert.equal((result.answer.match(/(?:^|\n)\s*\d+[.)]\s+/gu)??[]).length,message.includes('три')?3:2);
+   assert.doesNotMatch(result.answer,/найти.*работ/iu);
+  }
+ });

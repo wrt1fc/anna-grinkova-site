@@ -14,12 +14,13 @@ export const isPersonalLifeQuestion = (message) => hasPersonalReference(message)
 // Match the whole message: a named new subject must never inherit an old topic.
 // The same predicate skips dependent history turns, preserving the last real
 // user question through a chain of clarifications and intervening assistant text.
-const DEPENDENT_QUESTION = /^\s*(?:(?:а|и|ну|тогда)\s+)?(?:подробнее|конкретнее|почему\s+(?:это|так)|что\s+(?:это|с\s+этим)\s+(?:значит|делать)|что\s+(?:именно\s+)?(?:сделать|делать)(?:\s+(?:сначала|вначале|в\s+первую\s+очередь))?|с\s+чего\s+начать|как\s+(?:это|с\s+этим)\s+(?:исправить|работать|связано|проявляется(?:\s+в\s+(?:работе|отношениях|жизни|деньгах))?)|можно\s+(?:подробнее|пример)|дай\s+(?:пример|(?:[1-5]|один|два|две|три|четыре|пять)\s+(?:(?:конкретн|практическ)\p{L}*\s+)?(?:шаг\p{L}*|действи\p{L}*|пункт\p{L}*))|(?:объясни|скажи)\s+(?:подробнее|проще|попроще|простыми\s+словами))(?:\s+(?:простыми\s+словами|проще|попроще))?[?!.,…]*\s*$/iu;
+const DEPENDENT_QUESTION = /^\s*(?:(?:а|и|ну|тогда)\s+)?(?:подробнее|конкретнее|почему\s+(?:это|так)|что\s+(?:это|с\s+этим)\s+(?:значит|делать)|что\s+(?:именно\s+)?(?:сделать|делать)(?:\s+(?:сначала|вначале|в\s+первую\s+очередь))?|с\s+чего\s+начать|как\s+(?:это|с\s+этим)\s+(?:исправить|работать|связано|проявляется(?:\s+в\s+(?:работе|отношениях|жизни|деньгах))?)|можно\s+(?:подробнее|пример)|дай\s+(?:пример|(?:[1-5]|один|два|две|три|четыре|пять)\s+(?:(?:конкретн|практическ|небольш|прост|понятн)\p{L}*\s+)?(?:шаг\p{L}*|действи\p{L}*|пункт\p{L}*))|(?:объясни|скажи)\s+(?:подробнее|проще|попроще|простыми\s+словами))(?:\s+(?:простыми\s+словами|проще|попроще))?[?!.,…]*\s*$/iu;
 const APPLICATION_CLARIFICATION=/^\s*(?:а\s+)?как\s+это\s+проявляется\s+в\s+(работе|отношениях|жизни|деньгах)[?!.,…]*\s*$/iu;
 export function applicationClarification(question){
  return String(question).split('\nУточнение: ').reverse().map(part=>APPLICATION_CLARIFICATION.exec(part)?.[1]).find(Boolean)??null;
 }
-export const isSimplificationRequest=message=>/^\s*(?:а\s+)?(?:объясни|скажи)\s+(?:проще|попроще|простыми\s+словами)[.!?…]*\s*$/iu.test(message);
+export const isSimplificationRequest=message=>/^\s*(?:а\s+)?(?:объясни|скажи)\s+(?:это\s+)?(?:проще|попроще|простыми\s+словами)(?:\s*,?\s*пожалуйста)?[.!?…]*\s*$/iu.test(message);
+const dependentQuestion=message=>DEPENDENT_QUESTION.test(message)||isSimplificationRequest(message);
 export const isMeaningClarification=message=>isSimplificationRequest(message)||/^\s*(?:а\s+)?что\s+это\s+значит(?:\s+простыми\s+словами)?[.!?…]*\s*$/iu.test(message);
 export function repeatedSimplification(answer,message,history=[]){
  if(!isSimplificationRequest(message))return false;
@@ -34,11 +35,11 @@ export function repeatedSimplification(answer,message,history=[]){
  return a.size+b.size>0&&2*common/(a.size+b.size)>=0.9;
 }
 export function groundingQuestion(message, history = []) {
-  if (!DEPENDENT_QUESTION.test(message)) return message;
+  if (!dependentQuestion(message)) return message;
   let scoped=null;
   for(const item of [...history].reverse()){
     if(item.role!=='user'||typeof item.content!=='string')continue;
-    if(!DEPENDENT_QUESTION.test(item.content))return [item.content,...(scoped&&!APPLICATION_CLARIFICATION.test(message)?[scoped]:[]),message].join('\nУточнение: ');
+    if(!dependentQuestion(item.content))return [item.content,...(scoped&&!APPLICATION_CLARIFICATION.test(message)?[scoped]:[]),message].join('\nУточнение: ');
     if(!scoped&&APPLICATION_CLARIFICATION.test(item.content))scoped=item.content;
   }
   return message;

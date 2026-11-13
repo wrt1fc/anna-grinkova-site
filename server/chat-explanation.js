@@ -133,7 +133,7 @@ export function practicalIntentAnswer(chart, message, length) {
   return `${intro}\n${steps}${detail}`;
 }
 
-export function intentAnswerProblem(answer, message) {
+export function intentAnswerProblem(answer, message, {checkCount=true}={}) {
   const intent=chatIntent(message), count=requestedStepCount(message);
   if (['growth','promotion','budget','support','rest','workfit','income'].includes(intent)
       && answer.split(/[.!?\n]/u).some(sentence=>/Анн\p{L}*\s+Гриньков|Институт\p{L}*\s+прогрессивн\p{L}*\s+психологи/iu.test(sentence)
@@ -143,7 +143,15 @@ export function intentAnswerProblem(answer, message) {
   if (intent==='growth'
       && /(?:нужн\p{L}*|нужна|нужны|необходим\p{L}*)[^.!?]{0,35}(?:карт|данные\s+рождения)/iu.test(answer)
       && !/выбери|проверь|попроси|запиши|потренируй|возьми|попробуй/iu.test(answer)) return true;
-  if (count && ['workfit','income','growth','promotion','budget','support','rest'].includes(intent) && (answer.replace(/^Привет!\s*/u,'').match(/(?:^|\n)\s*\d+[.)]\s+/gu) ?? []).length !== count) return true;
+  if (checkCount && count && ['workfit','income','growth','promotion','budget','support','rest'].includes(intent) && (answer.replace(/^Привет!\s*/u,'').match(/(?:^|\n)\s*\d+[.)]\s+/gu) ?? []).length !== count) return true;
+  if(intent==='budget'&&!/работ|заработ|источник\p{L}*\s+доход/iu.test(message)){
+    const text=answer.replace(/«[^»]*»|“[^”]*”|"[^"\n]*"/gu,' ');
+    const jobSearch=/(?<!\p{L})(?:найди|найти|ищи|искать|смени|сменить)\s+(?:(?:себе|новую|другую|ещё|одну|дополнительную)\s+){0,3}(?:работу|подработку)(?!\p{L})/giu;
+    for(const m of text.matchAll(jobSearch)){
+      const before=text.slice(0,m.index).split(/[.!?;\n]/u).at(-1);
+      if(!/(?<!\p{L})(?:не|нельзя|необязательно|если|неверно)(?!\p{L})/iu.test(before))return true;
+    }
+  }
   // A list of income sources is not an answer about progress or spending.
   // Merely repeating «рост»/«навыки» beside that list does not address the task.
   const incomeSubstitution = /возможные\s+темы\s+заработка|(?:доход|деньги|заработок)[^.!?;]{0,25}(?:связан|приход|ид[её]т|идут|возмож)|управител\p{L}*\s+(?:денежного|2(?:-?го)?|второго)\s+дом/iu.test(answer);

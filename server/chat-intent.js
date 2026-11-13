@@ -40,7 +40,7 @@ export function chatIntent(message) {
   return 'other';
 }
 export function requestedStepCount(message) {
-  const m = /(?<!\p{L})([1-5]|один|два|две|три|четыре|пять)\s+(?:конкретн\p{L}*\s+|практическ\p{L}*\s+)?(?:шаг|действи|совет|пункт)/iu.exec(message);
+  const m = /(?<!\p{L})([1-5]|один|два|две|три|четыре|пять)\s+(?:(?:конкретн|практическ|небольш|прост|понятн)\p{L}*\s+)?(?:шаг|действи|совет|пункт)/iu.exec(message);
   return m ? ({один:1,два:2,две:2,три:3,четыре:4,пять:5}[m[1].toLowerCase()] ?? Number(m[1])) : null;
 }
 export function incomeRulerExplanation(message) {

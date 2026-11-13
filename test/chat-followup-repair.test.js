@@ -17,6 +17,7 @@ test('counted follow-ups retain the last independent budget question rather than
  const{chart}=chartContext(profile,message,new Date(),{history});const result=await chat.answer({message,history,chart,forecast:null});
  assert.equal(calls,2);assert.equal((result.answer.match(/(?:^|\n)\s*\d+[.)]\s+/gu)??[]).length,3);assert.match(result.answer,/расход|покуп|накоп/iu);
  assert.equal(groundingQuestion('Дай три шага для отношений.',history),'Дай три шага для отношений.');
+ for(const q of ['Дай три небольших действия.','Дай два простых шага.'])assert.equal(chatIntent(groundingQuestion(q,history)),'budget');
 });
 
 test('meaning clarification follows the calculated solar sign without generating a new zodiac classification',async()=>{
@@ -45,7 +46,7 @@ test('application clarifications keep the chart topic while selecting the new re
  const chain=[...history,{role:'user',content:message},{role:'assistant',content:'Ответ про отношения.'}];
  const q=groundingQuestion('Дай три конкретных шага.',chain);assert.match(q,/отношениях/);assert.doesNotMatch(q,/в работе/);
  assert.equal(chatIntent(q),'other');assert.ok(chartContext(profile,'Дай три конкретных шага.',new Date(),{history:chain}).chart.relationship);
- for(const simpler of ['Скажи проще.','Объясни простыми словами.'])assert.match(groundingQuestion(simpler,history),/Что главное/);
+ for(const simpler of ['Скажи проще.','Объясни простыми словами.','Скажи это проще, пожалуйста.'])assert.match(groundingQuestion(simpler,history),/Что главное/);
  const relationshipHistory=[{role:'user',content:'Что важно в отношениях по моей натальной карте?'},{role:'assistant',content:'Ответ об отношениях.'}];
  const workChart=chartContext(profile,'Как это проявляется в работе?',new Date(),{history:relationshipHistory}).chart;
  assert.ok(workChart);assert.equal(workChart.relationship,undefined);assert.equal(workChart.partnerMissing,undefined);

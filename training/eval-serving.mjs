@@ -7,6 +7,7 @@ import {chartContext} from '../server/chat-grounding.js';
 import {wrongCalculatedClaim} from '../server/chart-answer-check.js';
 import {wrongMoneyRulerClaim,incompleteMoneyExplanation} from '../server/chat-explanation.js';
 import {learningAnswerProblems} from './learning-quality.mjs';
+import {quality31} from './quality-v31.mjs';
 import {unsafeChatAnswer} from '../server/chat-safety.js';
 import {hasFormalAddress} from '../server/chat-style.js';
 import {evaluationTelemetry} from './evaluation-telemetry.mjs';
@@ -26,7 +27,7 @@ for(const card of fs.readFileSync(input,'utf8').trim().split(/\r?\n/u).map(JSON.
     const profile=card.chartFor?{birthUtc:card.chartFor.birthUtc,birthLatitude:card.chartFor.latitude,birthLongitude:card.chartFor.longitude}:null;
     const {chart}=chartContext(profile,card.question,new Date(date+'T09:00:00Z'),{history});
     result=urgentHealthReply(card.question,history)??await chat.answer({message:card.question,history,forecast:forecastForQuestion(forecast,card.question),chart,length,materials:card.materials??[]});
-    errors.push(...learningAnswerProblems(result.answer,card));
+    errors.push(...(card.rubricVersion===31?quality31(result.answer,card,chart):learningAnswerProblems(result.answer,card)));
     if(unsafeChatAnswer(result.answer,date)||hasFormalAddress(result.answer))errors.push('safety/style');
     if(result.answer.length<(card.minAnswerChars??30)||result.answer.length>ANSWER_LENGTHS[length].maxChars)errors.push('answer length');
     if(wrongCalculatedClaim(result.answer,chart)||wrongMoneyRulerClaim(result.answer,chart,card.question))errors.push('calculated fact contradiction');

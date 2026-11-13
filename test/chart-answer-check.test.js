@@ -8,6 +8,29 @@ import { forecastForDate } from '../server/daily-forecast.js';
 const profile={birthUtc:'1990-05-15T09:30:00Z',birthTime:'12:30',birthLatitude:55.75,birthLongitude:37.62};
 const chart=chartContext(profile,'Что означает мой Сатурн?').chart;
 
+test('a delayed placement belongs to its named planet, not to a nearby house label',()=>{
+ const subject={calculated:{positions:{sun:{sign:'Близнецы',house:8},mars:{sign:'Близнецы',house:7},pluto:{sign:'Стрелец',house:1}},aspects:[],houseRulers:[{house:6,rulers:[{planet:'mars',house:7},{planet:'pluto',house:1}]}]}};
+ for(const text of [
+  'Солнце в Близнецах в 8 доме, а Марс в Близнецах соединён с ним и стоит во 2 доме.',
+  'Марс в Близнецах, проявляется активно и находится во втором доме.',
+  'Во 2 доме управители дома 6 — Марс и Плутон.',
+  'Во втором доме находятся управители шестого дома: Марс и Плутон.',
+ ])assert.equal(wrongCalculatedClaim(text,subject),true,text);
+ for(const text of [
+  'Марс в Близнецах соединён с ним и стоит в 7 доме.',
+  'Марс в Близнецах, но не стоит во 2 доме.',
+  'Если Марс в Близнецах и стоит во 2 доме, это другой пример.',
+  'Неверно, что Марс в Близнецах и стоит во 2 доме.',
+  '«Марс в Близнецах и стоит во 2 доме» — неверное описание.',
+  'Транзитный Марс в Близнецах и стоит во 2 доме.',
+  'Не во втором доме управители шестого дома: Марс и Плутон.',
+  'Марс в Близнецах, а Солнце стоит в 8 доме.',
+  'Марс в Близнецах, а его управитель активен и стоит во втором доме.',
+  'Марс в Близнецах, а управитель денежного дома проявляется активно и стоит во втором доме.',
+  'В 7 доме управитель дома 6 — Марс.',
+ ])assert.equal(wrongCalculatedClaim(text,subject),false,text);
+});
+
 test('plural planetary and collective ruler placements cannot hide a wrong house or sign',()=>{
  const subject={calculated:{positions:{sun:{sign:'Телец',house:11},moon:{sign:'Близнецы',house:12}},aspects:[],houseRulers:[{house:2,sign:'Рак',rulers:[{planet:'moon',house:12},{planet:'sun',house:11}]}]}};
  for(const answer of ['Луна и Солнце стоят в 12 доме.','Луна и Солнце находятся в Тельце.','Управители 2 дома стоят в 11 доме.'])assert.equal(wrongCalculatedClaim(answer,subject),true,answer);
