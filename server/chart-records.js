@@ -55,5 +55,5 @@ export function anchorRecordReply(text,chart,question){
  const records=chartRecords(chart,question);
  if(!Array.isArray(records?.positions)||!records.positions.length||mentionsRecord(text,records))return text;
  const p=records.positions[0];
- return `В расчёте ${p.planet} в ${SIGN_PREPOSITIONAL[p.sign]}${p.house?`, в ${p.house}-м доме`:''}. ${text}`;
+ return `В расчёте ${p.planet} в ${SIGN_PREPOSITIONAL[p.sign]}${p.house?`, в ${p.house}-м доме`:''}.\n${text}`;
 }

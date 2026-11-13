@@ -59,5 +59,9 @@ test('record publication rejects unsupported roles, missing anchors and first-pe
   assert.equal((await serviceChat.answer({message:service,chart,history:[],forecast:null})).model,'fixture');
   const support='Мне тревожно из-за моей натальной карты, поддержи.';
   assert.equal(recordAnswerProblem('Попробуй поговорить с близким человеком и выделить время для отдыха.',chart,support),false);
+  const steps=createLocalChat({model:'fixture',fetchImpl:async()=>stream('Выбери рабочий навык и потренируй его на небольшой задаче.')});
+  const counted=await steps.answer({message:'Как расти в профессии по моей карте? Дай пять конкретных шагов.',chart,history:[],forecast:null,length:'short'});
+  assert.ok(counted.answer.length<=400);
+  assert.equal((counted.answer.match(/(?:^|\n)\s*\d+[.)]\s+/gu)??[]).length,5);
  }finally{if(old===undefined)delete process.env.ANNA_CHART_FOCUS;else process.env.ANNA_CHART_FOCUS=old;}
 });
