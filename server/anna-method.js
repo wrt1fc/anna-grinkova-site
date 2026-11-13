@@ -182,6 +182,15 @@ export function asksAboutMoney(message) {
 const HOUSE_WORDS = { перв: 1, втор: 2, трет: 3, четв: 4, пят: 5, шест: 6, седьм: 7, восьм: 8, девят: 9, десят: 10, одиннадцат: 11, двенадцат: 12 };
 export function houseMentions(question) {
   const found = new Set();
+  // A shared plural noun applies to every item: «1 и 2 домов», «первого,
+  // второго и третьего домов». Do not confuse a planet's placement with a list.
+  const item=`(?:\\d{1,2}(?:[-–]?(?:й|ый|го|м|х|ом))?|(?:${Object.keys(HOUSE_WORDS).join('|')})\\p{L}*)`;
+  for(const list of question.matchAll(new RegExp(`(${item}(?:\\s*(?:,|и)\\s*${item})+)\\s+дом`,'giu'))){
+    for(const token of list[1].matchAll(new RegExp(item,'giu'))){
+      const n=/^\d/u.test(token[0])?parseInt(token[0],10):Object.entries(HOUSE_WORDS).find(([stem])=>token[0].toLowerCase().startsWith(stem))?.[1];
+      if(n>=1&&n<=12)found.add(n);
+    }
+  }
   for (const match of question.matchAll(/(\d{1,2})\s*[-–]?(?:й|ый|го|м|х|ом)?\s*дом/giu)) {
     const n = Number(match[1]);
     if (n >= 1 && n <= 12) found.add(n);

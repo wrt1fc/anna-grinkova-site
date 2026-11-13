@@ -144,7 +144,7 @@ test('a strategy explanation is not replaced by an unrelated list of income rule
  const answer='Привет! Это название стратегии в материалах. Разберём её смысл простыми словами, без списка домов.';
  let calls=0;
  const chat=createLocalChat({model:'fixture',fetchImpl:async()=>{calls++;return stream(answer);}});
- const result=await chat.answer({message:'Что означает финансовая стратегия «котик»?',history:[],forecast,chart});
+ const result=await chat.answer({message:'Что означает финансовая стратегия «котик»?',history:[],forecast,chart,materials:[{text:'Котик — название стратегии в учебном материале. Подробное описание зависит от исходных показателей.'}]});
  assert.equal(result.answer,answer);assert.equal(calls,1);assert.equal(result.model,'fixture');
  assert.equal(incompleteMoneyExplanation(answer,chart,'Объясни стратегию по стихиям.','medium'),false);
  assert.equal(incompleteMoneyExplanation(answer,chart,'Объясни стратегию и обоих управителей денежного дома.','medium'),true);

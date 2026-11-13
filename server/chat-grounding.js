@@ -10,6 +10,7 @@ import {isNatalSuggestion} from './chat-suggestions.js';
 import { isGeneralAstrologyQuestion } from './chat-grounding-scope.js';
 import {factAnswersEnabled,personalFactRequest} from './chat-fact-answers.js';
 import {namedChartPoints} from './chart-answer-check.js';
+import {foreignChartReference} from './chat-subject.js';
 
 // Natal chart, transits, directions and Anna's money method for chart and money questions only;
 // birth date, place and email never reach the model.
@@ -46,7 +47,7 @@ export function chartContext(profile, message, now = new Date(), { partner = nul
   const money = asksAboutMoney(question);
   const scope=applicationClarification(question);
   const compatibility = (!scope||scope==='отношениях')&&asksAboutCompatibility(question);
-  if (!asksAboutChart(question) && !money && !compatibility && !isNatalSuggestion(suggestionQuestion)&&!directFact) return { chart: null, queries: [] };
+  if (!asksAboutChart(question) && !money && !compatibility && !isNatalSuggestion(suggestionQuestion)&&!directFact&&!foreignChartReference(question)) return { chart: null, queries: [] };
   if (!profile?.birthUtc) return { chart: { missing: 'Данные рождения не заполнены в личном кабинете, натальная карта не рассчитана.' }, queries: [] };
   const natal = chartOf(profile);
   const chart = chartForPrompt(natal, now, { include: chartSectionsFor(question) });

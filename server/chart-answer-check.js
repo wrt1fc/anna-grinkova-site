@@ -1,5 +1,6 @@
 import { SIGN_PREPOSITIONAL } from './anna-method.js';
 import { POINT_NAMES } from './astro-chart.js';
+import {wantsNoAstroTerms} from './chat-topics.js';
 
 const FORMS = { sun: 'Солнц[еауем]+', moon: 'Лун(?:а|ы|е|у|ой)', mercury: 'Меркури[йяюем]+', venus: 'Венер(?:а|ы|е|у|ой)',
   mars: 'Марс(?:а|у|ом|е)?', jupiter: 'Юпитер(?:а|у|ом|е)?', saturn: 'Сатурн(?:а|у|ом|е)?', uranus: 'Уран(?:а|у|ом|е)?',
@@ -245,7 +246,7 @@ export function plainNatalAnswer(chart,question,length='medium') {
  const p=point(key);
  const meaning=calculatedPointMeaning(chart,key);
  const detail=length==='detailed'?' Например, выбери недавнюю обычную ситуацию и вспомни, какими были твои действия, что помогло и каким получился результат. Не нужно искать подтверждение каждому описанию: часть может не совпасть с твоим опытом. Можно оставить только то, что помогает сформулировать вопрос о себе, и проверить выводы на реальных поступках. Знак сам по себе не определяет профессию, поведение другого человека или будущее событие.':'';
- return `${POINT_NAMES[key]} в ${SIGN_PREPOSITIONAL[p.sign]}. ${meaning}${detail}`;
+ return wantsNoAstroTerms(question)?`${meaning}${detail}`:`${POINT_NAMES[key]} в ${SIGN_PREPOSITIONAL[p.sign]}. ${meaning}${detail}`;
 }
 
 export function calculatedPointMeaning(chart,key){

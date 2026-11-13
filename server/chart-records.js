@@ -3,6 +3,7 @@ import {houseMentions,SIGN_PREPOSITIONAL} from './anna-method.js';
 import {chatIntent} from './chat-intent.js';
 import {namedChartPoints} from './chart-answer-check.js';
 import {factAnswersEnabled,monetaryRecords} from './chat-fact-answers.js';
+import {wantsNoAstroTerms} from './chat-topics.js';
 
 // Opt-in experiment. A narrow, per-object projection; never changes calculated facts.
 export function chartRecords(chart,question){
@@ -45,7 +46,7 @@ function mentionsRecord(answer,records){
  const keys=new Set(namedChartPoints(answer));
  return records.positions.some(row=>Object.entries(POINT_NAMES).some(([key,name])=>name===row.planet&&keys.has(key)));
 }
-const personalChartQuestion=question=>!['service','support','rest','offtopic'].includes(chatIntent(question))&&/карт|гороскоп/iu.test(question);
+const personalChartQuestion=question=>!wantsNoAstroTerms(question)&&!['service','support','rest','offtopic'].includes(chatIntent(question))&&/карт|гороскоп/iu.test(question);
 
 export function recordAnswerProblem(answer,chart,question){
  const records=chartRecords(chart,question);

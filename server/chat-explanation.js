@@ -1,8 +1,8 @@
 import style from '../config/chat-explanation.json' with {type:'json'};
 import {POINT_NAMES} from './astro-chart.js';
 import {chatIntent, incomeRulerExplanation, intentGuidance, requestedStepCount} from './chat-intent.js';
-import {asksAboutMoney} from './anna-method.js';
-import {assertedNatalText} from './chart-answer-check.js';
+import {asksAboutMoney,houseMentions} from './anna-method.js';
+import {assertedNatalText,namedChartPoints} from './chart-answer-check.js';
 
 const PLANET_FORMS = {sun:'Солнц',moon:'Лун',mercury:'Меркур',venus:'Венер',mars:'Марс',jupiter:'Юпитер',saturn:'Сатурн',uranus:'Уран',neptune:'Нептун',pluto:'Плутон'};
 const PLANET = `(?:${Object.values(PLANET_FORMS).join('|')})\\p{L}*`;
@@ -13,6 +13,10 @@ function rulerPlacements(answer) {
   for (const clause of assertedNatalText(answer).split(/[.!?;\n]/u)) {
     if (/транзит|дирекц|прогресс/iu.test(clause)) continue;
     const names = [...clause.matchAll(new RegExp(PLANET,'giu'))];
+    // Only an explicit shared predicate may bind a house to both planets.
+    const shared = names.length === 2 && /^\s+и\s+$/iu.test(clause.slice(names[0].index+names[0][0].length,names[1].index))
+      && new RegExp(`^\\s*[,—–-]?\\s*оба\\s+(?:стоят|находятся|расположены)\\s+(?:в|во)\\s+(\\d{1,2}|${Object.keys(HOUSE_WORDS).join('|')})\\s+доме\\s*$`,'iu').exec(clause.slice(names[1].index+names[1][0].length));
+    if(shared){for(const name of names)claims.push({planet:Object.keys(PLANET_FORMS).find(key=>name[0].toLowerCase().startsWith(PLANET_FORMS[key].toLowerCase())),house:HOUSE_WORDS[shared[1].toLowerCase()]??Number(shared[1])});}
     for (let i = 0; i < names.length; i++) {
       const name = names[i];
       // Never borrow a house from the next planet in the same sentence.
@@ -75,6 +79,16 @@ export function wrongMoneyRulerClaim(answer, chart, message) {
 
 // Completeness of an explanation, separate from factual correctness and model quality metrics.
 export function incompleteMoneyExplanation(answer, chart, message, length) {
+  const requested=/управител/iu.test(message)?houseMentions(message):[];
+  if(requested.length>1&&!chart?.partner&&chart?.calculated?.houseRulers){
+    const roles=[...answer.matchAll(/управител\p{L}*\s+(?:\d{1,2}(?:-?(?:го|й))?|(?:перв|втор|трет|четв|пят|шест|седьм|восьм|девят|десят|одиннадцат|двенадцат)\p{L}*|денежного|финансового)\s+дома/giu)];
+    const membershipOnly=/назови|перечисли/iu.test(message)&&!/где|положени|стоят|стоит|наход|располож|в\s+каком/iu.test(message);
+    return requested.some(h=>{
+      const fragments=roles.flatMap((role,i)=>(houseMentions(role[0])[0]??(/денежного|финансового/iu.test(role[0])?2:null))===h?[answer.slice(role.index,roles[i+1]?.index)]:[]);
+      const placements=fragments.flatMap(rulerPlacements),names=fragments.flatMap(namedChartPoints);
+      return chart.calculated.houseRulers.find(row=>row.house===h)?.rulers.some(r=>membershipOnly?!names.includes(r.planet):!placements.some(p=>p.planet===r.planet&&p.house===r.house));
+    });
+  }
   if (strategyExplanation(message) || !incomeRulerExplanation(message)) return false;
   const rulers = moneyRulers(chart, message);
   if (rulers.length < 2) return false;
@@ -87,6 +101,10 @@ export function incompleteMoneyExplanation(answer, chart, message, length) {
 }
 
 export function calculatedMoneyExplanation(chart, message, length) {
+  const requested=/управител/iu.test(message)?houseMentions(message):[];
+  if(requested.length>1&&chart?.calculated?.houseRulers){
+    return requested.flatMap(h=>(chart.calculated.houseRulers.find(row=>row.house===h)?.rulers??[]).map((r,i,rs)=>`${rs.length===1?'Управитель':i===0?'Один из управителей':'Другой управитель'} ${h}-го дома — ${POINT_NAMES[r.planet]}, в ${r.house}-м доме.`)).join(' ');
+  }
   const rulers = moneyRulers(chart, message);
   const topics = [...new Set(rulers.map(r => style.moneyTopics[r.house]).filter(Boolean))];
   const facts = rulers.map((r,i) => `${rulers.length === 1 ? 'Управитель денежного дома' : i === 0 ? 'Один из управителей денежного дома' : 'Другой управитель'} — ${POINT_NAMES[r.planet]} — стоит в ${r.house} доме.`);
@@ -156,7 +174,7 @@ export function intentAnswerProblem(answer, message, {checkCount=true}={}) {
   // Merely repeating «рост»/«навыки» beside that list does not address the task.
   const incomeSubstitution = /возможные\s+темы\s+заработка|(?:доход|деньги|заработок)[^.!?;]{0,25}(?:связан|приход|ид[её]т|идут|возмож)|управител\p{L}*\s+(?:денежного|2(?:-?го)?|второго)\s+дом/iu.test(answer);
   const relevant = {
-    growth:/выбери|выбрать|проверь|проверить|попроси|обратн\p{L}*\s+связ|практик|тренир|осво|портфолио|запиши|измер|обсуди|согласуй|отработ|упражнен|упражнён/iu,
+    growth:/выб(?:ери|рать)[^.!?]{0,35}(?:навык|задач|проект|критери)|проверь|проверить|попроси|обратн\p{L}*\s+связ|практик|тренир|осво|портфолио|запиши|измер|обсуди|согласуй|отработ|упражнен|упражнён/iu,
     promotion:/результат|достижени|критери|руководител|ответственност|обсуди|договор[её]нност/iu,
     budget:/расход|трат|накоп|отклад|покуп|бюджет|лимит|пауза|паузу|уч[её]т|посильн\p{L}*\s+сумм/iu,
     support:/поддерж|тревог|тревож|страх|боюсь|пережив|выслуш|поговор|психолог/iu,
@@ -164,6 +182,7 @@ export function intentAnswerProblem(answer, message, {checkCount=true}={}) {
   };
   if (intent === 'growth' && !relevant.growth.test(answer)
       && !/переговор|презентац|аналитическ|управлени\p{L}*\s+(?:времен|проект)|активн\p{L}*\s+слушан/iu.test(answer)) return true;
+  if(intent==='growth'&&!/навык|задач|проект|практик|тренир|критери|результат|обратн\p{L}*\s+связ|осво|портфолио|переговор|презентац|аналитическ|активн\p{L}*\s+слушан|управлени\p{L}*\s+времен/iu.test(answer))return true;
   if (intent === 'budget' && /почему|как|что\s+поможет/iu.test(message)
       && !/запиши|записать|сравни|пересмотри|проверь|планируй|посчитай|выдели|выбери|откладывай|отложи|сберегай|сбереги|распредели|пауз|уч[её]т\s+расход|вести\s+(?:уч[её]т|бюджет)|посильн\p{L}*\s+сумм|автоматическ\p{L}*\s+(?:перевод|отчислен)|расскажи|причин[^.!?]{0,30}(?:нельзя|не\s+определ)|(?:нельзя|невозможно)\s+(?:точно\s+)?определ\p{L}*[^.!?]{0,25}причин|(?:какие|сколько|что)[^.!?]{0,45}(?:расход|трат|покуп)[^.!?]{0,30}\?/iu.test(answer)) return true;
   if (incomeSubstitution && relevant[intent] && !relevant[intent].test(answer)) return true;

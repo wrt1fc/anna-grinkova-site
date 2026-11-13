@@ -67,7 +67,9 @@ async function chartFor(store, user, profileId) {
 function compatibilityPair(chart, message) {
   if (!asksAboutCompatibility(message)) return { primary: chart.profile, partner: null };
   if (chart.profileId) return { primary: chart.own, partner: chart.profile };
-  const partner = chart.people.find((item) => item.relation === 'partner') ?? chart.people[0] ?? null;
+  // Never substitute an arbitrary family member for an absent partner.
+  const namesRelative=/сестр|брат|матер|мам|отц|пап|реб[её]н|сын|дочер|подруг|другом|коллег/iu.test(message);
+  const partner = namesRelative ? null : chart.people.find((item) => item.relation === 'partner') ?? null;
   return { primary: chart.own, partner };
 }
 
@@ -235,7 +237,7 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
     const onDelta = (delta, full) => {
       if (firstToken === null) { firstToken = performance.now() - started; metrics.timing('chat_first_token', firstToken); }
       // Checked on every chunk, so a reply that turns unsafe is stopped and replaced mid-stream.
-      if (unsafeChatAnswer(full, day) || copiesMaterials(full, materials)) { unsafe = true; abort.abort(); return; }
+      if (unsafeChatAnswer(full, day,{question:message}) || copiesMaterials(full, materials)) { unsafe = true; abort.abort(); return; }
       const safeUpTo = full.length - STREAM_HOLDBACK_CHARS;
       // A reading is sent whole after it has been checked against the drawn card, never piece by piece.
       if (send && !tarot && safeUpTo > sent) { send('delta', { text: full.slice(sent, safeUpTo) }); sent = safeUpTo; }
@@ -272,10 +274,11 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
         catch (error) { if (abort.signal.aborted) throw error; reply = { answer: '' }; }
         if (wrongCard(reply.answer, card)) { metrics.count('tarot_calculated'); reply = { answer: fallbackReading(card) }; }
       }
-      const unsafeReply = unsafeChatAnswer(reply.answer, day) || copiesMaterials(reply.answer, materials);
+      const unsafeReply = unsafeChatAnswer(reply.answer, day,{question:message}) || copiesMaterials(reply.answer, materials);
       const filtered = reply.styleFiltered || unsafeReply;
       if (filtered) console.warn('Chat answer rejected by safety check');
-      return await finish(unsafeReply ? SAFE_FALLBACK_ANSWER : reply.answer, filtered, reply);
+      return await finish(unsafeReply ? SAFE_FALLBACK_ANSWER : reply.answer, filtered,
+        unsafeReply?{...reply,model:null,answerSource:'safety',learningSuggested:false}:reply);
     } catch (error) {
       if (unsafe) {
         console.warn('Chat answer stopped mid-stream by safety check');

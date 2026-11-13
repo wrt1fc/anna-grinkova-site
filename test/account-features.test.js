@@ -45,6 +45,21 @@ function parseSse(text) {
   });
 }
 
+test('compatibility does not silently choose a child or replace an explicitly named sibling with a partner',async()=>{
+ const seen=[];
+ await fixture(async({store,request,signIn})=>{
+  const cookie=await signIn();const id=await store.findUserIdByEmail('owner@example.com');
+  await store.setPlan(id,'family');
+  await request('/api/profile',{method:'PUT',cookie,body:{birthDate:'1990-03-10',birthTime:'10:45',birthCityId:524901}});
+  await request('/api/profiles',{method:'POST',cookie,body:{...partnerBirth,relation:'child',label:'Ребёнок'}});
+  await request('/api/chat',{method:'POST',cookie,body:{message:'Какая у нас совместимость?'}});
+  assert.ok(seen.at(-1).chart.partnerMissing);assert.equal(seen.at(-1).chart.partner,undefined);
+  await request('/api/profiles',{method:'POST',cookie,body:partnerBirth});
+  await request('/api/chat',{method:'POST',cookie,body:{message:'Какая у меня совместимость с сестрой?'}});
+  assert.equal(seen.at(-1).chart.partner,undefined);assert.ok(seen.at(-1).chart.partnerMissing);
+ },{chatWriter:steadyWriter(seen)});
+});
+
 test('the free plan allows no extra people; partner allows one, family two', async () => fixture(async ({ store, request, signIn }) => {
   const cookie = await signIn();
   const plan = await request('/api/plan', { cookie });

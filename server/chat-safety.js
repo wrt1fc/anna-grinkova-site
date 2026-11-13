@@ -86,15 +86,21 @@ export function copiesMaterials(answer, materials = []) {
   return false;
 }
 
-export function unsafeChatAnswer(answer, forecastDate) {
+export function unsafeChatAnswer(answer, forecastDate, {question=''} = {}) {
   if (UNSAFE_PATTERNS.some((pattern) => pattern.test(answer)) || promisesOutcome(answer)) return true;
   const [year, month, day] = String(forecastDate).split('-').map(Number);
+  const askedYears=new Set([...question.matchAll(/(?<!\d)((?:19|20)\d{2})(?!\d)/gu)].map(m=>Number(m[1])));
+  const trailingYear=(text,match)=>/^\p{L}*\s+((?:19|20)\d{2})(?!\d)/u.exec(text.slice(match.index+match[0].length))?.[1]??'';
+  const dateKey=match=>`${Number(match[1])}:${MONTHS.findIndex(name=>new RegExp(`^${name}`,'iu').test(match[2]))+1}`;
+  const askedDates=[...question.matchAll(DATE_PATTERN)].map(m=>({key:dateKey(m),year:trailingYear(question,m)}));
   for (const match of answer.matchAll(/(?<!\d)((?:19|20)\d{2})(?!\d)/gu)) {
-    if (Number(match[1]) !== year) return true;
+    if (Number(match[1]) !== year&&!askedYears.has(Number(match[1]))) return true;
   }
   for (const match of answer.matchAll(DATE_PATTERN)) {
     const monthIndex = MONTHS.findIndex((name) => new RegExp(`^${name}`, 'iu').test(match[2]));
-    if (Number(match[1]) !== day || monthIndex + 1 !== month) return true;
+    const key=`${Number(match[1])}:${monthIndex+1}`,givenYear=trailingYear(answer,match);
+    const current=Number(match[1])===day&&monthIndex+1===month&&(!givenYear||Number(givenYear)===year);
+    if(!current&&!askedDates.some(d=>d.key===key&&(!givenYear||!d.year||givenYear===d.year)))return true;
   }
   return false;
 }

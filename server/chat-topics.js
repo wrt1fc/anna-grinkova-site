@@ -19,7 +19,8 @@ const APPLICATION_CLARIFICATION=/^\s*(?:а\s+)?как\s+это\s+проявля�
 export function applicationClarification(question){
  return String(question).split('\nУточнение: ').reverse().map(part=>APPLICATION_CLARIFICATION.exec(part)?.[1]).find(Boolean)??null;
 }
-export const isSimplificationRequest=message=>/^\s*(?:а\s+)?(?:объясни|скажи)\s+(?:это\s+)?(?:проще|попроще|простыми\s+словами)(?:\s*,?\s*пожалуйста)?[.!?…]*\s*$/iu.test(message);
+export const isSimplificationRequest=message=>/^\s*(?:а\s+)?(?:(?:объясни|скажи|расскажи|можно)\s+(?:это\s+)?(?:проще|попроще|простыми\s+словами|без\s+(?:терминов|сложных\s+слов)|короче)|без\s+(?:терминов|сложных\s+слов))(?:\s*,?\s*пожалуйста)?[.!?…]*\s*$/iu.test(message);
+export const wantsNoAstroTerms=message=>/без\s+(?:астрологическ\p{L}*\s+)?(?:терминов|сложных\s+слов|домов|названий\s+планет)|не\s+(?:называй|используй|упоминай)[^.!?]{0,30}(?:термин|названи\p{L}*\s+планет|дома|домов)/iu.test(message);
 const dependentQuestion=message=>DEPENDENT_QUESTION.test(message)||isSimplificationRequest(message);
 export const isMeaningClarification=message=>isSimplificationRequest(message)||/^\s*(?:а\s+)?что\s+это\s+значит(?:\s+простыми\s+словами)?[.!?…]*\s*$/iu.test(message);
 export function repeatedSimplification(answer,message,history=[]){
