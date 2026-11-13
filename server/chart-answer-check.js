@@ -243,12 +243,18 @@ export function plainNatalAnswer(chart,question,length='medium') {
  const point=key=>facts.positions[key]??facts.angles?.[key];
  const key=namedChartPoints(question).find(k=>point(k))??'sun';
  const p=point(key);
- const basic=MEANINGS[key]??({asc:'Асцендент — начало первого дома; в трактовке его связывают с первым впечатлением и способом вступать в контакт',mc:'MC — середина неба, один из углов карты; его используют при обсуждении профессиональных целей'}[key]??'Это отдельный показатель карты, который рассматривают вместе с другими данными');
- const meaning=key==='sun'&&STRENGTHS[p.sign]
-  ? `В астрологических трактовках это тема: ${STRENGTHS[p.sign]}. Это не готовая оценка твоих способностей — сравни с собственным опытом.`
-  : `${basic}. Это тема для разговора, а не точное описание твоего характера.`;
+ const meaning=calculatedPointMeaning(chart,key);
  const detail=length==='detailed'?' Например, выбери недавнюю обычную ситуацию и вспомни, какими были твои действия, что помогло и каким получился результат. Не нужно искать подтверждение каждому описанию: часть может не совпасть с твоим опытом. Можно оставить только то, что помогает сформулировать вопрос о себе, и проверить выводы на реальных поступках. Знак сам по себе не определяет профессию, поведение другого человека или будущее событие.':'';
  return `${POINT_NAMES[key]} в ${SIGN_PREPOSITIONAL[p.sign]}. ${meaning}${detail}`;
+}
+
+export function calculatedPointMeaning(chart,key){
+ const p=chart?.calculated?.positions?.[key]??chart?.calculated?.angles?.[key];
+ if(!p)return null;
+ const basic=MEANINGS[key]??({asc:'Асцендент — начало первого дома; в трактовке его связывают с первым впечатлением и способом вступать в контакт',mc:'MC — середина неба, один из углов карты; его используют при обсуждении профессиональных целей'}[key]??'Это отдельный показатель карты, который рассматривают вместе с другими данными');
+ return key==='sun'&&STRENGTHS[p.sign]
+  ? `В астрологических трактовках это тема: ${STRENGTHS[p.sign]}. Это не готовая оценка твоих способностей — сравни с собственным опытом.`
+  : `${basic}. Это тема для разговора, а не точное описание твоего характера.`;
 }
 
 // Practical hypotheses tied to the calculated element, never diagnoses or guarantees.

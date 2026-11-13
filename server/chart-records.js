@@ -2,11 +2,16 @@ import {POINT_NAMES,ASPECT_NAMES} from './astro-chart.js';
 import {houseMentions,SIGN_PREPOSITIONAL} from './anna-method.js';
 import {chatIntent} from './chat-intent.js';
 import {namedChartPoints} from './chart-answer-check.js';
+import {factAnswersEnabled,monetaryRecords} from './chat-fact-answers.js';
 
 // Opt-in experiment. A narrow, per-object projection; never changes calculated facts.
 export function chartRecords(chart,question){
  const intent=chatIntent(question);
  if(intent==='service')return null;
+ if(factAnswersEnabled()){
+  const money=monetaryRecords(chart,question);
+  if(money)return money;
+ }
  const facts=chart?.calculated;
  if(!facts?.positions||chart.partner||chart.relationship||chart.transits||chart.directions||houseMentions(question).length
    ||/полн\p{L}*\s+разбор|всю\s+карт|всей\s+карт|подробн|градус|долгот|орбис|стратеги|стихи|формул|ретроград|управител|(?:все|какие)\s+планет|все\s+аспект/iu.test(question))return chart;
@@ -25,6 +30,8 @@ export function chartRecords(chart,question){
  const keys=[...selected].filter(key=>point(key));
  return {
   houseSystem:chart.houseSystem,
+  ...(chart.solarSignUncertain?{solarSignUncertain:true}:{}),
+  ...(chart.uncertainPositions?.length?{uncertainPositions:chart.uncertainPositions}:{}),
   positions:keys.map(record),
   houseRulers:rulers.map(row=>({house:row.house,cuspSign:row.sign,rulers:row.rulers.filter(r=>point(r.planet)).map(r=>record(r.planet))})),
   aspects:(facts.aspects??[]).filter(a=>selected.has(a.first)&&selected.has(a.second)).slice(0,3)

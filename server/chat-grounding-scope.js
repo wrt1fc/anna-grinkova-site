@@ -1,4 +1,5 @@
 import { hasPersonalReference, isPersonalLifeApplication, personalSolarSignQuestion } from './chat-topics.js';
+import {factAnswersEnabled,physicalInferenceQuestion} from './chat-fact-answers.js';
 
 // Grounding is independent of whether the interface may offer a course. A definition
 // is general unless the visitor explicitly asks about a particular person's chart.
@@ -46,6 +47,7 @@ function lifeQuestion(question) {
 // The caller supplies groundingQuestion(message, history), so dependent follow-ups
 // retain the original topic and a complete new question starts afresh.
 export function isGeneralAstrologyQuestion(question) {
+  if(factAnswersEnabled()&&physicalInferenceQuestion(question))return true;
   if (personalSolarSignQuestion(question)) return false;
   if (NO_PERSONAL_CHART.test(question) && THEORY_TOPIC.test(question)) return true;
   if (PERSONAL_ASTRO.test(question) || PERSON_CHART.test(question) || PERSONAL_SITUATION.test(question)

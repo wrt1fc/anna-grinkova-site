@@ -24,6 +24,8 @@ import {focusedChart} from './chat-chart-focus.js';
 import {chartRecords,recordAnswerProblem,anchorRecordReply} from './chart-records.js';
 import {personalSolarSignQuestion,isMeaningClarification,isSimplificationRequest,repeatedSimplification} from './chat-topics.js';
 import {isClearlyOffTopic, incomeRulerExplanation, chatIntent} from './chat-intent.js';
+import {factAnswersEnabled,calculatedFactAnswer,physicalInferenceQuestion,physicalInferenceAnswer} from './chat-fact-answers.js';
+import {basicFactExplanation} from './basic-fact-explanation.js';
 
 const ENDPOINT = ollamaGenerateUrl();
 const MODEL_TIMEOUT_MS = 45_000;
@@ -240,6 +242,22 @@ export function createLocalChat({ model, fetchImpl = fetch, learningSignals = pr
         const answer = conversationalOpening(isMeaningClarification(message)?plainNatalAnswer(chart,'Солнце',length):personalSolarSignAnswer(chart), history);
         onDelta?.(answer, answer);
         return {answer,model:null,length,truncated:false,contextVersion:chatContext.version,learningSuggested:false,groundedFallback:true};
+      }
+      if(mode!==TAROT_MODE&&factAnswersEnabled()){
+        const text=physicalInferenceQuestion(question)?physicalInferenceAnswer:calculatedFactAnswer(chart,question);
+        if(text){
+          const answer=conversationalOpening(text,history);
+          if(answer.length>size.maxChars)throw new Error('Calculated facts exceed requested answer size');
+          onDelta?.(answer,answer);
+          return {answer,model:null,length,truncated:false,contextVersion:chatContext.version,learningSuggested:false,groundedFallback:true,calculatedFactAnswer:true};
+        }
+        const basic=process.env.ANNA_FACT_EXPLANATIONS==='1'?basicFactExplanation(chart,question,length,history):null;
+        if(basic){
+          const answer=conversationalOpening(basic,history);
+          if(answer.length>size.maxChars||wrongCalculatedClaim(answer,chart))throw new Error('Basic calculated explanation failed publication validation');
+          onDelta?.(answer,answer);
+          return {answer,model:null,length,truncated:false,contextVersion:chatContext.version,learningSuggested:false,groundedFallback:true,calculatedFactAnswer:true,basicExplanation:true};
+        }
       }
       if (!signalProtocol && mode !== TAROT_MODE && chart?.missing && isRelationshipQuestion(message)) {
         const answer = conversationalOpening('Чтобы разобрать твои отношения по натальной карте, добавь дату, время и город рождения в кабинете. А пока расскажи: ты сейчас в паре или хочешь встретить партнёра?', history);

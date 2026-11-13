@@ -8,6 +8,8 @@ import { relationshipContext } from './relationship-context.js';
 import { isClearlyOffTopic } from './chat-intent.js';
 import {isNatalSuggestion} from './chat-suggestions.js';
 import { isGeneralAstrologyQuestion } from './chat-grounding-scope.js';
+import {factAnswersEnabled,personalFactRequest} from './chat-fact-answers.js';
+import {namedChartPoints} from './chart-answer-check.js';
 
 // Natal chart, transits, directions and Anna's money method for chart and money questions only;
 // birth date, place and email never reach the model.
@@ -36,17 +38,27 @@ function partnerForPrompt(own, partner) {
 export function chartContext(profile, message, now = new Date(), { partner = null, history = [] } = {}) {
   if (isClearlyOffTopic(message)) return { chart: null, queries: [] };
   const question = groundingQuestion(message, history);
-  if (isGeneralAstrologyQuestion(question)) return { chart: null, queries: [] };
+  const directFact=factAnswersEnabled()&&personalFactRequest(question);
+  if (!directFact&&isGeneralAstrologyQuestion(question)) return { chart: null, queries: [] };
   // groundingQuestion appends this suffix only for a dependent follow-up. Match the
   // complete original editorial question, never arbitrary words inside a new message.
   const suggestionQuestion = question !== message ? question.slice(0, question.lastIndexOf('\nУточнение: ')) : question;
   const money = asksAboutMoney(question);
   const scope=applicationClarification(question);
   const compatibility = (!scope||scope==='отношениях')&&asksAboutCompatibility(question);
-  if (!asksAboutChart(question) && !money && !compatibility && !isNatalSuggestion(suggestionQuestion)) return { chart: null, queries: [] };
+  if (!asksAboutChart(question) && !money && !compatibility && !isNatalSuggestion(suggestionQuestion)&&!directFact) return { chart: null, queries: [] };
   if (!profile?.birthUtc) return { chart: { missing: 'Данные рождения не заполнены в личном кабинете, натальная карта не рассчитана.' }, queries: [] };
   const natal = chartOf(profile);
   const chart = chartForPrompt(natal, now, { include: chartSectionsFor(question) });
+  if(factAnswersEnabled()&&profile.birthTime===null){
+    const keys=namedChartPoints(question).filter(key=>natal.planets[key]);
+    if(keys.length){
+      const instant=new Date(profile.birthUtc).getTime();
+      const edges=[-1,1].map(day=>chartOf({...profile,birthUtc:new Date(instant+day*86400000).toISOString()}));
+      chart.uncertainPositions=keys.filter(key=>new Set([natal,...edges].map(c=>c.planets[key]?.sign)).size>1);
+      if(chart.uncertainPositions.includes('sun'))chart.solarSignUncertain=true;
+    }
+  }
   // Unknown time uses a placeholder instant. Near an ingress, do not turn it
   // into an asserted own solar sign; a conservative one-day margin is explicit.
   if (personalSolarSignQuestion(question) && profile.birthTime === null) {
