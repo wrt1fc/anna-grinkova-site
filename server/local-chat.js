@@ -9,7 +9,7 @@ import {astroReference} from './astro-reference.js';
 import {methodicReference} from './methodic-reference.js';
 import {astroFactProblems} from './astro-fact-guard.js';
 import { ollamaGenerateUrl } from './ollama.js';
-import { conversationalOpening, hasFormalAddress } from './chat-style.js';
+import { conversationalOpening, hasFormalAddress, hasInstructionEcho } from './chat-style.js';
 import {urgentHealthReply} from './urgent-health.js';
 import {financialDecisionReply} from './financial-safety.js';
 import { SAFE_FALLBACK_ANSWER } from './chat-safety.js';
@@ -217,7 +217,7 @@ export function createLocalChat({ model, fetchImpl = fetch, learningSignals = pr
         const truncated = fixed.length > size.maxChars;
         if (truncated) fixed = lastFullSentence(fixed.slice(0, size.maxChars));
         if (mode !== TAROT_MODE && length === 'detailed' && chatIntent(question) !== 'service' && fixed.length < 400) throw new Error('Local chat returned an incomplete detailed answer');
-        if (fixed.length < MIN_ANSWER_CHARS || hasFormalAddress(fixed) || recordProblem(fixed)
+        if (fixed.length < MIN_ANSWER_CHARS || hasFormalAddress(fixed) || hasInstructionEcho(fixed) || recordProblem(fixed)
           || wrongPlanetSign(fixed, chart) || wrongCalculatedClaim(fixed, chart)
           || wrongMoneyRulerClaim(fixed, chart, question) || relationshipAnswerProblems(fixed, chart, length)
           || mode !== TAROT_MODE && (incompleteMoneyExplanation(fixed, chart, question, length) || intentAnswerProblem(fixed, question))
@@ -331,7 +331,7 @@ export function createLocalChat({ model, fetchImpl = fetch, learningSignals = pr
         return createLocalChat({ model, fetchImpl, learningSignals, onTrace }).answer({ message, history, forecast, visitorName, visitorGender, signal,
           length, materials, chart, mode, tone, onDelta, temperature: 0.1, qualityRetry: true, styleRetry, factRetry, factCorrection, explanationRetry, lengthRetry });
       }
-      if (recordProblem(answer) || mode!==TAROT_MODE&&chart?.calculated&&!chart.partner&&repeatedSimplification(answer,message,history)) {
+      if (recordProblem(answer) || mode!==TAROT_MODE&&(hasInstructionEcho(answer)||chart?.calculated&&!chart.partner&&repeatedSimplification(answer,message,history))) {
         if (!explanationRetry) return createLocalChat({model,fetchImpl,learningSignals,onTrace}).answer({message,history,forecast,visitorName,visitorGender,signal,length,materials,chart,mode,tone,onDelta,temperature:0.1,qualityRetry,styleRetry,factRetry,factCorrection,explanationRetry:true,lengthRetry});
         const fallback=topicFallback();
         if(fallback)return publishFallback(fallback,{explanationFiltered:true});

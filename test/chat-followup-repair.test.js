@@ -4,6 +4,7 @@ import{chartContext}from'../server/chat-grounding.js';
 import{createLocalChat}from'../server/local-chat.js';
 import{plainNatalAnswer}from'../server/chart-answer-check.js';
 import{chatIntent}from'../server/chat-intent.js';
+import{hasInstructionEcho}from'../server/chat-style.js';
 const profile={birthUtc:'1990-05-15T09:30:00Z',birthTime:'12:30',birthLatitude:55.75,birthLongitude:37.62};
 const stream=text=>({ok:true,body:new ReadableStream({start(c){c.enqueue(new TextEncoder().encode(JSON.stringify({response:text,done:true,done_reason:'stop'})+'\n'));c.close();}})});
 
@@ -59,4 +60,15 @@ test('applying a solar sign to a life topic must not return only the sign name',
   const{chart}=chartContext(profile,message,new Date(),{history});assert.ok(chart);
   await chat.answer({message,history,chart,forecast:null});assert.ok(calls>0,'Application must use normal writer path');
  }
+});
+
+test('valid numbered actions cannot publish a copied instruction header',async()=>{
+ const history=[{role:'user',content:'Почему мне сложно откладывать деньги?'},{role:'assistant',content:'Запиши расходы.'}];
+ const message='Дай три конкретных шага.';let calls=0;
+ const chat=createLocalChat({model:'fixture',fetchImpl:async()=>{calls++;return stream('Сначала ответь по делу, затем можно пояснить по карте.\n1. Запиши расходы.\n2. Проверь покупки.\n3. Выбери посильную сумму.');}});
+ const{chart}=chartContext(profile,message,new Date(),{history});const result=await chat.answer({message,history,chart,forecast:null});
+ assert.equal(calls,2);assert.equal(hasInstructionEcho(result.answer),false);assert.equal((result.answer.match(/(?:^|\n)\s*\d+[.)]\s+/gu)??[]).length,3);
+ assert.equal(hasInstructionEcho('Сначала запиши расходы и сравни их с планом.'),false);
+ assert.equal(hasInstructionEcho('Сначала ответь по делу и приведи пример из своего опыта.'),false);
+ assert.equal(hasInstructionEcho('Фраза «Сначала ответь по делу» означает просьбу отвечать кратко.'),false);
 });
