@@ -226,6 +226,20 @@ export function personalSolarSignAnswer(chart) {
   return `Твой знак зодиака — ${sign}. В рассчитанной карте Солнце в ${SIGN_PREPOSITIONAL[sign]}.`;
 }
 
+export function plainNatalAnswer(chart,question,length='medium') {
+ const facts=chart?.calculated;
+ if(!facts?.positions?.sun||chart.solarSignUncertain)return personalSolarSignAnswer(chart);
+ const point=key=>facts.positions[key]??facts.angles?.[key];
+ const key=namedChartPoints(question).find(k=>point(k))??'sun';
+ const p=point(key);
+ const basic=MEANINGS[key]??({asc:'Асцендент — начало первого дома; в трактовке его связывают с первым впечатлением и способом вступать в контакт',mc:'MC — середина неба, один из углов карты; его используют при обсуждении профессиональных целей'}[key]??'Это отдельный показатель карты, который рассматривают вместе с другими данными');
+ const meaning=key==='sun'&&STRENGTHS[p.sign]
+  ? `В астрологических трактовках это тема: ${STRENGTHS[p.sign]}. Это не готовая оценка твоих способностей — сравни с собственным опытом.`
+  : `${basic}. Это тема для разговора, а не точное описание твоего характера.`;
+ const detail=length==='detailed'?' Например, выбери недавнюю обычную ситуацию и вспомни, какими были твои действия, что помогло и каким получился результат. Не нужно искать подтверждение каждому описанию: часть может не совпасть с твоим опытом. Можно оставить только то, что помогает сформулировать вопрос о себе, и проверить выводы на реальных поступках. Знак сам по себе не определяет профессию, поведение другого человека или будущее событие.':'';
+ return `${POINT_NAMES[key]} в ${SIGN_PREPOSITIONAL[p.sign]}. ${meaning}${detail}`;
+}
+
 // Practical hypotheses tied to the calculated element, never diagnoses or guarantees.
 const STRENGTHS = {
   Овен: 'начинать дело и проверять идеи действием', Лев: 'представлять свои идеи и брать ответственность за результат', Стрелец: 'видеть перспективу и связывать работу с понятной целью',

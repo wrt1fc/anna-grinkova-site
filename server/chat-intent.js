@@ -1,5 +1,6 @@
 // Conservative shared intent routing. Unknown topics stay with the conversational model.
 // Refusals require a positive unrelated task, never merely absence of astrology words.
+import {applicationClarification} from './chat-topics.js';
 const SERVICE = /фортун|личн\p{L}*\s+кабинет|приложени|подписк|тариф|оплат|(?<!\p{L})вход(?!\p{L})|авторизац|регистрац|код\s+(?:входа|подтверждения)|войти|сайт/iu;
 const ASTRO = /(?:моей|мою|моих|своей|свою|своих)\s+(?:натальн\p{L}*\s+)?карт|астролог|гороскоп|натальн|зодиак|асцендент|куспид|управител|планет|таро|карт\p{L}*\s+(?:дня|рождения)|по\s+(?:моей\s+)?карте|прогноз/iu;
 const UNRELATED = /отоплен|батаре\p{L}*\s+(?:холод|не\s+гре)|кран|сантехни|чайник|холодильник|стиральн|автомобил|двигател|машин\p{L}*\s+(?:не\s+завод|слом)|интернет|роутер|wi-?fi|python|javascript|(?<!\p{L})код(?!\p{L})|программирован|рецепт|приготовить|переведи|перевод\p{L}*\s+текст|напиши\s+(?:скрипт|программу)|реши\s+(?:задачу|уравнение)/iu;
@@ -24,6 +25,8 @@ export function isClearlyOffTopic(message) {
   return /\p{L}/u.test(object);
 }
 export function chatIntent(message) {
+  const scope=applicationClarification(message);
+  if(scope)message=({работе:'работа',отношениях:'отношения',жизни:'жизнь',деньгах:'деньги'}[scope])+' '+String(message).split('\nУточнение: ').at(-1);
   if (SERVICE.test(message)) return 'service';
   if (isClearlyOffTopic(message)) return 'offtopic';
   if (REST.test(message)) return 'rest';

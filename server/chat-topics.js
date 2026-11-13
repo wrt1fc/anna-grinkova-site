@@ -14,17 +14,34 @@ export const isPersonalLifeQuestion = (message) => hasPersonalReference(message)
 // Match the whole message: a named new subject must never inherit an old topic.
 // The same predicate skips dependent history turns, preserving the last real
 // user question through a chain of clarifications and intervening assistant text.
-const DEPENDENT_QUESTION = /^\s*(?:(?:а|и|ну|тогда)\s+)?(?:подробнее|конкретнее|почему\s+(?:это|так)|что\s+(?:это|с\s+этим)\s+(?:значит|делать)|что\s+(?:именно\s+)?(?:сделать|делать)(?:\s+(?:сначала|вначале|в\s+первую\s+очередь))?|с\s+чего\s+начать|как\s+(?:это|с\s+этим)\s+(?:исправить|работать|связано)|можно\s+(?:подробнее|пример)|дай\s+пример|объясни\s+(?:подробнее|проще))[?!.,…]*\s*$/iu;
+const DEPENDENT_QUESTION = /^\s*(?:(?:а|и|ну|тогда)\s+)?(?:подробнее|конкретнее|почему\s+(?:это|так)|что\s+(?:это|с\s+этим)\s+(?:значит|делать)|что\s+(?:именно\s+)?(?:сделать|делать)(?:\s+(?:сначала|вначале|в\s+первую\s+очередь))?|с\s+чего\s+начать|как\s+(?:это|с\s+этим)\s+(?:исправить|работать|связано|проявляется(?:\s+в\s+(?:работе|отношениях|жизни|деньгах))?)|можно\s+(?:подробнее|пример)|дай\s+(?:пример|(?:[1-5]|один|два|две|три|четыре|пять)\s+(?:(?:конкретн|практическ)\p{L}*\s+)?(?:шаг\p{L}*|действи\p{L}*|пункт\p{L}*))|(?:объясни|скажи)\s+(?:подробнее|проще|попроще|простыми\s+словами))(?:\s+(?:простыми\s+словами|проще|попроще))?[?!.,…]*\s*$/iu;
+const APPLICATION_CLARIFICATION=/^\s*(?:а\s+)?как\s+это\s+проявляется\s+в\s+(работе|отношениях|жизни|деньгах)[?!.,…]*\s*$/iu;
+export function applicationClarification(question){
+ return String(question).split('\nУточнение: ').reverse().map(part=>APPLICATION_CLARIFICATION.exec(part)?.[1]).find(Boolean)??null;
+}
+export const isSimplificationRequest=message=>/^\s*(?:а\s+)?(?:объясни|скажи)\s+(?:проще|попроще|простыми\s+словами)[.!?…]*\s*$/iu.test(message);
+export const isMeaningClarification=message=>isSimplificationRequest(message)||/^\s*(?:а\s+)?что\s+это\s+значит(?:\s+простыми\s+словами)?[.!?…]*\s*$/iu.test(message);
+export function repeatedSimplification(answer,message,history=[]){
+ if(!isSimplificationRequest(message))return false;
+ const previous=[...history].reverse().find(row=>row.role==='assistant'&&typeof row.content==='string');
+ const normalized=text=>text.replace(/^\s*Привет[!.,]?\s*/iu,'').replace(/^\s*Главное\s*[—–:-]\s*/iu,'').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();
+ return !!previous&&normalized(answer).length>60&&normalized(answer)===normalized(previous.content);
+}
 export function groundingQuestion(message, history = []) {
   if (!DEPENDENT_QUESTION.test(message)) return message;
-  const previous = [...history].reverse().find((item) => item.role === 'user' && typeof item.content === 'string'
-    && !DEPENDENT_QUESTION.test(item.content));
-  return previous ? `${previous.content}\nУточнение: ${message}` : message;
+  let scoped=null;
+  for(const item of [...history].reverse()){
+    if(item.role!=='user'||typeof item.content!=='string')continue;
+    if(!DEPENDENT_QUESTION.test(item.content))return [item.content,...(scoped&&!APPLICATION_CLARIFICATION.test(message)?[scoped]:[]),message].join('\nУточнение: ');
+    if(!scoped&&APPLICATION_CLARIFICATION.test(item.content))scoped=item.content;
+  }
+  return message;
 }
 
 // Explicit own-sign requests stand alone, including corrections of an earlier topic.
 export function personalSolarSignQuestion(message) {
   const text = String(message);
+  if(applicationClarification(text))return false;
   if (/асцендент|лунн\p{L}*\s+знак|знак\p{L}*\s+Лун/iu.test(text)) return false;
   return /кто\s+я\s+по\s+гороскопу|под\s+каким\s+знаком\s+я\s+родил/iu.test(text)
     || /(?:знак\p{L}*\s+зодиак\p{L}*|солнечн\p{L}*\s+знак|знак\p{L}*\s+Солнц)/iu.test(text)

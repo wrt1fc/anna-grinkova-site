@@ -15,14 +15,14 @@ import {financialDecisionReply} from './financial-safety.js';
 import { SAFE_FALLBACK_ANSWER } from './chat-safety.js';
 import { isRelationshipQuestion } from './chat-topics.js';
 import { groundedRelationshipAnswer, relationshipAnswerProblems } from './relationship-context.js';
-import { groundedNatalAnswer, wrongCalculatedClaim, personalSolarSignAnswer } from './chart-answer-check.js';
+import { groundedNatalAnswer, wrongCalculatedClaim, personalSolarSignAnswer, plainNatalAnswer } from './chart-answer-check.js';
 import { groundingQuestion } from './chat-topics.js';
 import { isGeneralAstrologyQuestion } from './chat-grounding-scope.js';
 import { extractLearningSignal, learningSignalDiagnostics, LEARNING_SIGNAL, LEARNING_SIGNAL_INSTRUCTION } from './learning-signals.js';
 import {explanationGuidance, incompleteMoneyExplanation, calculatedMoneyExplanation, wrongMoneyRulerClaim, practicalIntentAnswer, intentAnswerProblem} from './chat-explanation.js';
 import {focusedChart} from './chat-chart-focus.js';
 import {chartRecords,recordAnswerProblem,anchorRecordReply} from './chart-records.js';
-import {personalSolarSignQuestion} from './chat-topics.js';
+import {personalSolarSignQuestion,isMeaningClarification,isSimplificationRequest,repeatedSimplification} from './chat-topics.js';
 import {isClearlyOffTopic, incomeRulerExplanation, chatIntent} from './chat-intent.js';
 
 const ENDPOINT = ollamaGenerateUrl();
@@ -112,7 +112,8 @@ export function questionGuidance(message, chart, mode, history = []) {
 // Shared with training: a different system instruction teaches a different task.
 export function firstPassSystem({message, chart = null, mode = null, history = [], learningSignals = false, length = DEFAULT_ANSWER_LENGTH}) {
   const explanation = explanationGuidance(groundingQuestion(message, history), chart, mode) + (mode !== TAROT_MODE
-    ? '\nРазмер текущего ответа: '+ANSWER_LENGTHS[length].instruction+' Правило 2–4 предложений относится только к обычному среднему ответу; для подробного ответа раскрой тему в заданном объёме. Не повторяй эти указания.' : '');
+    ? '\nРазмер текущего ответа: '+ANSWER_LENGTHS[length].instruction+' Правило 2–4 предложений относится только к обычному среднему ответу; для подробного ответа раскрой тему в заданном объёме. Не повторяй эти указания.' : '')
+    + (mode!==TAROT_MODE&&isSimplificationRequest(message)?'\nПерескажи предыдущий ответ проще: короткие понятные фразы, одна главная мысль и обычный пример. Не повторяй предыдущий текст и не ограничивайся удалением вступления. Сохрани рассчитанные факты.':'');
   // Opt-in for isolated training/evaluation only; production keeps its existing prompt.
   if (learningSignals && mode !== TAROT_MODE && ['18','29'].includes(process.env.ANNA_TRAINING_PROMPT_VERSION)) {
     const style=process.env.ANNA_TRAINING_PROMPT_VERSION==='29'?style29:style19;
@@ -202,7 +203,8 @@ export function createLocalChat({ model, fetchImpl = fetch, learningSignals = pr
       const question = groundingQuestion(message, history);
       const recordProblem = text => process.env.ANNA_CHART_FOCUS==='30' && mode!==TAROT_MODE && recordAnswerProblem(text,chart,question);
       const topicFallback = () => {
-        const text = (incomeRulerExplanation(question) ? null : practicalIntentAnswer(chart, question, length)) ?? (chart?.relationship && !chart.partner ? groundedRelationshipAnswer(chart, length)
+        const text = mode!==TAROT_MODE&&isSimplificationRequest(message)&&chart?.calculated&&!chart.partner&&!chart.relationship&&chatIntent(question)==='other' ? plainNatalAnswer(chart,question,length)
+          : (incomeRulerExplanation(question) ? null : practicalIntentAnswer(chart, question, length)) ?? (chart?.relationship && !chart.partner ? groundedRelationshipAnswer(chart, length)
         : chart?.calculated && !chart.partner ? chart.money && incomeRulerExplanation(question)
           ? calculatedMoneyExplanation(chart, question, length) : groundedNatalAnswer(chart, question, length)
           : null);
@@ -235,7 +237,7 @@ export function createLocalChat({ model, fetchImpl = fetch, learningSignals = pr
         return {answer,model:null,length,truncated:false,contextVersion:chatContext.version,learningSuggested:false,scopeFiltered:true};
       }
       if (mode !== TAROT_MODE && personalSolarSignQuestion(question)) {
-        const answer = conversationalOpening(personalSolarSignAnswer(chart), history);
+        const answer = conversationalOpening(isMeaningClarification(message)?plainNatalAnswer(chart,'Солнце',length):personalSolarSignAnswer(chart), history);
         onDelta?.(answer, answer);
         return {answer,model:null,length,truncated:false,contextVersion:chatContext.version,learningSuggested:false,groundedFallback:true};
       }
@@ -329,7 +331,7 @@ export function createLocalChat({ model, fetchImpl = fetch, learningSignals = pr
         return createLocalChat({ model, fetchImpl, learningSignals, onTrace }).answer({ message, history, forecast, visitorName, visitorGender, signal,
           length, materials, chart, mode, tone, onDelta, temperature: 0.1, qualityRetry: true, styleRetry, factRetry, factCorrection, explanationRetry, lengthRetry });
       }
-      if (recordProblem(answer)) {
+      if (recordProblem(answer) || mode!==TAROT_MODE&&chart?.calculated&&!chart.partner&&repeatedSimplification(answer,message,history)) {
         if (!explanationRetry) return createLocalChat({model,fetchImpl,learningSignals,onTrace}).answer({message,history,forecast,visitorName,visitorGender,signal,length,materials,chart,mode,tone,onDelta,temperature:0.1,qualityRetry,styleRetry,factRetry,factCorrection,explanationRetry:true,lengthRetry});
         const fallback=topicFallback();
         if(fallback)return publishFallback(fallback,{explanationFiltered:true});

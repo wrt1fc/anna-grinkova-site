@@ -3,7 +3,7 @@
 // and the training set builder, so the tuned model learns on exactly the prompt it is served with.
 import { asksAboutChart, chartForPrompt, chartSectionsFor, natalChart, POINT_NAMES } from './astro-chart.js';
 import { ELEMENT_NAMES, SIGN_PREPOSITIONAL, asksAboutMoney, elementOf, formulasForPrompt, houseFormulas, houseMentions, houseQueries, houseRulers, houseRulersForPrompt, methodQueries, moneyForPrompt, moneyProfile } from './anna-method.js';
-import { groundingQuestion, isPartnerPreferenceQuestion, isRelationshipQuestion, personalSolarSignQuestion } from './chat-topics.js';
+import { groundingQuestion, isPartnerPreferenceQuestion, isRelationshipQuestion, personalSolarSignQuestion,applicationClarification } from './chat-topics.js';
 import { relationshipContext } from './relationship-context.js';
 import { isClearlyOffTopic } from './chat-intent.js';
 import {isNatalSuggestion} from './chat-suggestions.js';
@@ -41,7 +41,8 @@ export function chartContext(profile, message, now = new Date(), { partner = nul
   // complete original editorial question, never arbitrary words inside a new message.
   const suggestionQuestion = question !== message ? question.slice(0, question.lastIndexOf('\nУточнение: ')) : question;
   const money = asksAboutMoney(question);
-  const compatibility = asksAboutCompatibility(question);
+  const scope=applicationClarification(question);
+  const compatibility = (!scope||scope==='отношениях')&&asksAboutCompatibility(question);
   if (!asksAboutChart(question) && !money && !compatibility && !isNatalSuggestion(suggestionQuestion)) return { chart: null, queries: [] };
   if (!profile?.birthUtc) return { chart: { missing: 'Данные рождения не заполнены в личном кабинете, натальная карта не рассчитана.' }, queries: [] };
   const natal = chartOf(profile);
@@ -64,7 +65,7 @@ export function chartContext(profile, message, now = new Date(), { partner = nul
     chart.calculated.houseRulers = rulers;
     queries = houseQueries(rulers, houseMentions(question));
   }
-  if (isRelationshipQuestion(message)) chart.relationship = { ...relationshipContext(natal), requireOverview: isPartnerPreferenceQuestion(message) };
+  if (scope==='отношениях'||!scope&&isRelationshipQuestion(question)) chart.relationship = { ...relationshipContext(natal), requireOverview: !scope&&isPartnerPreferenceQuestion(question) };
   if (compatibility) {
     if (partner?.birthUtc) chart.partner = partnerForPrompt(natal, { ...partner, chart: chartOf(partner) });
     else chart.partnerMissing = 'Карты партнёра нет: для разбора совместимости добавь его или её в разделе «Близкие люди».';
