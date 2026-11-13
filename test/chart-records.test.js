@@ -65,3 +65,22 @@ test('record publication rejects unsupported roles, missing anchors and first-pe
   assert.equal((counted.answer.match(/(?:^|\n)\s*\d+[.)]\s+/gu)??[]).length,5);
  }finally{if(old===undefined)delete process.env.ANNA_CHART_FOCUS;else process.env.ANNA_CHART_FOCUS=old;}
 });
+
+test('a harmless offer to discuss rulers does not regenerate a valid answer',async()=>{
+ const old=process.env.ANNA_CHART_FOCUS;process.env.ANNA_CHART_FOCUS='30';
+ try{
+  const message='Что главное в моей натальной карте?';const{chart}=chartContext(profile,message);
+  const text='Солнце в Козероге в первом доме. Управителей дома можно обсудить, когда это будет полезно.';
+  let calls=0;const chat=createLocalChat({model:'fixture',fetchImpl:async()=>{calls++;assert.equal(calls,1,'Valid reply must not trigger a new generation');return {ok:true,body:new ReadableStream({start(c){c.enqueue(new TextEncoder().encode(JSON.stringify({response:text,done:true,done_reason:'stop'})+'\n'));c.close();}})};}});
+  const result=await chat.answer({message,chart,history:[],forecast:null});assert.equal(result.model,'fixture');assert.equal(calls,1);
+  assert.equal(recordAnswerProblem('Солнце в Козероге. Оба управителя стоят в первом доме, можно обсудить их позже.',chart,message),true);
+  assert.equal(recordAnswerProblem('Солнце в Козероге. Управителей в первом доме можно обсудить позже.',chart,message),true);
+  assert.equal(recordAnswerProblem('Солнце в Козероге. Управители определяют доход, можно обсудить позже.',chart,message),true);
+  for(const assertion of [
+   'Управители первого дома в Скорпионе, можем обсудить позже',
+   'В твоём первом доме два управителя, можем обсудить позже',
+   'У тебя два управителя десятого дома, можем разобрать позже',
+   'Управители дают доход, можем обсудить позже',
+  ])assert.equal(recordAnswerProblem(`Солнце в Козероге. ${assertion}.`,chart,message),true,assertion);
+ }finally{if(old===undefined)delete process.env.ANNA_CHART_FOCUS;else process.env.ANNA_CHART_FOCUS=old;}
+});

@@ -43,8 +43,12 @@ const personalChartQuestion=question=>!['service','support','rest','offtopic'].i
 export function recordAnswerProblem(answer,chart,question){
  const records=chartRecords(chart,question);
  if(!Array.isArray(records?.positions))return false;
- const roles=answer.split(/[.!?\n]/u).some(sentence=>/управител/iu.test(sentence)
-  && !/не\s+(?:назыв|явля|счита|управител)|не\s+(?:нужно|следует|стоит)\s+назыв|неверно|неправда/iu.test(sentence));
+ const roles=answer.split(/[.!?\n]/u).some(sentence=>{
+  // An offer to discuss rulers later does not assert any planet's role or house.
+  const discussionOnly=/^\s*управителей\s+(?:(?:дома|домов)\s+)?(?:можно|можем)\s+(?:обсудить|рассмотреть|разобрать)(?:\s+(?:позже|потом)|,\s*когда\s+это\s+будет\s+полезно)?\s*$/iu.test(sentence);
+  return /управител/iu.test(sentence)&&!discussionOnly
+   && !/не\s+(?:назыв|явля|счита|управител)|не\s+(?:нужно|следует|стоит)\s+назыв|неверно|неправда/iu.test(sentence);
+ });
  if(!records.houseRulers.length&&roles)return true;
  if(personalChartQuestion(question)&&!mentionsRecord(answer,records))return true;
  return /(?<![\p{L}«“"])(?:я\s+(?:живу|проявляюсь|люблю|строю|чувствую))(?!\p{L})/iu.test(answer);
