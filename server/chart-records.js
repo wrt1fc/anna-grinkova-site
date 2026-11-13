@@ -1,14 +1,15 @@
 import {POINT_NAMES,ASPECT_NAMES} from './astro-chart.js';
-import {houseMentions} from './anna-method.js';
+import {houseMentions,SIGN_PREPOSITIONAL} from './anna-method.js';
 import {chatIntent} from './chat-intent.js';
 import {namedChartPoints} from './chart-answer-check.js';
 
 // Opt-in experiment. A narrow, per-object projection; never changes calculated facts.
 export function chartRecords(chart,question){
+ const intent=chatIntent(question);
+ if(intent==='service')return null;
  const facts=chart?.calculated;
  if(!facts?.positions||chart.partner||chart.relationship||chart.transits||chart.directions||houseMentions(question).length
-   ||/полн\p{L}*\s+разбор|всю\s+карт|всей\s+карт|подробн|градус|долгот|орбис|стратеги|стихи|формул|ретроград|(?:все|какие)\s+планет|все\s+аспект/iu.test(question))return chart;
- const intent=chatIntent(question);
+   ||/полн\p{L}*\s+разбор|всю\s+карт|всей\s+карт|подробн|градус|долгот|орбис|стратеги|стихи|формул|ретроград|управител|(?:все|какие)\s+планет|все\s+аспект/iu.test(question))return chart;
  const houses=new Set(houseMentions(question));
  if(intent==='income')houses.add(2);
  if(['growth','workfit','promotion'].includes(intent)){houses.add(10);houses.add(6);}
@@ -31,4 +32,28 @@ export function chartRecords(chart,question){
   ...(intent==='income'&&chart.money?{money:{secondHouseCusp:chart.money.secondHouseCusp,rulerCount:rulers.find(r=>r.house===2)?.rulers.length??0}}:{}),
   factRule:'Каждая запись относится только к названной планете. Знак на начале дома не является знаком его управителя. Не добавляй положения и аспекты вне этих записей.',
  };
+}
+
+function mentionsRecord(answer,records){
+ const keys=new Set(namedChartPoints(answer));
+ return records.positions.some(row=>Object.entries(POINT_NAMES).some(([key,name])=>name===row.planet&&keys.has(key)));
+}
+const personalChartQuestion=question=>!['service','support','rest','offtopic'].includes(chatIntent(question))&&/карт|гороскоп/iu.test(question);
+
+export function recordAnswerProblem(answer,chart,question){
+ const records=chartRecords(chart,question);
+ if(!Array.isArray(records?.positions))return false;
+ const roles=answer.split(/[.!?\n]/u).some(sentence=>/управител/iu.test(sentence)
+  && !/не\s+(?:назыв|явля|счита|управител)|не\s+(?:нужно|следует|стоит)\s+назыв|неверно|неправда/iu.test(sentence));
+ if(!records.houseRulers.length&&roles)return true;
+ if(personalChartQuestion(question)&&!mentionsRecord(answer,records))return true;
+ return /(?<![\p{L}«“"])(?:я\s+(?:живу|проявляюсь|люблю|строю|чувствую))(?!\p{L})/iu.test(answer);
+}
+
+export function anchorRecordReply(text,chart,question){
+ if(!text||!personalChartQuestion(question))return text;
+ const records=chartRecords(chart,question);
+ if(!Array.isArray(records?.positions)||!records.positions.length||mentionsRecord(text,records))return text;
+ const p=records.positions[0];
+ return `В расчёте ${p.planet} в ${SIGN_PREPOSITIONAL[p.sign]}${p.house?`, в ${p.house}-м доме`:''}. ${text}`;
 }
