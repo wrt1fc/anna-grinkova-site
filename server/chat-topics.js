@@ -19,7 +19,7 @@ const APPLICATION_CLARIFICATION=/^\s*(?:а\s+)?как\s+это\s+проявля�
 export function applicationClarification(question){
  return String(question).split('\nУточнение: ').reverse().map(part=>APPLICATION_CLARIFICATION.exec(part)?.[1]).find(Boolean)??null;
 }
-export const isSimplificationRequest=message=>/^\s*(?:а\s+)?(?:если\s+)?(?:(?:объясни(?:ть)?|скажи|расскажи|можно)\s+(?:это\s+)?(?:совсем\s+)?(?:проще|попроще|по[-\s]простому|простыми\s+словами|обычными\s+словами|без\s+(?:терминов|сложных\s+слов)|короче)|без\s+(?:терминов|сложных\s+слов))(?:\s*,?\s*пожалуйста)?[.!?…]*\s*$/iu.test(message);
+export const isSimplificationRequest=message=>/^\s*(?:а\s+)?(?:если\s+)?(?:(?:объясни(?:ть)?|скажи|расскажи|можно)\s+(?:это\s+)?)?(?:совсем\s+)?(?:проще|попроще|по[-\s]простому|простыми\s+словами|обычными\s+словами|без\s+(?:терминов|сложных\s+слов)|короче)(?:\s*,?\s*без\s+(?:планет|знаков|домов|терминов)(?:\s*(?:,|и)\s*(?:планет|знаков|домов|терминов))*)?(?:\s*,?\s*пожалуйста)?[.!?…]*\s*$/iu.test(message);
 export const wantsNoAstroTerms=message=>/по[-\s]простому|обычными\s+словами|без\s+(?:астрологическ\p{L}*\s+)?(?:терминов|сложных\s+слов|домов|планет|знаков|названий\s+(?:планет|знаков))|не\s+(?:называй|используй|упоминай)[^.!?]{0,30}(?:термин|названи\p{L}*\s+планет|планет|знак|дома|домов)/iu.test(message);
 const dependentQuestion=message=>DEPENDENT_QUESTION.test(message)||isSimplificationRequest(message);
 export const isMeaningClarification=message=>isSimplificationRequest(message)||/^\s*(?:а\s+)?что\s+это\s+значит(?:\s+простыми\s+словами)?[.!?…]*\s*$/iu.test(message);
