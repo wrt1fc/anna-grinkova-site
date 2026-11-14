@@ -9,8 +9,7 @@ import { isClearlyOffTopic } from './chat-intent.js';
 import {isNatalSuggestion} from './chat-suggestions.js';
 import { isGeneralAstrologyQuestion } from './chat-grounding-scope.js';
 import {factAnswersEnabled,personalFactRequest} from './chat-fact-answers.js';
-import {namedChartPoints} from './chart-answer-check.js';
-import {foreignChartReference} from './chat-subject.js';
+import {foreignChartReference,chartSubject} from './chat-subject.js';
 
 // Natal chart, transits, directions and Anna's money method for chart and money questions only;
 // birth date, place and email never reach the model.
@@ -31,12 +30,12 @@ function partnerForPrompt(own, partner) {
     const same = elementOf(mine) === elementOf(theirs);
     return `${POINT_NAMES[planet]}: у тебя в ${SIGN_PREPOSITIONAL[mine]} (${ELEMENT_NAMES[elementOf(mine)]}), у партнёра в ${SIGN_PREPOSITIONAL[theirs]} (${ELEMENT_NAMES[elementOf(theirs)]}) — ${same ? 'одна стихия' : 'стихии разные'}`;
   };
-  return { label: partner.label ?? null, gender: partner.gender ?? null,
+  return { subject:chartSubject({...partner,relation:partner.relation??'partner'}),label: partner.label ?? null, gender: partner.gender ?? null,
     planets: COMPARED.map((planet) => `${POINT_NAMES[planet]} в знаке ${partner.chart.planets[planet].sign}`),
     compare: COMPARED.map(line) };
 }
 
-export function chartContext(profile, message, now = new Date(), { partner = null, history = [] } = {}) {
+export function chartContext(profile, message, now = new Date(), { partner = null, history = [], subject = null } = {}) {
   if (isClearlyOffTopic(message)) return { chart: null, queries: [] };
   const question = groundingQuestion(message, history);
   const directFact=factAnswersEnabled()&&personalFactRequest(question);
@@ -48,11 +47,13 @@ export function chartContext(profile, message, now = new Date(), { partner = nul
   const scope=applicationClarification(question);
   const compatibility = (!scope||scope==='отношениях')&&asksAboutCompatibility(question);
   if (!asksAboutChart(question) && !money && !compatibility && !isNatalSuggestion(suggestionQuestion)&&!directFact&&!foreignChartReference(question)) return { chart: null, queries: [] };
-  if (!profile?.birthUtc) return { chart: { missing: 'Данные рождения не заполнены в личном кабинете, натальная карта не рассчитана.' }, queries: [] };
+  if (!profile?.birthUtc) return { chart: { subject:chartSubject(subject),missing: 'Данные рождения не заполнены в личном кабинете, натальная карта не рассчитана.' }, queries: [] };
   const natal = chartOf(profile);
   const chart = chartForPrompt(natal, now, { include: chartSectionsFor(question) });
+  chart.subject=chartSubject(subject);
   if(factAnswersEnabled()&&profile.birthTime===null){
-    const keys=namedChartPoints(question).filter(key=>natal.planets[key]);
+    // Any of these positions can later be used by a general-reading fallback.
+    const keys=Object.keys(natal.planets);
     if(keys.length){
       const instant=new Date(profile.birthUtc).getTime();
       const edges=[-1,1].map(day=>chartOf({...profile,birthUtc:new Date(instant+day*86400000).toISOString()}));

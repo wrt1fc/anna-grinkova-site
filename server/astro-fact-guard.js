@@ -20,7 +20,12 @@ export function astroFactProblems(answer,{question='',chart=null}={}){
  });
  const add=(code,correction)=>{if(!issues.some(x=>x.code===code))issues.push({code,correction});};
  // Explicit observed domicile claims; a later named planet has its own subject.
- const dignityClauses = answer.replace(/«[^»]*»|“[^”]*”|"[^"\n]*"|'[^'\n]*'/gu, ' ').split(/[.!?;\n]/u);
+ const unquoted=answer.replace(/«[^»]*»|“[^”]*”|"[^"\n]*"|'[^'\n]*'/gu, ' ');
+ const dignityClauses = unquoted.split(/[.!?;\n]/u);
+ for(const clause of unquoted.split(/(?<=[.!?;\n])/u)){
+  if(!clause.trimEnd().endsWith('?')&&/Солнц\p{L}*\s+и\s+асцендент[^.!?]{0,55}(?:одна|одну)\s+(?:и\s+т[ау]\s+же\s+)?планет/iu.test(clause)
+    && !/(?<!\p{L})(?:не|если|неверно|ошибочно)(?!\p{L})/iu.test(clause))add('angle_is_not_planet','Солнце — небесное тело, асцендент — угол карты и начало первого дома. Даже при соединении это разные показатели; асцендент не является планетой.');
+ }
  const notSunHome=Object.entries(SIGN_PREPOSITIONAL).filter(([sign])=>sign!=='Лев').map(([,form])=>form).join('|');
  const domicile=new RegExp(`Солнц\\p{L}*\\s+в\\s+(${notSunHome})(?!\\p{L})([^.!?;]{0,70}?)в\\s+(?:обители|сво[её]м\\s+знаке)`,'iu');
  for (const clause of dignityClauses) {

@@ -107,8 +107,9 @@ test('a long ruler list is never truncated into an incomplete list',async()=>{
  const message='Назови управителей 1, 2, 3, 4, 5 и 6 домов моей натальной карты.';
  const raw='Управитель 1 дома — Венера во 2 доме. Управители 2 дома — Плутон и Марс, оба стоят во 2 доме. Управители 3 дома — Юпитер в 4 доме и Нептун в 4 доме. Управители 4 дома — Сатурн в 6 доме и Уран в 4 доме.';
  const result=await chat(raw).answer({message,history:[],chart:chartFor(message),forecast,length:'short'});
- assert.match(result.answer,/размер|подробн|нескольк|помест/iu);
- assert.doesNotMatch(result.answer,/Управитель 1 дома/u);
+ for(const house of [1,2,3,4,5,6])assert.match(result.answer,new RegExp(`${house} дом:`,'u'));
+ assert.match(result.answer,/Сатурн в 6 доме/u);
+ assert.ok(result.answer.length<=400);
 });
 
 test('safety permits a date explicitly asked about but still rejects an invented date',()=>{
@@ -148,7 +149,7 @@ test('multi-house fallback also works when no adjacent money-house wording selec
  const message='Назови управителей 1, 2, 3, 4, 5 и 6 домов моей натальной карты.';
  const raw='1 дом: Венера в 2 доме. 2 дом: Плутон и Марс в 2 доме. 3 дом: Юпитер и Нептун в 4 доме. 4 дом: Сатурн и Уран в 4 доме. 5 дом: Уран и Сатурн в 4 доме. 6 дом: Нептун и Юпитер в 4 доме.';
  const result=await chat(raw).answer({message,history:[],chart:chartFor(message),forecast,length:'short'});
- assert.match(result.answer,/размер|подробн|помещ/iu);assert.equal(result.model,null);
+ assert.match(result.answer,/4 дом: Сатурн в 6 доме/u);assert.match(result.answer,/6 дом: Нептун в 4 доме, Юпитер в 4 доме/u);assert.equal(result.model,null);
 });
 
 test('pure ruler membership does not require unrequested placements or discard correct pronouns',async()=>{

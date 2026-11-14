@@ -16,7 +16,7 @@ const SIGN = `(?:${[...new Set([...Object.keys(SIGN_PREPOSITIONAL), ...Object.va
 const SOLAR_GENITIVE = {Овен:'Овна',Телец:'Тельца',Близнецы:'Близнецов',Рак:'Рака',Лев:'Льва',Дева:'Девы',Весы:'Весов',Скорпион:'Скорпиона',Стрелец:'Стрельца',Козерог:'Козерога',Водолей:'Водолея',Рыбы:'Рыб'};
 const SOLAR_SIGN = `(?:${[...Object.keys(SOLAR_GENITIVE), ...Object.values(SOLAR_GENITIVE)].sort((a,b)=>b.length-a.length).join('|')})`;
 
-function wrongOwnerSolarSign(answer, expected) {
+function wrongOwnerSolarSign(answer, expected, uncertain=false) {
   if (!expected) return false;
   answer = answer.replace(/‘[^’]*’|'[^'\n]*'/gu, ' ');
   const claims = new RegExp(`(?<!\\p{L})(?:(?:ты|вы)\\s+родил(?:ась|ся|ись)\\s+под\\s+знаком|(?:твой|ваш|у тебя|у вас)\\s+(?:солнечный\\s+знак|знак\\s+зодиака)\\s*[—–:-]?|(?:ты|вы)\\s*[—–:-]?)\\s*(${SOLAR_SIGN})(?!\\p{L})`, 'giu');
@@ -32,7 +32,7 @@ function wrongOwnerSolarSign(answer, expected) {
       || /(?<!\p{L})не\s*$/iu.test(before)
       || /^[^.!?;\n]*\?/u.test(after)
       || /^[^.!?;\n]*?(?<!\p{L})если(?!\p{L})/iu.test(after)) continue;
-    if (![expected,SOLAR_GENITIVE[expected]].filter(Boolean).some(sign => sign.toLowerCase() === match[1].toLowerCase())) return true;
+    if (uncertain || ![expected,SOLAR_GENITIVE[expected]].filter(Boolean).some(sign => sign.toLowerCase() === match[1].toLowerCase())) return true;
   }
   return false;
 }
@@ -68,22 +68,25 @@ export function wrongCalculatedClaim(answer, chart) {
   const facts = chart?.calculated;
   if (!facts || chart.partner) return false; // A comparison needs subject-aware parsing; don't mix the two owners.
   answer = assertedNatalText(answer);
-  if (wrongOwnerSolarSign(answer, facts.positions?.sun?.sign)) return true;
+  const uncertain=new Set([...(chart.uncertainPositions??[]),...(chart.solarSignUncertain?['sun']:[])]);
+  if (wrongOwnerSolarSign(answer, facts.positions?.sun?.sign,uncertain.has('sun'))) return true;
   const timed = (index) => {
     const start=Math.max(answer.lastIndexOf('.',index),answer.lastIndexOf('!',index),answer.lastIndexOf('?',index),answer.lastIndexOf('\n',index))+1;
     const end=answer.slice(index).search(/[.!?\n]/u);
     return /транзит|дирекц|прогресс/iu.test(answer.slice(start,end<0?undefined:index+end));
   };
   const point = (name) => { const key=keyFor(name); return facts.positions[key] ?? facts.angles?.[key]; };
+  const wrongSign=(name,sign)=>uncertain.has(keyFor(name))||point(name)?.sign!==signFor(sign);
   const planetList = `${PLANET}(?:\\s*(?:,|и)\\s*${PLANET}){1,11}`;
   const signList = `${SIGN}(?:\\s*(?:,|и)\\s*${SIGN}){0,11}`;
   const unassertedGroup = m => {
     const before=answer.slice(0,m.index).split(/[.!?;\n]/u).at(-1);
     const after=answer.slice(m.index+m[0].length);
-    return /(?<!\p{L})(?:неверно|неправда|если|допустим|предположим)(?!\p{L})/iu.test(before)
+    return /(?<!\p{L})(?:неверно|неправда|если|допустим|предположим|возможно)(?!\p{L})/iu.test(before)
+      || /(?:нельзя|нет оснований|не следует|не стоит)\s+(?:уверенно\s+)?(?:утверждать|считать|говорить)[^.!?;\n]{0,40}$/iu.test(before)
       || /^\s+не\s+(?:стоят|находятся|собраны)(?!\p{L})/iu.test(after);
   };
-  const grouped = new RegExp(`(${planetList})\\s+(?:(?:стоят|находятся|собраны)\\s+)?(?:в|во)\\s+(${signList})(?:\\s+(?:в|во)\\s+(${HOUSE})\\s+доме)?`, 'giu');
+  const grouped = new RegExp(`(${planetList})\\s*[,—–:]?\\s+(?:(?:стоят|находятся|собраны)\\s+)?(?:в|во)\\s+(${signList})(?:\\s+(?:и\\s+)?(?:в|во)\\s+(${HOUSE})\\s+доме)?`, 'giu');
   const groupedSpans=[];
   for (const m of answer.matchAll(grouped)) {
     if (timed(m.index) || unassertedGroup(m)) continue;
@@ -91,7 +94,7 @@ export function wrongCalculatedClaim(answer, chart) {
     const signs = [...m[2].matchAll(new RegExp(SIGN,'giu'))].map(value=>signFor(value[0]));
     for (const name of m[1].matchAll(new RegExp(PLANET,'giu'))) {
       const p=point(name[0]);
-      if (!signs.includes(p?.sign) || (m[3] && p?.house!==houseNumber(m[3]))) return true;
+      if (uncertain.has(keyFor(name[0]))||!signs.includes(p?.sign) || (m[3] && p?.house!==houseNumber(m[3]))) return true;
     }
   }
   const houseGroup = new RegExp(`(?:в|во)\\s+(${HOUSE})\\s+доме\\s*(?:[—–:-]\\s*)?(?:(?:стоят|находятся|собраны)\\s+)?(${planetList})`, 'giu');
@@ -99,7 +102,11 @@ export function wrongCalculatedClaim(answer, chart) {
     for (const name of m[2].matchAll(new RegExp(PLANET,'giu'))) if (point(name[0])?.house!==houseNumber(m[1])) return true;
   }
   const claimSign = new RegExp(`(${PLANET})(?: и (${PLANET}))?(?: у тебя)?(?: стоит| стоят| находится| находятся)? (?:в|во) (${SIGN})(?!\\p{L})`, 'giu');
-  for (const m of answer.matchAll(claimSign)) if (!timed(m.index) && !groupedSpans.some(([start,end])=>m.index>=start&&m.index<end)) for (const name of [m[1],m[2]].filter(Boolean)) if (point(name)?.sign !== signFor(m[3])) return true;
+  for (const m of answer.matchAll(claimSign)) if (!timed(m.index) && !unassertedGroup(m) && !groupedSpans.some(([start,end])=>m.index>=start&&m.index<end)) for (const name of [m[1],m[2]].filter(Boolean)) if (wrongSign(name,m[3])) return true;
+  const signLabel=new RegExp(`знак\\p{L}*\\s+(${PLANET})\\s*(?:у тебя\\s*)?(?:[—–:]\\s*)?(${SIGN})(?!\\p{L})`,'giu');
+  for(const m of answer.matchAll(signLabel))if(!timed(m.index)&&!unassertedGroup(m)&&wrongSign(m[1],m[2]))return true;
+  const sharedHouse=new RegExp(`(${planetList})\\s*[,—–:]?\\s+(?:(?:оба\\s+)?(?:стоят|находятся|расположены)\\s+)?(?:в\\s+соединении\\s+)?(?:в|во)\\s+(${HOUSE})\\s+доме`,'giu');
+  for(const m of answer.matchAll(sharedHouse))if(!timed(m.index)&&!unassertedGroup(m))for(const name of m[1].matchAll(new RegExp(PLANET,'giu')))if(point(name[0])?.house!==houseNumber(m[2]))return true;
   const claimHouse = new RegExp(`(${PLANET})(?: и (${PLANET}))?(?: у тебя)?\\s*(?:[,—–-]\\s*)?(?:(?:стоит|стоят|находится|находятся)\\s+)?(?:в|во) (?:${SIGN} (?:в|во) )?(${HOUSE}) доме`, 'giu');
   for (const m of answer.matchAll(claimHouse)) if (!timed(m.index)) for (const name of [m[1],m[2]].filter(Boolean)) if (point(name)?.house !== (ORDINALS[m[3].toLowerCase()] ?? parseInt(m[3],10))) return true;
   // Keep the named subject across a short description, but never cross another
@@ -212,14 +219,28 @@ const MEANINGS = { sun:'Солнце связывают с тем, как чел
   mars:'Марс связывают с инициативой и тем, как человек действует', jupiter:'Юпитер связывают с поиском смысла и расширением кругозора',
   saturn:'Сатурн связывают с ответственностью, границами и навыками, которые растут с практикой', uranus:'Уран связывают с самостоятельностью и готовностью пробовать новое',
   neptune:'Нептун связывают с воображением, восприимчивостью и поиском смысла', pluto:'Плутон связывают с глубокими переменами и отношением к контролю' };
+export function uncertainNatalAnswer(chart, question) {
+  if (!chart?.calculated || chart.partner) return null;
+  const keys = namedChartPoints(question);
+  const uncertain = new Set([...(chart.uncertainPositions ?? []), ...(chart.solarSignUncertain ? ['sun'] : [])]);
+  const names = keys.filter(key => uncertain.has(key)).map(key => POINT_NAMES[key]);
+  const missingAngle = keys.some(key => ['asc','mc'].includes(key) && !chart.calculated.angles?.[key]);
+  if (!names.length && !missingAngle) return null;
+  return [missingAngle ? 'Без времени рождения нельзя определить асцендент, середину неба и дома карты.' : '',
+    names.length ? `${names.join(', ')}: знак может меняться в течение этого дня. Без времени рождения не буду называть одно точное положение.` : '',
+    'Уточни время рождения в личном кабинете, если оно известно.'].filter(Boolean).join(' ');
+}
 export function groundedNatalAnswer(chart, message, length='medium') {
   const facts=chart?.calculated;
   if (!facts?.positions) return 'Заполни дату, время (если известно) и место рождения в личном кабинете — тогда можно будет разобрать твою карту.';
-  if (/сильн\p{L}*\s+сторон|талант|способност/iu.test(message)) return groundedStrengths(facts);
-  if (/тревог|тревож|выгор|устал|восстанов|отдых/iu.test(message)) return groundedSupport(facts);
+  const uncertain = new Set([...(chart.uncertainPositions ?? []), ...(chart.solarSignUncertain ? ['sun'] : [])]);
+  const safeFacts = {...facts, positions:Object.fromEntries(Object.entries(facts.positions).filter(([key]) => !uncertain.has(key)))};
+  if (/сильн\p{L}*\s+сторон|талант|способност/iu.test(message)) return groundedStrengths(safeFacts);
+  if (/тревог|тревож|выгор|устал|восстанов|отдых/iu.test(message)) return groundedSupport(safeFacts);
   const keys=Object.keys(MEANINGS).filter(key=>new RegExp(FORMS[key],'iu').test(message));
   const selected=[...new Set([...(keys.length?keys:['sun','moon']), ...(length==='detailed'?['sun','moon','mercury','venus']:[])])]
-    .filter(key=>facts.positions[key]).slice(0,length==='short'?1:length==='detailed'?4:2);
+    .filter(key=>safeFacts.positions[key]).slice(0,length==='short'?1:length==='detailed'?4:2);
+  if (!selected.length) return 'Без времени рождения нельзя уверенно назвать эти положения. Уточни время в личном кабинете, если оно известно.';
   if (length === 'detailed') {
     return selected.map(key => {
       const p = facts.positions[key];
@@ -241,6 +262,8 @@ export function personalSolarSignAnswer(chart) {
 export function plainNatalAnswer(chart,question,length='medium') {
  const facts=chart?.calculated;
  if(!facts?.positions?.sun||chart.solarSignUncertain)return personalSolarSignAnswer(chart);
+ const clarification=uncertainNatalAnswer(chart,question);
+ if(clarification)return clarification;
  const point=key=>facts.positions[key]??facts.angles?.[key];
  const key=namedChartPoints(question).find(k=>point(k))??'sun';
  const p=point(key);
@@ -253,6 +276,8 @@ export function calculatedPointMeaning(chart,key){
  const p=chart?.calculated?.positions?.[key]??chart?.calculated?.angles?.[key];
  if(!p)return null;
  const basic=MEANINGS[key]??({asc:'Асцендент — начало первого дома; в трактовке его связывают с первым впечатлением и способом вступать в контакт',mc:'MC — середина неба, один из углов карты; его используют при обсуждении профессиональных целей'}[key]??'Это отдельный показатель карты, который рассматривают вместе с другими данными');
+ const uncertain=chart?.uncertainPositions?.includes(key)||(key==='sun'&&chart?.solarSignUncertain);
+ if(uncertain)return null;
  return key==='sun'&&STRENGTHS[p.sign]
   ? `В астрологических трактовках это тема: ${STRENGTHS[p.sign]}. Это не готовая оценка твоих способностей — сравни с собственным опытом.`
   : `${basic}. Это тема для разговора, а не точное описание твоего характера.`;

@@ -99,6 +99,8 @@ test('gender is optional, kept for the owner and close people, and reaches the c
     assert.equal(seen[0].visitorGender, 'female');
     assert.equal(seen[1].visitorGender, 'female');
     assert.equal(seen[1].forecast.subject.gender, 'male');
+    assert.equal(seen[0].chart.subject.kind, 'visitor');
+    assert.deepEqual(seen[1].chart.subject, {kind:'selected',relation:'partner',label:'Сергей',gender:'male'});
   }, { chatWriter: steadyWriter(seen) });
 });
 
@@ -115,6 +117,9 @@ test('a compatibility question compares the owner with the partner profile, sele
     assert.equal(seen[1].chart.partner.label, 'Сергей');
     // The chart itself stays the owner's: the comparison speaks to «тебя».
     assert.equal(seen[0].chart.planets.join(), seen[1].chart.planets.join());
+    assert.deepEqual(seen[0].chart.subject, {kind:'visitor'});
+    assert.deepEqual(seen[1].chart.subject, {kind:'visitor'});
+    assert.equal(seen[1].chart.partner.subject.kind, 'selected');
   }, { chatWriter: steadyWriter(seen) });
 });
 

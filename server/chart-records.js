@@ -28,14 +28,16 @@ export function chartRecords(chart,question){
  const record=key=>{const p=point(key);return {planet:POINT_NAMES[key],sign:p.sign,house:p.house??null};};
  // Keep explicit aspect questions on the full chart until separately validated.
  if(/аспект|соединени|квадрат|секстил|оппозиц|трин|тригон/iu.test(question))return chart;
- const keys=[...selected].filter(key=>point(key));
+ const uncertain=new Set([...(chart.uncertainPositions??[]),...(chart.solarSignUncertain?['sun']:[])]);
+ const keys=[...selected].filter(key=>point(key)&&!uncertain.has(key));
+ const known=new Set(keys);
  return {
   houseSystem:chart.houseSystem,
   ...(chart.solarSignUncertain?{solarSignUncertain:true}:{}),
   ...(chart.uncertainPositions?.length?{uncertainPositions:chart.uncertainPositions}:{}),
   positions:keys.map(record),
   houseRulers:rulers.map(row=>({house:row.house,cuspSign:row.sign,rulers:row.rulers.filter(r=>point(r.planet)).map(r=>record(r.planet))})),
-  aspects:(facts.aspects??[]).filter(a=>selected.has(a.first)&&selected.has(a.second)).slice(0,3)
+  aspects:(facts.aspects??[]).filter(a=>known.has(a.first)&&known.has(a.second)).slice(0,3)
    .map(a=>({first:POINT_NAMES[a.first],second:POINT_NAMES[a.second],aspect:ASPECT_NAMES[a.aspect]})),
   ...(intent==='income'&&chart.money?{money:{secondHouseCusp:chart.money.secondHouseCusp,rulerCount:rulers.find(r=>r.house===2)?.rulers.length??0}}:{}),
   factRule:'Каждая запись относится только к названной планете. Знак на начале дома не является знаком его управителя. Не добавляй положения и аспекты вне этих записей.',
@@ -58,7 +60,7 @@ export function recordAnswerProblem(answer,chart,question){
    && !/не\s+(?:назыв|явля|счита|управител)|не\s+(?:нужно|следует|стоит)\s+назыв|неверно|неправда/iu.test(sentence);
  });
  if(!records.houseRulers.length&&roles)return true;
- if(personalChartQuestion(question)&&!mentionsRecord(answer,records))return true;
+ if(personalChartQuestion(question)&&records.positions.length&&!mentionsRecord(answer,records))return true;
  return /(?<![\p{L}«“"])(?:я\s+(?:живу|проявляюсь|люблю|строю|чувствую))(?!\p{L})/iu.test(answer);
 }
 

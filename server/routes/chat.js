@@ -215,7 +215,7 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
           : general;
         context = chatForecastContext(forecast, chart.subject);
         const pair = compatibilityPair(chart, topicMessage);
-        astro = chartContext(pair.primary, message, new Date(), { partner: pair.partner, history: body.history ?? [] });
+        astro = chartContext(pair.primary, message, new Date(), { partner: pair.partner, history: body.history ?? [], subject:pair.primary===chart.own?null:chart.subject });
         // Only the text goes to the model; file names and scores stay on the server.
         materials = findMaterials(knowledge, message, astro.queries);
       }

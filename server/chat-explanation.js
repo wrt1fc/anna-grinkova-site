@@ -81,11 +81,14 @@ export function wrongMoneyRulerClaim(answer, chart, message) {
 export function incompleteMoneyExplanation(answer, chart, message, length) {
   const requested=/управител/iu.test(message)?houseMentions(message):[];
   if(requested.length>1&&!chart?.partner&&chart?.calculated?.houseRulers){
-    const roles=[...answer.matchAll(/управител\p{L}*\s+(?:\d{1,2}(?:-?(?:го|й))?|(?:перв|втор|трет|четв|пят|шест|седьм|восьм|девят|десят|одиннадцат|двенадцат)\p{L}*|денежного|финансового)\s+дома/giu)];
+    const asserted=assertedNatalText(answer);
+    const roles=[...asserted.matchAll(/управител\p{L}*\s+(?:\d{1,2}(?:-?(?:го|й))?|(?:перв|втор|трет|четв|пят|шест|седьм|восьм|девят|десят|одиннадцат|двенадцат)\p{L}*|денежного|финансового)\s+дома|(?:^|[.!?;\n])\s*\d{1,2}(?:-?(?:й|го))?\s+дом(?:а)?(?:\s*\([^()\n]*\))?\s*[:—–]/giu)];
     const membershipOnly=/назови|перечисли/iu.test(message)&&!/где|положени|стоят|стоит|наход|располож|в\s+каком/iu.test(message);
     return requested.some(h=>{
-      const fragments=roles.flatMap((role,i)=>(houseMentions(role[0])[0]??(/денежного|финансового/iu.test(role[0])?2:null))===h?[answer.slice(role.index,roles[i+1]?.index)]:[]);
+      const fragments=roles.flatMap((role,i)=>(houseMentions(role[0])[0]??(/денежного|финансового/iu.test(role[0])?2:null))===h?[asserted.slice(role.index,roles[i+1]?.index)]:[]);
       const placements=fragments.flatMap(rulerPlacements),names=fragments.flatMap(namedChartPoints);
+        const expected=chart.calculated.houseRulers.find(row=>row.house===h)?.rulers;
+        if(fragments.some(fragment=>/^\s*\d{1,2}(?:-?(?:й|го))?\s+дом/iu.test(fragment))&&expected&&names.some(name=>!expected.some(r=>r.planet===name)))return true;
       return chart.calculated.houseRulers.find(row=>row.house===h)?.rulers.some(r=>membershipOnly?!names.includes(r.planet):!placements.some(p=>p.planet===r.planet&&p.house===r.house));
     });
   }
@@ -103,6 +106,7 @@ export function incompleteMoneyExplanation(answer, chart, message, length) {
 export function calculatedMoneyExplanation(chart, message, length) {
   const requested=/управител/iu.test(message)?houseMentions(message):[];
   if(requested.length>1&&chart?.calculated?.houseRulers){
+    if(length==='short')return requested.map(h=>`${h} дом: ${(chart.calculated.houseRulers.find(row=>row.house===h)?.rulers??[]).map(r=>`${POINT_NAMES[r.planet]} в ${r.house} доме`).join(', ')}.`).join(' ');
     return requested.flatMap(h=>(chart.calculated.houseRulers.find(row=>row.house===h)?.rulers??[]).map((r,i,rs)=>`${rs.length===1?'Управитель':i===0?'Один из управителей':'Другой управитель'} ${h}-го дома — ${POINT_NAMES[r.planet]}, в ${r.house}-м доме.`)).join(' ');
   }
   const rulers = moneyRulers(chart, message);

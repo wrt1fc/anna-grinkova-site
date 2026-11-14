@@ -15,7 +15,7 @@ import {financialDecisionReply} from './financial-safety.js';
 import { SAFE_FALLBACK_ANSWER } from './chat-safety.js';
 import { isRelationshipQuestion } from './chat-topics.js';
 import { groundedRelationshipAnswer, relationshipAnswerProblems } from './relationship-context.js';
-import { groundedNatalAnswer, wrongCalculatedClaim, personalSolarSignAnswer, plainNatalAnswer } from './chart-answer-check.js';
+import { groundedNatalAnswer, wrongCalculatedClaim, personalSolarSignAnswer, plainNatalAnswer, uncertainNatalAnswer } from './chart-answer-check.js';
 import { groundingQuestion } from './chat-topics.js';
 import { isGeneralAstrologyQuestion } from './chat-grounding-scope.js';
 import { extractLearningSignal, learningSignalDiagnostics, LEARNING_SIGNAL, LEARNING_SIGNAL_INSTRUCTION } from './learning-signals.js';
@@ -27,6 +27,7 @@ import {isClearlyOffTopic, incomeRulerExplanation, chatIntent} from './chat-inte
 import {factAnswersEnabled,calculatedFactAnswer,physicalInferenceQuestion,physicalInferenceAnswer} from './chat-fact-answers.js';
 import {basicFactExplanation} from './basic-fact-explanation.js';
 import {houseMentions} from './anna-method.js';
+import {chartSubject} from './chat-subject.js';
 import {foreignChartClarification,knownServiceReply,unsupportedStrategyReply,answerContractProblems,plainLanguageFallback,relationshipTimingReply,selectedPositionAnswer} from './chat-answer-contract.js';
 
 const ENDPOINT = ollamaGenerateUrl();
@@ -82,8 +83,12 @@ export function chatPrompt({ message, history, forecast, visitorName = null, vis
   // The natal chart block is sent only for chart questions, so ordinary answers keep the trained prompt shape.
   const reference=process.env.ANNA_REFERENCE_KNOWLEDGE==='19'&&mode!==TAROT_MODE?astroReference(message,history):null;
   const methodics=process.env.ANNA_REFERENCE_KNOWLEDGE==='19'&&mode!==TAROT_MODE?methodicReference(message,history):null;
-  const promptChart = process.env.ANNA_CHART_FOCUS === '30' ? chartRecords(chart,groundingQuestion(message,history))
+  const projectedChart = process.env.ANNA_CHART_FOCUS === '30' ? chartRecords(chart,groundingQuestion(message,history))
     : process.env.ANNA_CHART_FOCUS === '26' ? focusedChart(chart, groundingQuestion(message, history)) : chart;
+  // Validators keep the internal calculation. It is never a model payload,
+  // even when a stored/evaluation chart has made the property enumerable.
+  const {calculated:_internal,...visibleChart}=projectedChart??{};
+  const promptChart=projectedChart?{...visibleChart,subject:chartSubject(chart?.subject??(!chart?.partner?forecast?.subject:null))}:null;
   const facts = process.env.ANNA_TRAINING_PROMPT_VERSION==='29' && mode!==TAROT_MODE && !/Институт|(?:курс|обучени)[^.!?]{0,40}Анн|Анн[^.!?]{0,40}(?:курс|обучени)/iu.test(message)
     ? chatContext.facts.filter(fact=>!fact.startsWith('Углублённое изучение астропсихологии можно продолжить')) : chatContext.facts;
   return JSON.stringify({ facts, ...(reference?{reference}:{}), ...(methodics?{methodics}:{}), materials, forecast, ...(promptChart ? { chart: promptChart } : {}), ...(mode ? { mode } : {}), history, visitorName, visitorGender, length,
@@ -115,10 +120,15 @@ export function questionGuidance(message, chart, mode, history = []) {
 
 // Shared with training: a different system instruction teaches a different task.
 export function firstPassSystem({message, chart = null, mode = null, history = [], learningSignals = false, length = DEFAULT_ANSWER_LENGTH, subject = null}) {
+  const owner=chartSubject(chart?.subject??subject);
+  const ownership=chart&&!chart.partner ? owner.kind==='visitor'
+    ? ' chart.subject.kind=visitor: расчёт принадлежит посетителю. Не переносить его показатели на родственника или другого человека.'
+    : owner.kind==='selected' ? ' chart.subject.kind=selected: расчёт принадлежит выбранному близкому человеку. Не приписывай его показатели посетителю или другому родственнику. Говори о выбранном человеке в третьем лице; используй только переданное gender.'
+      : ' Владелец расчёта неизвестен: не приписывай показатели посетителю или родственнику; уточни, о ком вопрос.' : '';
   const explanation = explanationGuidance(groundingQuestion(message, history), chart, mode) + (mode !== TAROT_MODE
     ? '\nРазмер текущего ответа: '+ANSWER_LENGTHS[length].instruction+' Правило 2–4 предложений относится только к обычному среднему ответу; для подробного ответа раскрой тему в заданном объёме. Не повторяй эти указания.' : '')
     + (mode!==TAROT_MODE&&isSimplificationRequest(message)?'\nПерескажи предыдущий ответ проще: короткие понятные фразы, одна главная мысль и обычный пример. Не повторяй предыдущий текст и не ограничивайся удалением вступления. Сохрани рассчитанные факты.':'');
-  const publication = mode!==TAROT_MODE?'\nНе устанавливай характер или тревожность как факт по карте: трактовки являются предположениями, которые человек сверяет со своим опытом.'+(wantsNoAstroTerms(message)?' Человек просит без терминов: не называй планеты, знаки, аспекты и номера домов; передай смысл обычными словами.':'')+(subject&&!chart?.partner?' Расчёт относится к выбранному близкому человеку из forecast.subject. Говори о нём в третьем лице, не приписывай его положения посетителю. Не определяй пол по имени: используй только переданное gender, иначе нейтральное «этот человек».':''):'';
+  const publication = mode!==TAROT_MODE?'\nНе устанавливай характер или тревожность как факт по карте: трактовки являются предположениями, которые человек сверяет со своим опытом.'+(wantsNoAstroTerms(message)?' Человек просит без терминов: не называй планеты, знаки, аспекты и номера домов; передай смысл обычными словами.':'')+ownership:'';
   // Opt-in for isolated training/evaluation only; production keeps its existing prompt.
   if (learningSignals && mode !== TAROT_MODE && ['18','29'].includes(process.env.ANNA_TRAINING_PROMPT_VERSION)) {
     const style=process.env.ANNA_TRAINING_PROMPT_VERSION==='29'?style29:style19;
@@ -255,7 +265,7 @@ export function createLocalChat({ model, fetchImpl = fetch, learningSignals = pr
         return {answer,model:null,answerSource:'context',length,truncated:false,contextVersion:chatContext.version,learningSuggested:false,scopeFiltered:true};
       }
       if(mode!==TAROT_MODE){
-        const fixed=foreignChartClarification(question,forecast,chart)??knownServiceReply(question)??unsupportedStrategyReply(question,chart,materials,history)??relationshipTimingReply(question);
+        const fixed=foreignChartClarification(question,forecast,chart)??knownServiceReply(question)??unsupportedStrategyReply(question,chart,materials,history)??relationshipTimingReply(question)??uncertainNatalAnswer(chart,question);
         if(fixed)return publishContext(fixed,'context-contract');
       }
       if (mode !== TAROT_MODE && personalSolarSignQuestion(question)) {
