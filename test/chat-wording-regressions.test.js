@@ -31,7 +31,7 @@ test('a time zone is not an invented psychological indicator',()=>{
 
 test('unknown gender requires neutral direct advice and past-tense address',()=>{
  const options={message:'Объясни мою карту проще.',visitorGender:null,forecast:null};
- for(const answer of ['Не нужно быть идеальной подругой, чтобы быть хорошей.','Тебе не обязательно быть сильным и идеальным.','Ты не ввела дату рождения.'])assert.ok(answerContractProblems(answer,options).length,answer);
+ for(const answer of ['Не нужно быть идеальной подругой, чтобы быть хорошей.','Тебе не обязательно быть сильным и идеальным.','Ты не ввела дату рождения.','В общении ты осторожная и собранная.'])assert.ok(answerContractProblems(answer,options).length,answer);
  for(const answer of ['Не нужно стараться всем понравиться.','Ей не нужно быть идеальной подругой.','Можно обсудить, как поддержать хорошую подругу.','Ты не указал(а) дату рождения.','Фраза «Не нужно быть идеальной подругой» — пример обращения.'])assert.equal(answerContractProblems(answer,options).length,0,answer);
  assert.equal(answerContractProblems('Не нужно быть идеальной подругой, чтобы быть хорошей.',{...options,visitorGender:'female'}).length,0);
  assert.equal(answerContractProblems('Тебе не обязательно быть сильным и идеальным.',{...options,visitorGender:'male'}).length,0);

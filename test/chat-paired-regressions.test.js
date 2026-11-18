@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {createLocalChat,chatPrompt,firstPassSystem} from '../server/local-chat.js';
 import {chartContext} from '../server/chat-grounding.js';
 import {wrongCalculatedClaim} from '../server/chart-answer-check.js';
-import {incompleteMoneyExplanation} from '../server/chat-explanation.js';
+import {incompleteMoneyExplanation,intentAnswerProblem} from '../server/chat-explanation.js';
 import {groundingQuestion,wantsNoAstroTerms} from '../server/chat-topics.js';
 import {astroFactProblems} from '../server/astro-fact-guard.js';
 
@@ -12,6 +12,24 @@ const q='Назови управителей 1, 2, 3, 4, 5 и 6 домов мо�
 const table='1 дом (Весы): Венера в 2 доме. 2 дом (Скорпион): Плутон и Марс в 2 доме. 3 дом (Стрелец): Юпитер и Нептун в 4 доме. 4 дом (Козерог): Сатурн в 6 доме и Уран в 4 доме. 5 дом (Водолей): Уран в 4 доме и Сатурн в 6 доме. 6 дом (Рыбы): Нептун в 4 доме и Юпитер в 4 доме.';
 const stream=response=>({ok:true,body:new ReadableStream({start(c){c.enqueue(new TextEncoder().encode(JSON.stringify({response,done:true,done_reason:'stop'})+'\n'));c.close();}})});
 const context=(message,p=profile,options={})=>chartContext(p,message,new Date('2026-11-14T09:00:00Z'),options).chart;
+
+test('a savings reply does not frame setting money aside as risking a loss',()=>{
+ const question='Почему мне сложно откладывать деньги?';
+ assert.equal(intentAnswerProblem('Можно отложить сумму, которую не жалко потерять.',question),true);
+ assert.equal(intentAnswerProblem('Запиши расходы и попробуй отложить небольшую сумму после оплаты счетов.',question),false);
+ assert.equal(intentAnswerProblem('Не стоит откладывать сумму, которую не жалко потерять. Запиши расходы и выбери удобную сумму.',question),false);
+});
+
+test('a detailed strengths answer stays available when generated facts are wrong',async()=>{
+ const message='Расскажи подробно о моих сильных сторонах по натальной карте.';
+ const wrong='Солнце в Овне определяет твой характер. '.repeat(13)+'Попробуй опираться на свои сильные стороны.';
+ const writer=createLocalChat({model:'fixture',fetchImpl:async()=>stream(wrong)});
+ const result=await writer.answer({message,history:[],chart:context(message),forecast:null,length:'detailed'});
+ assert.equal(result.answerSource,'server-fallback');
+ assert.match(result.answer,/^Привет! Возможно, одна из твоих сильных сторон/u);
+ assert.match(result.answer,/Солнцем в Весах/u);
+ assert.ok(result.answer.length>=400);
+});
 async function flags(fn){const names=['ANNA_FACT_ANSWERS','ANNA_FACT_EXPLANATIONS','ANNA_CHART_FOCUS','CHAT_FACT_GUARD'],old=names.map(n=>process.env[n]);names.forEach((n,i)=>process.env[n]=i===2?'30':'1');try{return await fn();}finally{names.forEach((n,i)=>{if(old[i]===undefined)delete process.env[n];else process.env[n]=old[i];});}}
 
 test('the observed complete compact house table is kept after one generation',async()=>{

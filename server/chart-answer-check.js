@@ -235,7 +235,7 @@ export function groundedNatalAnswer(chart, message, length='medium') {
   if (!facts?.positions) return 'Заполни дату, время (если известно) и место рождения в личном кабинете — тогда можно будет разобрать твою карту.';
   const uncertain = new Set([...(chart.uncertainPositions ?? []), ...(chart.solarSignUncertain ? ['sun'] : [])]);
   const safeFacts = {...facts, positions:Object.fromEntries(Object.entries(facts.positions).filter(([key]) => !uncertain.has(key)))};
-  if (/сильн\p{L}*\s+сторон|талант|способност/iu.test(message)) return groundedStrengths(safeFacts);
+  if (/сильн\p{L}*\s+сторон|талант|способност/iu.test(message)) return groundedStrengths(safeFacts, length);
   if (/тревог|тревож|выгор|устал|восстанов|отдых/iu.test(message)) return groundedSupport(safeFacts);
   const keys=Object.keys(MEANINGS).filter(key=>new RegExp(FORMS[key],'iu').test(message));
   const selected=[...new Set([...(keys.length?keys:['sun','moon']), ...(length==='detailed'?['sun','moon','mercury','venus']:[])])]
@@ -279,7 +279,7 @@ export function calculatedPointMeaning(chart,key){
  const uncertain=chart?.uncertainPositions?.includes(key)||(key==='sun'&&chart?.solarSignUncertain);
  if(uncertain)return null;
  return key==='sun'&&STRENGTHS[p.sign]
-  ? `В астрологических трактовках это тема: ${STRENGTHS[p.sign]}. Это не готовая оценка твоих способностей — сравни с собственным опытом.`
+  ? `Возможно, тебе хорошо удаётся ${STRENGTHS[p.sign]}. Вспомни, есть ли такой пример в твоём опыте.`
   : `${basic}. Это тема для разговора, а не точное описание твоего характера.`;
 }
 
@@ -290,10 +290,15 @@ const STRENGTHS = {
   Близнецы: 'собирать сведения и объяснять их другим', Весы: 'сопоставлять разные позиции и искать договорённость', Водолей: 'находить новые подходы и обмениваться идеями',
   Рак: 'замечать потребности людей и создавать поддерживающую среду', Скорпион: 'внимательно исследовать сложный вопрос', Рыбы: 'использовать воображение и замечать оттенки переживаний',
 };
-function groundedStrengths(facts) {
+function groundedStrengths(facts, length) {
   const sun = facts.positions.sun;
-  if (!sun || !STRENGTHS[sun.sign]) return 'Назови занятие, в котором ты чувствуешь себя уверенно: разберём, какие навыки помогают получать результат.';
-  return `Солнце в ${SIGN_PREPOSITIONAL[sun.sign]} даёт тему для проверки: способность ${STRENGTHS[sun.sign]}. Это астрологическая гипотеза, а не оценка твоих реальных навыков. Вспомни два случая, когда у тебя это получилось: какие действия помогли, какой получился результат и что можно повторить в ближайшей задаче? Так сильная сторона станет конкретным действием.`;
+  const strength = STRENGTHS[sun?.sign];
+  const opening = strength
+    ? `Возможно, одна из твоих сильных сторон — умение ${strength}. В карте такую тему связывают с Солнцем в ${SIGN_PREPOSITIONAL[sun.sign]}.`
+    : 'Вспомни занятие, в котором ты чувствуешь себя уверенно. По тому, что даётся тебе легче всего, можно понять, на какие навыки ты уже опираешься.';
+  if (length === 'short') return opening;
+  if (length !== 'detailed') return opening + ' Вспомни два случая, когда у тебя это получилось. Что тогда помогло?';
+  return opening + '\n\nВозьми пару примеров из жизни. Один может быть совсем будничным: разговор с коллегой, дело по дому или помощь знакомому. Вспомни, что именно помогло тебе справиться. Если в обоих случаях выручал похожий подход, попробуй применить его к задаче, которая ждёт тебя сейчас. Так легче понять, в чём твоя сила и когда она пригодится.';
 }
 function groundedSupport(facts) {
   const moon = facts.positions.moon;
