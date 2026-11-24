@@ -70,7 +70,7 @@ test('a harmless offer to discuss rulers does not regenerate a valid answer',asy
  const old=process.env.ANNA_CHART_FOCUS;process.env.ANNA_CHART_FOCUS='30';
  try{
   const message='Что главное в моей натальной карте?';const{chart}=chartContext(profile,message);
-  const text='Солнце в Козероге в первом доме. Управителей дома можно обсудить, когда это будет полезно.';
+  const text='Возможно, тебе проще работать, когда есть ясная цель. Солнце в Козероге в первом доме. Управителей дома можно обсудить, когда это будет полезно.';
   let calls=0;const chat=createLocalChat({model:'fixture',fetchImpl:async()=>{calls++;assert.equal(calls,1,'Valid reply must not trigger a new generation');return {ok:true,body:new ReadableStream({start(c){c.enqueue(new TextEncoder().encode(JSON.stringify({response:text,done:true,done_reason:'stop'})+'\n'));c.close();}})};}});
   const result=await chat.answer({message,chart,history:[],forecast:null});assert.equal(result.model,'fixture');assert.equal(calls,1);
   assert.equal(recordAnswerProblem('Солнце в Козероге. Оба управителя стоят в первом доме, можно обсудить их позже.',chart,message),true);

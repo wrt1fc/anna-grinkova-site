@@ -1,5 +1,5 @@
 import {namedChartPoints,calculatedPointMeaning} from './chart-answer-check.js';
-import {wantsNoAstroTerms} from './chat-topics.js';
+import {wantsNoAstroTerms,asksForMeaning,isNatalOverview} from './chat-topics.js';
 import {chatIntent} from './chat-intent.js';
 import {methodicReference} from './methodic-reference.js';
 import {foreignChartReference} from './chat-subject.js';
@@ -55,6 +55,9 @@ export function unsupportedStrategyReply(question,chart,materials,history){
 export function answerContractProblems(answer,{message,visitorGender,forecast,history=[]}){
  const issues=[];
  if(wantsNoAstroTerms(message)&&PLANETS.test(answer))issues.push('Ответ должен обходиться без астрологических терминов, домов и названий планет.');
+ if(asksForMeaning(message)&&(PLANETS.test(answer)||/управител|астрологическ\p{L}*\s+методик|это\s+вопрос\s+о\s+значении|можно\s+объяснить,\s+как\s+этот\s+показатель/iu.test(answer)))issues.push('Объясни мысль предыдущего ответа на обычном примере без планет, знаков и домов.');
+ const opening=answer.replace(/^\s*Привет[!.,]?\s*/iu,'').split(/[.!?\n]/u)[0];
+ if(isNatalOverview(message)&&PLANETS.test(opening))issues.push('Начни обзор с понятной мысли о повседневной жизни. Показатель карты назови после неё.');
  // Only direct address, not adjectives describing a planet, quoted term or third person.
  const direct=answer.replace(/«[^»]*»|“[^”]*”|"[^"\n]*"/gu,' ');
  const solitude=direct.split(/[.!?\n]/u).some(sentence=>/(?:хочется|можно|попробуй|важно|нужно|стоит)[^.!?\n]{0,40}(?:побыть|остаться)\s+(?:одной|одним)(?!\p{L}|\s+(?:целым|из)(?!\p{L}))/iu.test(sentence)

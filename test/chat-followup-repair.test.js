@@ -24,8 +24,44 @@ test('meaning clarification follows the calculated solar sign without generating
  const history=[{role:'user',content:'Я спрашиваю только знак зодиака. Назови его.'},{role:'assistant',content:'Твой знак — Телец.'}];
  const message='Что это значит простыми словами?';const{chart}=chartContext(profile,message,new Date(),{history});assert.ok(chart);
  const chat=createLocalChat({model:'fixture',fetchImpl:async()=>{throw Error('Calculated meaning must not call generation');}});
- const result=await chat.answer({message,history,chart,forecast:null});assert.match(result.answer,/Солнце в Тельце/u);assert.doesNotMatch(result.answer,/триад|Водолей/iu);assert.match(result.answer,/опыт/iu);
+ const result=await chat.answer({message,history,chart,forecast:null});assert.match(result.answer,/доводить дело/u);assert.doesNotMatch(result.answer,/Солнце|Тельце|триад|Водолей/iu);assert.match(result.answer,/опыт/iu);
  assert.ok(plainNatalAnswer(chart,'Солнце','detailed').length>=400);
+});
+
+test('overview retries and falls back when generation opens with astrology terms', async()=>{
+ const message='Что главное в моей натальной карте?';
+ const {chart}=chartContext(profile,message);
+ const chat=createLocalChat({model:'fixture',fetchImpl:async()=>stream('Главное — Солнце в Тельце. Тебе важно доводить дело до результата.')});
+ const result=await chat.answer({message,history:[],chart,forecast:null});
+ assert.equal(result.answerSource,'server-fallback');
+ assert.match(result.answer,/^Привет! Возможно, тебе хорошо удаётся/u);
+ assert.match(result.answer,/Солнце в Тельце/u);
+});
+
+test('a misspelled meaning follow-up keeps the career topic and drops jargon',async()=>{
+ const history=[{role:'user',content:'Какая работа мне подходит?'},{role:'assistant',content:'Стоит попробовать работу, где нужно объяснять сложное. Это видно по положению планеты.'}];
+ for(const message of ['а что это хначит?','что это зачит','И как это понять?']){
+  assert.equal(chatIntent(groundingQuestion(message,history)),'workfit');
+  const {chart}=chartContext(profile,message,new Date(),{history});
+  const chat=createLocalChat({model:'fixture',fetchImpl:async()=>stream('В астрологической методике управители денежного дома связывают с профессиями.')});
+  const result=await chat.answer({message,history,chart,forecast:null});
+  assert.match(result.answer,/задач|рабоч/iu);
+  assert.doesNotMatch(result.answer,/Сатурн|Уран|дом|Водол/iu);
+ }
+ assert.equal(groundingQuestion('Что означает Сатурн в моей карте?',history),'Что означает Сатурн в моей карте?');
+});
+
+test('a plain relationship explanation does not have to repeat house facts',async()=>{
+ const history=[{role:'user',content:'Какой партнёр мне подходит?'},{role:'assistant',content:'В отношениях тебе может быть важна самостоятельность.'}];
+ const message='Что это значит?';
+ const {chart}=chartContext(profile,message,new Date(),{history});
+ assert.ok(chart?.relationship);
+ const raw='Представь, что у каждого в паре есть время на свои дела. А планы на выходные можно обсудить заранее, чтобы обоим было удобно.';
+ let calls=0;
+ const chat=createLocalChat({model:'fixture',fetchImpl:async()=>{calls++;return stream(raw);}});
+ const result=await chat.answer({message,history,chart,forecast:null});
+ assert.equal(calls,1);
+ assert.equal(result.answer,raw);
 });
 
 test('a simplification cannot merely remove the word main from a repeated natal answer',async()=>{
@@ -79,7 +115,7 @@ test('valid numbered actions cannot publish a copied instruction header',async()
 test('a repeated false Sun domicile is replaced by a checked personal answer',async()=>{
  const old=process.env.CHAT_FACT_GUARD;process.env.CHAT_FACT_GUARD='1';
  try{
-  let calls=0;const chat=createLocalChat({model:'fixture',fetchImpl:async()=>{calls++;return stream('Солнце в Тельце стоит в своём знаке. Это важное положение твоей карты.');}});
+  let calls=0;const chat=createLocalChat({model:'fixture',fetchImpl:async()=>{calls++;return stream('Возможно, тебе нравится доводить начатое до конца. Солнце в Тельце стоит в своём знаке.');}});
   const message='Что главное в моей натальной карте?';const{chart}=chartContext(profile,message);
   const result=await chat.answer({message,chart,history:[],forecast:null});assert.equal(calls,2);assert.equal(result.model,null);assert.equal(result.factFiltered,true);assert.deepEqual(astroFactProblems(result.answer,{question:message,chart}),[]);
  }finally{if(old===undefined)delete process.env.CHAT_FACT_GUARD;else process.env.CHAT_FACT_GUARD=old;}

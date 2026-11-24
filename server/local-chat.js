@@ -15,14 +15,14 @@ import {financialDecisionReply} from './financial-safety.js';
 import { SAFE_FALLBACK_ANSWER } from './chat-safety.js';
 import { isRelationshipQuestion } from './chat-topics.js';
 import { groundedRelationshipAnswer, relationshipAnswerProblems } from './relationship-context.js';
-import { groundedNatalAnswer, wrongCalculatedClaim, personalSolarSignAnswer, plainNatalAnswer, uncertainNatalAnswer } from './chart-answer-check.js';
+import { groundedNatalAnswer, wrongCalculatedClaim, personalSolarSignAnswer, plainNatalAnswer, uncertainNatalAnswer, calculatedPointMeaning } from './chart-answer-check.js';
 import { groundingQuestion } from './chat-topics.js';
 import { isGeneralAstrologyQuestion } from './chat-grounding-scope.js';
 import { extractLearningSignal, learningSignalDiagnostics, LEARNING_SIGNAL, LEARNING_SIGNAL_INSTRUCTION } from './learning-signals.js';
 import {explanationGuidance, incompleteMoneyExplanation, calculatedMoneyExplanation, wrongMoneyRulerClaim, practicalIntentAnswer, intentAnswerProblem} from './chat-explanation.js';
 import {focusedChart} from './chat-chart-focus.js';
 import {chartRecords,recordAnswerProblem,anchorRecordReply} from './chart-records.js';
-import {personalSolarSignQuestion,isMeaningClarification,isSimplificationRequest,repeatedSimplification,wantsNoAstroTerms} from './chat-topics.js';
+import {personalSolarSignQuestion,isMeaningClarification,isSimplificationRequest,repeatedSimplification,wantsNoAstroTerms,asksForMeaning,isNatalOverview} from './chat-topics.js';
 import {isClearlyOffTopic, incomeRulerExplanation, chatIntent} from './chat-intent.js';
 import {factAnswersEnabled,calculatedFactAnswer,physicalInferenceQuestion,physicalInferenceAnswer} from './chat-fact-answers.js';
 import {basicFactExplanation} from './basic-fact-explanation.js';
@@ -101,6 +101,8 @@ export function systemFor(mode) {
 }
 
 export function questionGuidance(message, chart, mode, history = []) {
+  if (mode !== TAROT_MODE && asksForMeaning(message)) return '\nОбъясни смысл последнего ответа применительно к исходному вопросу. Начни с того, что это может значить в обычной жизни. Если полезно, приведи короткий пример. Не повторяй планеты, знаки, номера домов или справочные определения.';
+  if (mode !== TAROT_MODE && isNatalOverview(message)) return '\nПервое предложение после приветствия должно быть понятным человеку, который не знает астрологии. Начни с одной возможной темы из жизни. Во втором предложении можно кратко назвать рассчитанный показатель, который её поясняет.';
   if (mode !== TAROT_MODE && isGeneralAstrologyQuestion(groundingQuestion(message, history))) return '\nЭто вопрос о понятии или способе расчёта. Сначала дай простое и точное объяснение термина и один короткий пример. Например, управитель знака — связанная с ним планета; управитель дома определяется по знаку на его куспиде. Не подменяй объяснение личным прогнозом. Приглашение к обучению интерфейс покажет отдельно после ответа: не выдумывай контакты, ссылки, цены, расписание и не вставляй рекламу в сам ответ.';
   if (mode === TAROT_MODE || !isRelationshipQuestion(message)) return '';
   const direct = '\nДля текущего вопроса: отвечай об отношениях, без вступления «Смотри» и без отказа «я не могу предсказывать». Не обсуждай прежнюю карту дня и не отправляй на консультацию вместо ответа.';
@@ -219,8 +221,10 @@ export function createLocalChat({ model, fetchImpl = fetch, learningSignals = pr
       const size = answerSize(mode, length);
       if (!size) throw new Error('Unknown answer length');
       const question = groundingQuestion(message, history);
+      const explainMeaning = mode !== TAROT_MODE && asksForMeaning(message);
+      const relationshipProblem = text => relationshipAnswerProblems(text,chart,length,{requireOverview:!explainMeaning});
       const contractProblems=text=>mode===TAROT_MODE?[]:answerContractProblems(text,{message,visitorGender,forecast,history});
-      const recordProblem = text => process.env.ANNA_CHART_FOCUS==='30' && mode!==TAROT_MODE && recordAnswerProblem(text,chart,question);
+      const recordProblem = text => !explainMeaning && process.env.ANNA_CHART_FOCUS==='30' && mode!==TAROT_MODE && recordAnswerProblem(text,chart,question);
       const publishContext=(text,reason)=>{
         const answer=conversationalOpening(text,history);
         if(answer.length>size.maxChars)throw new Error('Context clarification exceeds answer size');
@@ -229,6 +233,11 @@ export function createLocalChat({ model, fetchImpl = fetch, learningSignals = pr
         return {answer,model:null,answerSource:'context',length,truncated:false,contextVersion:chatContext.version,learningSuggested:false,contextFiltered:true};
       };
       const topicFallback = () => {
+        if (explainMeaning) return practicalIntentAnswer(chart,question,length) ?? plainLanguageFallback(chart,question,length);
+        if (mode!==TAROT_MODE && isNatalOverview(message) && chart?.calculated && !chart.partner) {
+          const opening = calculatedPointMeaning(chart,'sun') ?? 'Начни с того, что помогает тебе чувствовать себя собой в обычной жизни.';
+          return opening + '\n\n' + groundedNatalAnswer(chart,question,length);
+        }
         const text = mode!==TAROT_MODE&&/управител/iu.test(question)&&houseMentions(question).length>1&&chart?.calculated?.houseRulers&&!chart.partner?calculatedMoneyExplanation(chart,question,length)
           : mode!==TAROT_MODE&&wantsNoAstroTerms(message)&&chatIntent(question)==='other'?plainLanguageFallback(chart,question,length)
           : mode!==TAROT_MODE&&isSimplificationRequest(message)&&chart?.calculated&&!chart.partner&&!chart.relationship&&chatIntent(question)==='other' ? plainNatalAnswer(chart,question,length)
@@ -249,8 +258,8 @@ export function createLocalChat({ model, fetchImpl = fetch, learningSignals = pr
         if (mode !== TAROT_MODE && length === 'detailed' && chatIntent(question) !== 'service' && fixed.length < 400) throw new Error('Local chat returned an incomplete detailed answer');
         if (fixed.length < MIN_ANSWER_CHARS || hasFormalAddress(fixed) || hasInstructionEcho(fixed) || recordProblem(fixed) || contractProblems(fixed).length
           || wrongPlanetSign(fixed, chart) || wrongCalculatedClaim(fixed, chart)
-          || wrongMoneyRulerClaim(fixed, chart, question) || relationshipAnswerProblems(fixed, chart, length)
-          || mode !== TAROT_MODE && (incompleteMoneyExplanation(fixed, chart, question, length) || intentAnswerProblem(fixed, question))
+          || wrongMoneyRulerClaim(fixed, chart, question) || relationshipProblem(fixed)
+          || mode !== TAROT_MODE && !explainMeaning && (incompleteMoneyExplanation(fixed, chart, question, length) || intentAnswerProblem(fixed, question))
           || process.env.CHAT_FACT_GUARD === '1' && mode !== TAROT_MODE && astroFactProblems(fixed,{question:message,chart}).length) {
           throw new Error('Local chat fallback failed answer validation');
         }
@@ -270,14 +279,15 @@ export function createLocalChat({ model, fetchImpl = fetch, learningSignals = pr
       if(mode!==TAROT_MODE){
         const fixed=foreignChartClarification(question,forecast,chart)??knownServiceReply(question)??unsupportedStrategyReply(question,chart,materials,history)??relationshipTimingReply(question)??uncertainNatalAnswer(chart,question);
         if(fixed)return publishContext(fixed,'context-contract');
+        if(explainMeaning&&!history.some(turn=>turn.role==='assistant'))return publishContext('Какую мысль нужно пояснить? Пришли фразу, и я объясню её простыми словами.','meaning-needs-context');
       }
       if (mode !== TAROT_MODE && personalSolarSignQuestion(question)) {
-        const answer = conversationalOpening(wantsNoAstroTerms(message)?plainLanguageFallback(chart,question,length):isMeaningClarification(message)?plainNatalAnswer(chart,'Солнце',length):personalSolarSignAnswer(chart), history);
+        const answer = conversationalOpening(explainMeaning||wantsNoAstroTerms(message)?plainLanguageFallback(chart,question,length):isMeaningClarification(message)?plainNatalAnswer(chart,'Солнце',length):personalSolarSignAnswer(chart), history);
         onDelta?.(answer, answer);
         onDecision?.({stage:'publication',source:'calculated',changed:false,reason:'solar-sign'});
         return {answer,model:null,answerSource:'calculated',length,truncated:false,contextVersion:chatContext.version,learningSuggested:false,groundedFallback:true};
       }
-      if(mode!==TAROT_MODE&&factAnswersEnabled()){
+      if(mode!==TAROT_MODE&&!explainMeaning&&factAnswersEnabled()){
         const text=physicalInferenceQuestion(question)?physicalInferenceAnswer:selectedPositionAnswer(question,forecast,chart)??calculatedFactAnswer(chart,question);
         if(text){
           const answer=conversationalOpening(text,history);
@@ -385,7 +395,7 @@ export function createLocalChat({ model, fetchImpl = fetch, learningSignals = pr
         throw new Error('Local chat repeated an ungrounded fact');
       }
       const repeated = cleanRepeatedSentences(parsed.answer).trim() !== parsed.answer.trim();
-      if (wrongPlanetSign(answer, chart) || wrongCalculatedClaim(answer, chart) || wrongMoneyRulerClaim(answer, chart, groundingQuestion(message, history)) || relationshipAnswerProblems(answer, chart, length) || (chart && repeated && !qualityRetry)) {
+      if (wrongPlanetSign(answer, chart) || wrongCalculatedClaim(answer, chart) || wrongMoneyRulerClaim(answer, chart, groundingQuestion(message, history)) || relationshipProblem(answer) || (chart && repeated && !qualityRetry)) {
         if (qualityRetry) {
           const fallback = topicFallback();
           if (fallback) return publishFallback(fallback);
@@ -400,13 +410,13 @@ export function createLocalChat({ model, fetchImpl = fetch, learningSignals = pr
         if(fallback)return publishFallback(fallback,{explanationFiltered:true});
         throw new Error('Local chat did not use the supplied chart records');
       }
-      if (mode !== TAROT_MODE && intentAnswerProblem(answer, question)) {
+      if (mode !== TAROT_MODE && !explainMeaning && intentAnswerProblem(answer, question)) {
         if (!explanationRetry) return createLocalChat({model,fetchImpl,learningSignals,onTrace,onDecision}).answer({message,history,forecast,visitorName,visitorGender,signal,length,materials,chart,mode,tone,onDelta,temperature:0.1,qualityRetry,styleRetry,factRetry,factCorrection,explanationRetry:true,lengthRetry});
         const fallback = topicFallback();
         if (fallback) return publishFallback(fallback,{explanationFiltered:true});
         throw new Error('Local chat did not answer the current question');
       }
-      if (mode !== TAROT_MODE && incompleteMoneyExplanation(answer, chart, groundingQuestion(message, history), length)) {
+      if (mode !== TAROT_MODE && !explainMeaning && incompleteMoneyExplanation(answer, chart, groundingQuestion(message, history), length)) {
         if (!explanationRetry) return createLocalChat({model,fetchImpl,learningSignals,onTrace,onDecision}).answer({message,history,forecast,visitorName,visitorGender,signal,length,materials,chart,mode,tone,onDelta,temperature:0.1,qualityRetry,styleRetry,factRetry,factCorrection,explanationRetry:true,lengthRetry});
         return publishFallback(calculatedMoneyExplanation(chart, question, length),{explanationFiltered:true});
       }

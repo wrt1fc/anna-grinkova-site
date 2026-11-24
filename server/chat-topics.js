@@ -21,10 +21,12 @@ export function applicationClarification(question){
 }
 export const isSimplificationRequest=message=>/^\s*(?:а\s+)?(?:если\s+)?(?:(?:объясни(?:ть)?|скажи|расскажи|можно)\s+(?:это\s+)?)?(?:совсем\s+)?(?:проще|попроще|по[-\s]простому|простыми\s+словами|обычными\s+словами|без\s+(?:терминов|сложных\s+слов)|короче)(?:\s*,?\s*без\s+(?:планет|знаков|домов|терминов)(?:\s*(?:,|и)\s*(?:планет|знаков|домов|терминов))*)?(?:\s*,?\s*пожалуйста)?[.!?…]*\s*$/iu.test(message);
 export const wantsNoAstroTerms=message=>/по[-\s]простому|обычными\s+словами|без\s+(?:астрологическ\p{L}*\s+)?(?:терминов|сложных\s+слов|домов|планет|знаков|названий\s+(?:планет|знаков))|не\s+(?:называй|используй|упоминай)[^.!?]{0,30}(?:термин|названи\p{L}*\s+планет|планет|знак|дома|домов)/iu.test(message);
-const dependentQuestion=message=>DEPENDENT_QUESTION.test(message)||isSimplificationRequest(message);
-export const isMeaningClarification=message=>isSimplificationRequest(message)||/^\s*(?:а\s+)?что\s+это\s+значит(?:\s+простыми\s+словами)?[.!?…]*\s*$/iu.test(message);
+export const asksForMeaning=message=>/^\s*(?:(?:а|и|ну)\s+)?(?:что\s+это\s+(?:значит|зачит|хначит|означает)|что\s+имеется\s+в\s+виду|как\s+это\s+понять|объясни(?:\s+это)?|как\s+это\s+выглядит\s+на\s+практике)(?:\s+простыми\s+словами)?[.!?…]*\s*$/iu.test(message);
+export const isNatalOverview=message=>/^\s*что\s+(?:самое\s+)?(?:главное|важное)\s+в\s+моей\s+(?:натальной\s+)?карте[.!?…]*\s*$/iu.test(message);
+export const isMeaningClarification=message=>isSimplificationRequest(message)||asksForMeaning(message);
+const dependentQuestion=message=>DEPENDENT_QUESTION.test(message)||isMeaningClarification(message);
 export function repeatedSimplification(answer,message,history=[]){
- if(!isSimplificationRequest(message))return false;
+ if(!isMeaningClarification(message))return false;
  const previous=[...history].reverse().find(row=>row.role==='assistant'&&typeof row.content==='string');
  const normalized=text=>text.replace(/^\s*Привет[!.,]?\s*/iu,'').replace(/^\s*Главное\s*[—–:-]\s*/iu,'').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();
  if(!previous)return false;
