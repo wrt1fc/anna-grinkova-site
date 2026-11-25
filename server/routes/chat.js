@@ -155,10 +155,11 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
     // Paid daily reading/chat quotas stay separate; free question APIs share one welcome allowance.
     const quotaKind = `${tarot ? 'tarot' : 'chat'}:${user.id}`;
     // A database failure here must still free the slot and the per-user lock, or chat would stay blocked.
-    let plan, allowed, welcomeCharged = false, dailyCharged = false, monthlyCharged = false, round = 0;
+    let plan, allowed, welcomeCharged = false, promoCharged = false, dailyCharged = false, monthlyCharged = false, round = 0;
     const month = day.slice(0, 7);
     const refundQuestion = async () => {
       if (welcomeCharged) { await store.refundWelcomeQuestion(user.id); welcomeCharged = false; }
+      if (promoCharged) { await store.refundPromoQuestion(user.id); promoCharged = false; }
       if (dailyCharged) { await store.refundDailyQuota(quotaKind, day); dailyCharged = false; }
       if (monthlyCharged) { await store.refundMonthlyChatQuota(quotaKind, month); monthlyCharged = false; }
     };
@@ -169,10 +170,11 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
       // login or choosing a different answer length cannot replenish it.
       if (planId === DEFAULT_PLAN && user.chatUnlimited !== true) {
         welcomeCharged = await store.consumeWelcomeQuestion(user.id);
-        if (!welcomeCharged) {
+        if (!welcomeCharged && !tarot) promoCharged = await store.consumePromoQuestion(user.id);
+        if (!welcomeCharged && !promoCharged) {
           release();
           metrics.count('welcome_bonus_exhausted');
-          return json(res, 402, { error: 'subscription_required', message: 'Три бесплатных вопроса уже использованы. Чтобы продолжить разговор, оформи подписку. Твоя натальная карта остаётся доступной.' });
+          return json(res, 402, { error: 'subscription_required', message: 'Бесплатные вопросы закончились. Чтобы продолжить разговор, оформи подписку. Твоя натальная карта остаётся доступной.' });
         }
       }
       const dailyNeeded = tarot || (planId !== DEFAULT_PLAN && user.chatUnlimited !== true);
@@ -182,6 +184,7 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
         : await store.consumeDailyQuota(quotaKind, day, tarot ? plan.dailyTarotReadings : plan.dailyChatMessages));
       monthlyCharged = monthlyNeeded && allowed;
       dailyCharged = dailyNeeded && !monthlyNeeded && allowed;
+      if (!allowed && !tarot) allowed = promoCharged = await store.consumePromoQuestion(user.id);
       if (!allowed) await refundQuestion();
       // Readings already given today; a failed one is given back, so its unseen cards are dealt again next time.
       if (allowed && tarot) round = (await store.dailyQuotaUsed(quotaKind, day)) - 1;

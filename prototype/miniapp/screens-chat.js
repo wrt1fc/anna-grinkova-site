@@ -1,8 +1,8 @@
 // The chat opens with examples and the composer; replies appear only after a question.
 import { api, readEvents } from './api.js';
-import { $, app, planLine, visitorName } from './state.js?v=3';
+import { $, app, planLine, visitorName } from './state.js?v=4';
 import { closeSheet, node, openSheet } from './sheet.js';
-import { activeIdeaDraw, bindIdeas, refreshIdeas, resetIdeas, setIdeasBusy } from './chat-ideas.js?v=4';
+import { activeIdeaDraw, bindIdeas, refreshIdeas, resetIdeas, setIdeasBusy } from './chat-ideas.js?v=5';
 
 const MAX_CHARS = 600;
 const HISTORY_ITEMS = 6;
@@ -241,7 +241,7 @@ function autosize() {
 function limitSheet(subscriptionRequired = false) {
   const body = node('div');
   body.append(node('p', 'sheet-text', subscriptionRequired
-    ? 'Три бесплатных вопроса использованы. Чтобы продолжить разговор, оформи подписку. Натальная карта остаётся доступной.'
+    ? 'Бесплатные вопросы закончились. Чтобы продолжить разговор, оформи подписку. Натальная карта остаётся доступной.'
     : 'Вопросы за текущий период закончились. По подписке доступно 30 вопросов в месяц. Лимит обновляется первого числа по московскому времени.'));
   const subscribe = node('button', 'btn btn-gold', 'Оформить подписку'); subscribe.type = 'button';
   subscribe.addEventListener('click', () => { closeSheet(); app.go('plan'); });

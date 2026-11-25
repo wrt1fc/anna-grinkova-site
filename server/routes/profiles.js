@@ -24,6 +24,17 @@ function parseProfileBody(body, plan) {
 }
 
 export async function handleProfileRoutes({ req, res, path, user, store, json, readJson }) {
+  if (path === '/api/promo/redeem' && req.method === 'POST') {
+    const { code } = await readJson(req);
+    if (!user.emailVerified) return json(res, 403, { error: 'email_not_verified', message: 'Подтверди почту, чтобы активировать промокод.' }), true;
+    if (typeof code !== 'string' || code.length > 64 || code.trim().toUpperCase() !== 'ФОРТУНА') {
+      return json(res, 400, { error: 'invalid_promo', message: 'Промокод не подошёл. Проверь написание.' }), true;
+    }
+    const redeemed = await store.redeemPromoQuestion(user.id);
+    const plan = await accountPlan(store, await store.getPlan(user.id), user);
+    if (!redeemed) return json(res, 409, { error: 'promo_already_redeemed', message: 'Этот промокод уже использован в твоём аккаунте.', plan }), true;
+    return json(res, 200, { plan }), true;
+  }
   if (path === '/api/plan' && req.method === 'GET') {
     const plan = await store.getPlan(user.id);
     return json(res, 200, { plan: await accountPlan(store, plan, user), people: 1 + (await store.listChartProfiles(user.id)).length }), true;

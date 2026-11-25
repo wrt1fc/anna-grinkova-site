@@ -281,8 +281,16 @@ img { display: block; max-width: 100%; }
 @keyframes rise { from { transform: translateY(40px); opacity: 0; } }
 .sheet-grip { display: block; width: 44px; height: 4px; margin: 4px auto 14px; border-radius: 2px; background: rgba(245, 217, 133, .45); }
 .sheet-title { margin: 0 0 14px; font: 800 22px/1.2 var(--display); }
+.promo-dialog { inset: 0; margin: auto; width: min(420px, 100% - 32px); max-height: 88dvh; padding: 24px; border: 1px solid var(--line); border-radius: 26px; background: linear-gradient(180deg, #2b1d15, #1c130d); color: var(--ink); }
+.promo-dialog::backdrop { background: rgba(0, 0, 0, .66); }
+.promo-dialog form { display: grid; gap: 10px; margin-top: 14px; }
+.promo-dialog .btn, .promo-dialog .link-btn { width: 100%; }
+.promo-dialog .link-btn { min-height: 44px; margin-top: 6px; }
+.promo-dialog .form-note:empty { display: none; }
 .cal-head { display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--line); border-radius: 26px; padding: 4px; margin-bottom: 8px; }
-.cal-head button { width: 42px; height: 42px; border-radius: 50%; color: var(--gold-light); font-size: 22px; }
+.cal-head button { flex: 0 0 44px; height: 44px; border-radius: 22px; color: var(--gold-light); font-size: 22px; }
+.cal-head button:disabled { opacity: .35; }
+.cal-head .cal-label { flex: 1; min-width: 0; padding-inline: 4px; }
 .cal-head strong { font: 700 17px/1 var(--display); }
 .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; margin-bottom: 14px; }
 .cal-grid .dow { font-size: 12px; color: var(--dim); padding: 8px 0; }

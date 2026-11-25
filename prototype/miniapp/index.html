@@ -18,7 +18,7 @@
   <meta property="og:url" content="__PUBLIC_URL__/" />
   <meta property="og:image" content="__PUBLIC_URL__/assets/app/og-image.jpg" />
   <link rel="stylesheet" href="/assets/fonts/fonts.css" />
-  <link rel="stylesheet" href="/miniapp/miniapp.css?v=18" />
+  <link rel="stylesheet" href="/miniapp/miniapp.css?v=19" />
   <link rel="stylesheet" href="/miniapp/miniapp-desktop.css?v=6" />
   <link rel="stylesheet" href="/miniapp/fortuna-home.css?v=9" />
   <link rel="stylesheet" href="/miniapp/card-day.css?v=2" />
@@ -55,7 +55,7 @@
       <div class="screen-center-block">
         <img class="logo-mark" src="/miniapp/assets/logo.svg" alt="" width="64" height="64" />
         <h1 id="t-register" class="title-lg">Создать аккаунт</h1>
-        <p class="lead">Бонус FORTUNA3 включится автоматически: 3 вопроса и твоя натальная карта бесплатно. Дальше — по подписке.</p>
+        <p class="lead">После регистрации тебе доступны 3 вопроса и твоя натальная карта бесплатно. Дальше — по подписке.</p>
       </div>
       <form class="card form" id="form-register" novalidate>
         <label class="label" for="reg-email">Эл. почта</label>
@@ -145,6 +145,7 @@
           <p class="ask-promo-detail">Отношения, работа, деньги или повторяющиеся сценарии — начни с того, что волнует сейчас. Фортуна свяжет вопрос с показателями твоей натальной карты и объяснит их простыми словами.</p>
           <button class="btn btn-gold" type="button" data-go="chat"><span>Задать вопрос Фортуне</span><img src="/miniapp/assets/icons-3d/send.webp" alt="" width="28" height="28" /></button>
           <small class="ask-promo-note" id="home-promo-note"></small>
+          <button class="link-btn" type="button" data-promo-open hidden>Ввести промокод</button>
         </div>
       </section>
       </div>
@@ -384,7 +385,7 @@
     <section class="screen screen-mid has-nav screen-desk" data-screen="profile" hidden aria-labelledby="t-profile">
       <div class="profile-head"><span class="profile-ring"><img src="/miniapp/assets/icons-3d/natal.webp" alt="" width="28" height="28" /></span><div class="profile-who"><h1 id="t-profile" class="title-lg">Гость</h1><p class="muted" id="profile-mail"></p></div></div>
       <div class="cols">
-        <section class="card block"><h2 class="block-title">Текущий тариф</h2><p class="gold" id="profile-plan"></p><p class="block-note" id="profile-quota"></p><button class="btn btn-line" type="button" data-go="plan">Выбрать тариф</button></section>
+        <section class="card block"><h2 class="block-title">Текущий тариф</h2><p class="gold" id="profile-plan"></p><p class="block-note" id="profile-quota"></p><button class="btn btn-line" type="button" data-go="plan">Выбрать тариф</button><button class="link-btn" type="button" data-promo-open hidden>Ввести промокод</button></section>
         <section class="card block"><h2 class="block-title">Натальные карты</h2><p class="block-note" id="profile-chart"></p><button class="btn btn-line" type="button" data-go="birth">Добавить и редактировать</button><button class="btn btn-line btn-people" type="button" data-go="people">Добавить близкого человека</button></section>
       </div>
       <section class="card block profile-payments"><h2 class="block-title">История оплат</h2><div id="profile-orders" aria-live="polite"></div></section>
@@ -443,9 +444,20 @@
       <div id="sheet-body"></div>
     </div>
   </div>
+  <dialog class="promo-dialog" id="promo-dialog" aria-labelledby="promo-title" aria-describedby="promo-description">
+    <h2 class="sheet-title" id="promo-title">Есть промокод?</h2>
+    <p class="block-note" id="promo-description">Введи его, чтобы получить ещё один вопрос к Фортуне.</p>
+    <form id="promo-form">
+      <label class="label" for="promo-code">Промокод</label>
+      <input class="field" id="promo-code" type="text" maxlength="64" autocomplete="off" autocapitalize="characters" spellcheck="false" required />
+      <button class="btn btn-gold" id="promo-submit" type="submit">Активировать</button>
+    </form>
+    <p class="form-note" id="promo-status" role="status"></p>
+    <button class="link-btn" id="promo-close" type="button" autofocus>Позже</button>
+  </dialog>
 </div>
 <script src="/natal-wheel.js?v=3"></script>
 <script src="/pwa.js"></script>
-<script type="module" src="/miniapp/miniapp.js?v=22"></script>
+<script type="module" src="/miniapp/miniapp.js?v=23"></script>
 </body>
 </html>

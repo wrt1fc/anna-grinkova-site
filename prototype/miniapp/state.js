@@ -35,11 +35,17 @@ export async function refreshPlan() {
   return app.plan;
 }
 
-export function planLine() {
-  const plan = app.plan?.plan;
-  if (plan?.welcomeBonus?.active) return plan.welcomeBonus.remainingQuestions > 0
-    ? `Бонус · осталось ${plan.welcomeBonus.remainingQuestions} из 3 вопросов` : 'Бонус использован · нужна подписка';
-  return plan ? `${plan.label} · ${plan.unlimitedChat ? 'безлимитные вопросы' : `${plan.monthlyChatMessages || plan.dailyChatMessages} вопросов в ${plan.monthlyChatMessages ? "месяц" : "день"}`}` : '';
+export function planLine(plan = app.plan?.plan) {
+  if (!plan) return '';
+  const extra = plan.promoQuestion?.remainingQuestions ?? 0;
+  if (plan.welcomeBonus?.active) {
+    const remaining = plan.welcomeBonus.remainingQuestions + extra;
+    const total = plan.welcomeBonus.totalQuestions + Number(!!plan.promoQuestion?.redeemed);
+    return remaining > 0 ? `Бонус · осталось ${remaining} из ${total} вопросов` : 'Бонус использован · нужна подписка';
+  }
+  if (plan.unlimitedChat) return `${plan.label} · безлимитные вопросы`;
+  const quota = plan.monthlyChatMessages || plan.dailyChatMessages;
+  return `${plan.label} · ${quota} вопросов в ${plan.monthlyChatMessages ? 'месяц' : 'день'}${extra ? ' · 1 вопрос по промокоду' : ''}`;
 }
 
 // The natal chart of the account, calculated once per profile.

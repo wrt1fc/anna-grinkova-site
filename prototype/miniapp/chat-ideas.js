@@ -1,5 +1,5 @@
 import { api } from './api.js';
-import { $, app } from './state.js?v=3';
+import { $, app } from './state.js?v=4';
 import { closeSheet, node, openSheet } from './sheet.js';
 import { savedPosition } from './daily-card-choice.js?v=1';
 

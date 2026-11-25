@@ -118,6 +118,10 @@ const MIGRATIONS = [
     PRIMARY KEY (kind, month)
   );
   `,
+  // 7: NULL means unredeemed, FALSE available, TRUE spent.
+  `
+  ALTER TABLE users ADD COLUMN fortuna_question_used BOOLEAN;
+  `,
 ];
 
 const MIGRATION_LOCK = 71_412_026; // any constant shared by all app servers

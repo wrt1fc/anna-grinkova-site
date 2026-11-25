@@ -1,6 +1,6 @@
 // Subscription, payment, profile and the list of close people.
 import { api, formatDate, MONTHS_GEN } from './api.js';
-import { $, app, birth, planLine, refreshPlan, screenEl, setNote, visitorName } from './state.js?v=3';
+import { $, app, birth, planLine, refreshPlan, screenEl, setNote, visitorName } from './state.js?v=4';
 import { drawWheel } from './wheel.js';
 import { closeSheet, node, openSheet } from './sheet.js';
 
@@ -92,6 +92,17 @@ export function bindPay() {
   });
 }
 
+export function renderProfileQuota(plan = app.plan?.plan) {
+  let text = planLine(plan);
+  if (plan?.chatUsage && !plan.unlimitedChat) {
+    const q = plan.chatUsage;
+    const reset = new Intl.DateTimeFormat('ru-RU', {timeZone:'Europe/Moscow', day:'numeric', month:'long'}).format(new Date(q.resetsAt));
+    const promo = plan.promoQuestion?.remainingQuestions ? ' · 1 вопрос по промокоду' : '';
+    text = `Осталось ${q.remaining} из ${q.limit} вопросов · обновление ${reset}${promo}`;
+  }
+  $('#profile-quota').textContent = text;
+}
+
 export async function enterProfile() {
   const user = app.me.user;
   $('#t-profile').textContent = visitorName();
@@ -100,14 +111,8 @@ export async function enterProfile() {
   const sub = await api('/api/billing/subscription');
   const until = sub.ok && sub.data.plan?.expiresAt && sub.data.plan.id !== 'free' ? `до ${formatDate(new Date(sub.data.plan.expiresAt).toISOString())}` : '';
   $('#profile-plan').textContent = [plan?.label, until].filter(Boolean).join(' · ');
-  $('#profile-quota').textContent = plan?.welcomeBonus?.active ? planLine()
-    : plan ? (plan.unlimitedChat ? 'Безлимитные вопросы' : `${plan.monthlyChatMessages || plan.dailyChatMessages} вопросов в ${plan.monthlyChatMessages ? "месяц" : "день"}`) : '';
-  const current = sub.ok ? sub.data.plan : plan;
-  if (current?.chatUsage && !current.unlimitedChat) {
-    const q = current.chatUsage;
-    const reset = new Intl.DateTimeFormat('ru-RU', {timeZone:'Europe/Moscow', day:'numeric', month:'long'}).format(new Date(q.resetsAt));
-    $('#profile-quota').textContent = `Осталось ${q.remaining} из ${q.limit} вопросов · обновление ${reset}`;
-  }
+  const currentPlan = app.plan?.plan;
+  renderProfileQuota(sub.ok ? { ...sub.data.plan, promoQuestion: currentPlan?.promoQuestion ?? sub.data.plan?.promoQuestion } : currentPlan);
   const orders = $('#profile-orders');
   const history = sub.ok ? (sub.data.orders ?? []) : [];
   orders.replaceChildren();

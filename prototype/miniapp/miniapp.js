@@ -1,13 +1,14 @@
 // The «Фортуна» mini-app: routes, sign-in and registration, birth data, help and install screens.
 import { api, formatDate } from './api.js';
 import { startTelegram, updateTelegramBack } from './telegram-app.js?v=1';
-import { $, app, birth, refreshMe, screenEl, setNote } from './state.js?v=3';
+import { $, app, birth, planLine, refreshMe, screenEl, setNote } from './state.js?v=4';
 import { node } from './sheet.js';
-import { pickCity, pickDate, pickTime } from './pickers.js';
-import { bindInfo, enterDay, enterHome, enterNatal, enterWeek } from './screens-info.js?v=5';
-import { bindChat, enterChat, resetChat } from './screens-chat.js?v=12';
-import { bindCard, enterCard, resetCard } from './screens-card.js?v=10';
-import { bindPay, bindPeople, enterPay, enterPeople, enterPlan, enterProfile } from './screens-account.js?v=6';
+import { pickCity, pickDate, pickTime } from './pickers.js?v=2';
+import { bindInfo, enterDay, enterHome, enterNatal, enterWeek } from './screens-info.js?v=6';
+import { bindChat, enterChat, resetChat } from './screens-chat.js?v=13';
+import { bindCard, enterCard, resetCard } from './screens-card.js?v=11';
+import { bindPay, bindPeople, enterPay, enterPeople, enterPlan, enterProfile, renderProfileQuota } from './screens-account.js?v=7';
+import { bindPromo, showOpeningPromo, syncPromoButtons } from './promo.js?v=1';
 
 const PUBLIC = new Set(['home', 'day', 'week', 'card', 'chat', 'login', 'register', 'code', 'help', 'install']);
 const AUTH_SCREENS = new Set(['login', 'register', 'code']);
@@ -82,6 +83,7 @@ async function afterSignIn() {
   const target = nextScreen && nextScreen !== 'login' ? nextScreen : (birth() ? 'home' : 'birth');
   nextScreen = null;
   app.go(target);
+  afterPromoSignIn();
 }
 
 function bindLogin() {
@@ -257,6 +259,7 @@ function bindShell() {
   $('#profile-out').addEventListener('click', async () => {
     try { await api('/api/auth/logout', { method: 'POST', body: {} }); } catch { /* the page still signs out locally */ }
     app.me = null; app.plan = null; app.natal = null; resetChat(); resetCard();
+    syncPromoButtons();
     app.go('home');
   });
   $('#home-bell').addEventListener('click', () => app.go('profile'));
@@ -270,6 +273,13 @@ function bindShell() {
 }
 
 bindLogin(); bindRegister(); bindCode(); bindBirth(); bindInfo(); bindChat(); bindCard(); bindPay(); bindPeople(); bindShell();
+const afterPromoSignIn = bindPromo(() => {
+  const line = planLine();
+  for (const selector of ['#home-plan', '#home-promo-note', '#home-intro-note', '#chat-quota']) $(selector).textContent = line;
+  renderProfileQuota();
+});
 await startTelegram(() => app.back());
 await refreshMe().catch(() => { $('#offline').hidden = false; });
+const openingScreen = currentName();
 render();
+if (!AUTH_SCREENS.has(openingScreen)) showOpeningPromo();

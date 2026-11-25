@@ -59,3 +59,60 @@ test('free answers spend the welcome bonus once; failures refund it, paid and op
   assert.equal((await request('/api/chat',{message:'Тестовый безлимит'})).status,200);
  }finally{await new Promise(r=>server.close(r));await store.close();}
 });
+
+test('ФОРТУНА adds one chat question per account, including after monthly quota is spent', async (t) => {
+  const store = await createStore('pglite:memory');
+  t.after(() => store.close());
+  let fail = false;
+  const server = createServer({ store, codeSecret: 'promo-local-only-secret-32-chars',
+    chatWriter: { async answer() {
+      if (fail) throw Error('fixture failure');
+      return { answer: 'Управитель — планета, связанная со знаком зодиака. Например, Стрельцом управляет Юпитер.' };
+    } },
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise((resolve) => server.close(resolve)));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const password = 'Promo-local-only1!';
+  const hash = await hashPassword(password);
+  const first = await store.createUser('promo-first@example.test', hash, Date.now(), Date.now());
+  const second = await store.createUser('promo-second@example.test', hash, Date.now(), Date.now());
+  const request = async (path, body, cookie = '') => {
+    const response = await fetch(base + path, { method: body ? 'POST' : 'GET',
+      headers: { Cookie: cookie, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      body: body ? JSON.stringify(body) : undefined });
+    return { status: response.status, data: await response.json(), cookie: response.headers.get('set-cookie')?.split(';')[0] };
+  };
+  const login = async (user) => (await request('/api/auth/login', { email: user.email, password })).cookie;
+  const redeem = (cookie, code = 'ФОРТУНА') => request('/api/promo/redeem', { code }, cookie);
+  const ask = (cookie) => request('/api/chat', { message: 'Что такое управитель?' }, cookie);
+  const promo = async (cookie) => (await request('/api/plan', null, cookie)).data.plan.promoQuestion;
+  const firstCookie = await login(first);
+  const otherSession = await login(first);
+  const secondCookie = await login(second);
+
+  assert.equal((await redeem()).status, 401);
+  assert.equal((await redeem(firstCookie, 'неверный')).status, 400);
+  assert.deepEqual(await promo(firstCookie), { redeemed: false, remainingQuestions: 0 });
+  const claims = await Promise.all([redeem(firstCookie, ' фортуна '), redeem(otherSession)]);
+  assert.deepEqual(claims.map(({ status }) => status).sort(), [200, 409]);
+  assert.deepEqual(await promo(otherSession), { redeemed: true, remainingQuestions: 1 });
+  assert.deepEqual(await promo(secondCookie), { redeemed: false, remainingQuestions: 0 });
+  for (let i = 0; i < 3; i++) assert.equal(await store.consumeWelcomeQuestion(first.id), true);
+  fail = true;
+  assert.equal((await ask(firstCookie)).status, 503);
+  assert.equal((await promo(otherSession)).remainingQuestions, 1);
+  fail = false;
+  assert.equal((await ask(firstCookie)).status, 200);
+  assert.equal((await ask(otherSession)).status, 402);
+  assert.equal((await redeem(otherSession)).status, 409);
+  assert.deepEqual(await promo(otherSession), { redeemed: true, remainingQuestions: 0 });
+
+  assert.equal((await redeem(secondCookie)).status, 200);
+  await store.setPlanPeriod(second.id, 'subscription', Date.now() + 86_400_000);
+  const month = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Moscow' }).format(new Date()).slice(0, 7);
+  await store.q.run('INSERT INTO monthly_chat_quotas (kind,month,used) VALUES ($1,$2,30)', [`chat:${second.id}`, month]);
+  assert.equal((await ask(secondCookie)).status, 200);
+  assert.equal((await ask(secondCookie)).status, 429);
+  assert.equal(await store.monthlyChatQuotaUsed(`chat:${second.id}`, month), 30);
+});

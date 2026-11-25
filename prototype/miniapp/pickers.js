@@ -22,15 +22,24 @@ export function pickDate({ value, onPick }) {
   const head = node('div', 'cal-head');
   const prev = node('button', '', '‹'); prev.type = 'button'; prev.setAttribute('aria-label', 'Предыдущий месяц');
   const next = node('button', '', '›'); next.type = 'button'; next.setAttribute('aria-label', 'Следующий месяц');
-  const label = node('button'); label.type = 'button'; label.setAttribute('aria-label', 'Выбрать год');
+  const label = node('button', 'cal-label'); label.type = 'button'; label.setAttribute('aria-expanded', 'false');
   const grid = node('div', 'cal-grid');
   const years = node('div', 'cal-years'); years.hidden = true;
   head.append(prev, label, next);
   label.append(node('strong'));
   const finish = doneButton('Выбрать', () => { if (!picked) return; closeSheet(); onPick(picked); });
 
+  function syncControls() {
+    const visibleMonth = `${year}-${pad(month + 1)}`;
+    finish.disabled = !years.hidden || !picked.startsWith(`${visibleMonth}-`) || picked > today;
+    prev.disabled = !years.hidden || visibleMonth <= `${MIN_YEAR}-01`;
+    next.disabled = !years.hidden || visibleMonth >= today.slice(0, 7);
+  }
+
   function draw() {
-    label.firstChild.textContent = `${MONTHS[month]} ${year}`;
+    const title = `${MONTHS[month]} ${year}`;
+    label.firstChild.textContent = title;
+    label.setAttribute('aria-label', `${title}, выбрать год`);
     grid.replaceChildren(...WEEKDAYS.map((name) => node('span', 'dow', name)));
     const offset = (new Date(year, month, 1).getDay() + 6) % 7;
     for (let index = 0; index < offset; index += 1) grid.append(node('span'));
@@ -40,10 +49,15 @@ export function pickDate({ value, onPick }) {
       const button = node('button', '', String(day)); button.type = 'button';
       button.setAttribute('aria-pressed', String(iso === picked));
       button.disabled = iso > today;
-      button.addEventListener('click', () => { picked = iso; draw(); });
+      button.addEventListener('click', () => {
+        grid.querySelector('[aria-pressed="true"]')?.setAttribute('aria-pressed', 'false');
+        picked = iso;
+        button.setAttribute('aria-pressed', 'true');
+        syncControls();
+      });
       grid.append(button);
     }
-    finish.disabled = !picked;
+    syncControls();
   }
   function shift(step) {
     month += step;
@@ -55,12 +69,20 @@ export function pickDate({ value, onPick }) {
   next.addEventListener('click', () => shift(1));
   label.addEventListener('click', () => {
     years.hidden = !years.hidden; grid.hidden = !years.hidden;
+    label.setAttribute('aria-expanded', String(!years.hidden));
+    syncControls();
     if (years.hidden) return;
     years.replaceChildren();
     for (let item = Number(today.slice(0, 4)); item >= MIN_YEAR; item -= 1) {
       const button = node('button', '', String(item)); button.type = 'button';
       button.setAttribute('aria-pressed', String(item === year));
-      button.addEventListener('click', () => { year = item; years.hidden = true; grid.hidden = false; draw(); });
+      button.addEventListener('click', () => {
+        year = item;
+        if (year === Number(today.slice(0, 4))) month = Math.min(month, Number(today.slice(5, 7)) - 1);
+        years.hidden = true; grid.hidden = false;
+        label.setAttribute('aria-expanded', 'false');
+        draw(); label.focus();
+      });
       years.append(button);
     }
     years.querySelector('[aria-pressed="true"]')?.scrollIntoView({ block: 'center' });

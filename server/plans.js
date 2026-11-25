@@ -26,5 +26,5 @@ export async function accountPlan(store, name, user) {
   const [year, monthNumber] = month.split('-').map(Number);
   const next = new Date(Date.UTC(year, monthNumber, 1) - 3 * 3600000);
   return { ...publicPlan(name, user), ...(monthly ? { chatUsage: { used, limit: monthly, remaining: Math.max(0, monthly - used), resetsAt: next.toISOString() } } : {}), welcomeBonus: { ...await store.welcomeBonus(user.id),
-    active: name === DEFAULT_PLAN && user.chatUnlimited !== true } };
+    active: name === DEFAULT_PLAN && user.chatUnlimited !== true }, promoQuestion: await store.promoQuestion(user.id) };
 }
