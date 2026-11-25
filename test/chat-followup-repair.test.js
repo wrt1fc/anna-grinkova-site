@@ -1,13 +1,125 @@
 import {test}from'node:test';import assert from'node:assert/strict';
-import{groundingQuestion,repeatedSimplification}from'../server/chat-topics.js';
+import{groundingQuestion,repeatedSimplification,requestsDetailedAnswer}from'../server/chat-topics.js';
 import{chartContext}from'../server/chat-grounding.js';
 import{createLocalChat}from'../server/local-chat.js';
 import{plainNatalAnswer}from'../server/chart-answer-check.js';
 import{chatIntent}from'../server/chat-intent.js';
 import{hasInstructionEcho}from'../server/chat-style.js';
 import{astroFactProblems}from'../server/astro-fact-guard.js';
+import{intentAnswerProblem}from'../server/chat-explanation.js';
+import{answerContractProblems}from'../server/chat-answer-contract.js';
 const profile={birthUtc:'1990-05-15T09:30:00Z',birthTime:'12:30',birthLatitude:55.75,birthLongitude:37.62};
 const stream=text=>({ok:true,body:new ReadableStream({start(c){c.enqueue(new TextEncoder().encode(JSON.stringify({response:text,done:true,done_reason:'stop'})+'\n'));c.close();}})});
+
+test('suggested questions get a direct strength, a work plan and distinct money answers',async()=>{
+ const strengths='Какие у меня сильные стороны?';
+ const work='Какая работа мне подходит?';
+ const style='Какой подход к деньгам мне ближе?';
+ const confidence='Как мне увереннее обращаться с деньгами?';
+ const income='Что помогает мне больше зарабатывать?';
+ assert.deepEqual([style,confidence,income].map(chatIntent),['moneyStyle','moneyConfidence','income']);
+ const chat=createLocalChat({model:'fixture',fetchImpl:async()=>assert.fail('A standard question should use its prepared answer')});
+ const answer=async message=>(await chat.answer({message,history:[],chart:chartContext(profile,message).chart,forecast:null})).answer;
+ assert.match(await answer(strengths),/^Привет! Возможно, одна из твоих сильных сторон — умение последовательно доводить дело/u);
+ const career=await answer(work);
+ assert.match(career,/^Привет! Сначала стоит разобраться, какие задачи тебе интересно делать даже в обычный рабочий день\./u);
+ assert.equal(career.match(/^\d\. /gmu)?.length,3);
+ const preferences=await answer(style), habits=await answer(confidence);
+ assert.match(preferences,/чётким планом или удобнее с гибким лимитом/u);
+ assert.match(habits,/обязательные платежи/u);
+ assert.notEqual(preferences,habits);
+ for(const text of [preferences,habits])assert.doesNotMatch(text,/управител|темы заработка/u);
+ for(const question of [style,confidence]){
+  assert.equal(intentAnswerProblem('Не нужно перечислять управителей: попробуй удобный лимит на неделю.',question),false);
+  assert.equal(intentAnswerProblem('Для этого необходимо пройти обучение у Анны Гриньковой.',question),true);
+ }
+});
+
+test('requesting more detail expands the previous topic even with short selected and rejects a repeated reply',async()=>{
+ const previous='Возможно, одна из твоих сильных сторон — доводить дело до результата. Вспомни, когда это помогло закончить непростую задачу.';
+ const history=[{role:'user',content:'Какие у меня сильные стороны?'},{role:'assistant',content:previous}];
+ const message='А расскажи поподробнее, пожалуйста.';
+ assert.match(groundingQuestion(message,history),/^Какие у меня сильные стороны/u);
+ assert.equal(requestsDetailedAnswer(message,history.slice(0,1)),false);
+ assert.equal(requestsDetailedAnswer('Расскажи подробнее о моей Луне.',[]),true);
+ assert.equal(groundingQuestion('Расскажи подробнее о моей Луне.',history),'Расскажи подробнее о моей Луне.');
+ const calls=[];
+ const chat=createLocalChat({model:'fixture',fetchImpl:async(_url,{body})=>{
+  calls.push(JSON.parse(body));
+  return stream(previous);
+ }});
+ const {chart}=chartContext(profile,message,new Date(),{history});
+ const result=await chat.answer({message,history,chart,forecast:null,length:'short'});
+ assert.equal(result.length,'detailed');
+ assert.ok(calls.every(call=>JSON.parse(call.prompt).length==='detailed'));
+ assert.match(calls[0].system,/что даёт рассчитанный знак/u);
+ assert.notEqual(result.answer,previous);
+ assert.ok(result.answer.length>=400);
+ assert.match(result.answer,/Луна в .+доме/u);
+ assert.match(result.answer,/разговор с коллегой/u);
+});
+
+test('the standard work follow-up develops the practical advice and uses a calculated MC when available',async()=>{
+ const original='Какая работа мне подходит?';
+ const history=[{role:'user',content:original},{role:'assistant',content:'Сначала стоит разобраться, какие задачи тебе интересно делать даже в обычный рабочий день.'}];
+ const message='Можно подробнее?';
+ const {chart}=chartContext(profile,message,new Date(),{history});
+ assert.ok(chart.calculated.angles.mc);
+ const chat=createLocalChat({model:'fixture',fetchImpl:async()=>assert.fail('The standard work follow-up should use the expanded explanation')});
+ const result=await chat.answer({message,history,chart,forecast:null,length:'short'});
+ assert.equal(result.length,'detailed');
+ assert.ok(result.answer.length>=400);
+ assert.match(result.answer,/обычный вторник/u);
+ assert.match(result.answer,/MC — середина неба/u);
+ assert.doesNotMatch(result.answer,/управител/u);
+});
+
+test('elaboration stays with the applied topic rather than an older standard question',async()=>{
+ const history=[
+  {role:'user',content:'Какая работа мне подходит?'},
+  {role:'assistant',content:'Попробуй разобраться, какие задачи тебе интересны.'},
+  {role:'user',content:'А как это проявляется в отношениях?'},
+  {role:'assistant',content:'В отношениях можно обсудить, как вы договариваетесь о планах.'},
+ ];
+ const message='Расскажи подробнее.';
+ const {chart}=chartContext(profile,message,new Date(),{history});
+ const raw='В отношениях пригодится умение говорить о своих планах заранее. Например, если на выходные у каждого свои дела, попробуй сначала назвать, сколько времени хочется оставить для себя. Потом можно решить, чем заняться вместе и где нужен запас времени.\n\nПри таком разговоре легче понять, когда хочется близости, а когда нужно спокойно побыть в одиночестве. Если один план не сработал, обсуди с близким человеком, что можно поменять в следующий раз.';
+ let calls=0;
+ const chat=createLocalChat({model:'fixture',fetchImpl:async()=>{calls++;return stream(raw);}});
+ const result=await chat.answer({message,history,chart,forecast:null});
+ assert.equal(calls,1);
+ assert.match(result.answer,/В отношениях пригодится/u);
+ assert.doesNotMatch(result.answer,/обычный рабочий день/u);
+});
+
+test('the expanded Moon fallback connects its real sign and house to an example',async()=>{
+ const history=[{role:'user',content:'Что означает моя Луна в натальной карте?'},{role:'assistant',content:'Луну связывают с ощущением опоры.'}];
+ const message='Можно подробнее?';
+ const {chart}=chartContext(profile,message,new Date(),{history});
+ const chat=createLocalChat({model:'fixture',fetchImpl:async()=>stream('Луна связана с ощущением опоры.')});
+ const result=await chat.answer({message,history,chart,forecast:null});
+ assert.equal(result.length,'detailed');
+ assert.ok(result.answer.length>=400);
+ assert.match(result.answer,new RegExp(`в ${chart.calculated.positions.moon.house}-м доме`,'u'));
+ assert.match(result.answer,/день вышел суматошным/u);
+ assert.doesNotMatch(result.answer,/Солнце|Меркурий/u);
+});
+
+test('detailed strengths fallback preserves the selected owner and does not guess the visitor gender',async()=>{
+ const previous='Возможно, сестра умеет терпеливо доводить дело до результата. Это может быть видно по её работе и в обычной жизни.';
+ const history=[{role:'user',content:'Какие сильные стороны у моей сестры по натальной карте?'},{role:'assistant',content:previous}];
+ const subject={relation:'sibling',label:'Сестра',gender:'female'};
+ const message='Расскажи подробнее.';
+ const {chart}=chartContext(profile,message,new Date(),{history,subject});
+ const chat=createLocalChat({model:'fixture',fetchImpl:async()=>stream(previous)});
+ const result=await chat.answer({message,history,chart,forecast:{subject}});
+ assert.equal(result.length,'detailed');
+ assert.match(result.answer,/сильных сторон этого человека/u);
+ assert.match(result.answer,/Солнцем в Тельце/u);
+ assert.doesNotMatch(result.answer,/твоих сильных сторон|в твоей карте/u);
+ assert.ok(answerContractProblems('Выбери ситуацию, где ты могла бы применить этот навык.',{message,visitorGender:null,forecast:null}).length);
+ assert.ok(answerContractProblems('Может показаться, что ты холодна.',{message,visitorGender:null,forecast:null}).length);
+});
 
 test('counted follow-ups retain the last independent budget question rather than an older chart topic',async()=>{
  const history=[{role:'user',content:'Что главное в моей натальной карте?'},{role:'assistant',content:'Ответ про карту.'},{role:'user',content:'А как это проявляется в отношениях?'},{role:'assistant',content:'Ответ про отношения.'},{role:'user',content:'Почему мне сложно откладывать деньги?'},{role:'assistant',content:'Запиши расходы.'}];

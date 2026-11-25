@@ -23,10 +23,17 @@ export const isSimplificationRequest=message=>/^\s*(?:а\s+)?(?:если\s+)?(?:
 export const wantsNoAstroTerms=message=>/по[-\s]простому|обычными\s+словами|без\s+(?:астрологическ\p{L}*\s+)?(?:терминов|сложных\s+слов|домов|планет|знаков|названий\s+(?:планет|знаков))|не\s+(?:называй|используй|упоминай)[^.!?]{0,30}(?:термин|названи\p{L}*\s+планет|планет|знак|дома|домов)/iu.test(message);
 export const asksForMeaning=message=>/^\s*(?:(?:а|и|ну)\s+)?(?:что\s+это\s+(?:значит|зачит|хначит|означает)|что\s+имеется\s+в\s+виду|как\s+это\s+понять|объясни(?:\s+это)?|как\s+это\s+выглядит\s+на\s+практике)(?:\s+простыми\s+словами)?[.!?…]*\s*$/iu.test(message);
 export const isNatalOverview=message=>/^\s*что\s+(?:самое\s+)?(?:главное|важное)\s+в\s+моей\s+(?:натальной\s+)?карте[.!?…]*\s*$/iu.test(message);
+export const asksForStrengths=message=>/^\s*какие\s+(?:у\s+меня\s+)?(?:мои\s+)?сильные\s+стороны(?:\s+у\s+меня)?(?:\s+по\s+(?:моей\s+)?(?:натальной\s+)?карте)?[.!?…]*\s*$/iu.test(message);
+export const isElaborationFollowUp=message=>/^\s*(?:а\s+)?(?:(?:расскажи|объясни|разбери|можно|можешь(?:\s+рассказать|\s+объяснить)?)\s+)?(?:об\s+этом\s+)?(?:подробнее|поподробнее)(?:\s+об\s+этом)?(?:\s*,?\s*пожалуйста)?[.!?…]*\s*$/iu.test(message);
+export const hasAnsweredTopic=history=>history.at(-1)?.role==='assistant' && history.some(turn=>turn.role==='user');
+export function requestsDetailedAnswer(message,history=[]){
+ return isElaborationFollowUp(message) ? hasAnsweredTopic(history)
+   : /^\s*(?:расскажи|объясни|разбери|опиши)\s+(?:чуть\s+)?подробн(?:ее|о)\s+\p{L}/iu.test(message);
+}
 export const isMeaningClarification=message=>isSimplificationRequest(message)||asksForMeaning(message);
-const dependentQuestion=message=>DEPENDENT_QUESTION.test(message)||isMeaningClarification(message);
+const dependentQuestion=message=>DEPENDENT_QUESTION.test(message)||isMeaningClarification(message)||isElaborationFollowUp(message);
 export function repeatedSimplification(answer,message,history=[]){
- if(!isMeaningClarification(message))return false;
+ if(!isMeaningClarification(message)&&!isElaborationFollowUp(message))return false;
  const previous=[...history].reverse().find(row=>row.role==='assistant'&&typeof row.content==='string');
  const normalized=text=>text.replace(/^\s*Привет[!.,]?\s*/iu,'').replace(/^\s*Главное\s*[—–:-]\s*/iu,'').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();
  if(!previous)return false;

@@ -487,9 +487,14 @@ test('chat passes the chosen answer length and rejects unknown ones', async () =
   await fixture(async ({ store, request }) => {
     const cookie = await signIn(store, request);
     assert.equal((await request('/api/chat', 'POST', { message: 'Вопрос', length: 'huge' }, cookie)).response.status, 400);
-    await request('/api/chat', 'POST', { message: 'Вопрос' }, cookie);
+    const first = await request('/api/chat', 'POST', { message: 'Вопрос' }, cookie);
     await request('/api/chat', 'POST', { message: 'Вопрос', length: 'detailed' }, cookie);
-    assert.deepEqual(seen, ['medium', 'detailed']);
+    const expanded = await request('/api/chat', 'POST', { message: 'Расскажи подробнее.', length: 'short', history: [
+      { role: 'user', content: 'Вопрос' },
+      { role: 'assistant', content: first.data.answer, signature: first.data.signature },
+    ] }, cookie);
+    assert.equal(expanded.response.status, 200);
+    assert.deepEqual(seen, ['medium', 'detailed', 'detailed']);
   }, { chatWriter: { async answer(input) { seen.push(input.length); return { answer: 'Ответ по проверенному контексту.' }; } } });
 });
 

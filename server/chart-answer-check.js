@@ -1,4 +1,5 @@
 import { SIGN_PREPOSITIONAL } from './anna-method.js';
+import { QUALITIES, HOUSE_THEMES } from './relationship-context.js';
 import { POINT_NAMES } from './astro-chart.js';
 import {wantsNoAstroTerms} from './chat-topics.js';
 
@@ -235,9 +236,12 @@ export function groundedNatalAnswer(chart, message, length='medium') {
   if (!facts?.positions) return 'Заполни дату, время (если известно) и место рождения в личном кабинете — тогда можно будет разобрать твою карту.';
   const uncertain = new Set([...(chart.uncertainPositions ?? []), ...(chart.solarSignUncertain ? ['sun'] : [])]);
   const safeFacts = {...facts, positions:Object.fromEntries(Object.entries(facts.positions).filter(([key]) => !uncertain.has(key)))};
-  if (/сильн\p{L}*\s+сторон|талант|способност/iu.test(message)) return groundedStrengths(safeFacts, length);
+  if (/сильн\p{L}*\s+сторон|талант|способност/iu.test(message)) return groundedStrengths(safeFacts, length, chart.subject?.kind==='selected');
   if (/тревог|тревож|выгор|устал|восстанов|отдых/iu.test(message)) return groundedSupport(safeFacts);
   const keys=Object.keys(MEANINGS).filter(key=>new RegExp(FORMS[key],'iu').test(message));
+  if (length==='detailed' && keys.length===1 && keys[0]==='moon' && safeFacts.positions.moon) {
+    return detailedMoonAnswer(safeFacts.positions.moon,chart.subject?.kind==='selected');
+  }
   const selected=[...new Set([...(keys.length?keys:['sun','moon']), ...(length==='detailed'?['sun','moon','mercury','venus']:[])])]
     .filter(key=>safeFacts.positions[key]).slice(0,length==='short'?1:length==='detailed'?4:2);
   if (!selected.length) return 'Без времени рождения нельзя уверенно назвать эти положения. Уточни время в личном кабинете, если оно известно.';
@@ -250,6 +254,24 @@ export function groundedNatalAnswer(chart, message, length='medium') {
   const positions=selected.map(key=>{const p=facts.positions[key];return `${POINT_NAMES[key]} в ${SIGN_PREPOSITIONAL[p.sign]}${p.house?`, в ${p.house}-м доме`:''}`;});
   const meaning=selected.map(key=>MEANINGS[key]).join('. ');
   return `В твоей карте ${positions.join('; ')}. ${meaning}.${length==='short'?'':' Это опоры для разбора твоего вопроса, а не готовый приговор: проявление этих качеств зависит и от твоего опыта.'}`;
+}
+
+function detailedMoonAnswer(moon, selected) {
+  const who = selected ? 'этому человеку' : 'тебе';
+  const subject = selected ? 'этот человек' : 'ты';
+  const placement = `Луна в ${SIGN_PREPOSITIONAL[moon.sign]}${moon.house ? `, в ${moon.house}-м доме` : ''}.`;
+  const qualities = QUALITIES[moon.sign];
+  const area = HOUSE_THEMES[moon.house];
+  const scene = moon.house===3
+    ? 'Допустим, день вышел суматошным. Одному человеку помогает рассказать близкому, что произошло, другому — записать мысли и уже потом обсудить их. Это два простых способа понять, что именно возвращает спокойствие.'
+    : 'Допустим, день вышел суматошным. Можно сразу взяться за новые дела, а можно дать себе время и заметить, что сейчас нужнее всего: разговор, привычный ритм или немного тишины. Такие ситуации хорошо показывают, на что человек опирается.';
+  return [
+    `Здесь интересно посмотреть, что помогает ${who} успокоиться и почувствовать себя в безопасности. ${placement} Знак в этой трактовке задаёт оттенок реакции${qualities ? `, например один из ориентиров — ${qualities}` : ''}.`,
+    area ? `А дом подсказывает, в какой части жизни это искать. В этой карте можно обратить внимание на такие темы, как ${area}. ${scene}` : scene,
+    selected
+      ? `Вспомни, что ${subject} обычно делает после трудного дня. Возможно, в этом примере уже видно, какой вид поддержки работает лучше всего.`
+      : `Вспомни, что ${subject} обычно делаешь после трудного дня. Возможно, в этом примере уже видно, какая поддержка помогает именно тебе.`,
+  ].join('\n\n');
 }
 
 export function personalSolarSignAnswer(chart) {
@@ -290,15 +312,30 @@ const STRENGTHS = {
   Близнецы: 'собирать сведения и объяснять их другим', Весы: 'сопоставлять разные позиции и искать договорённость', Водолей: 'находить новые подходы и обмениваться идеями',
   Рак: 'замечать потребности людей и создавать поддерживающую среду', Скорпион: 'внимательно исследовать сложный вопрос', Рыбы: 'использовать воображение и замечать оттенки переживаний',
 };
-function groundedStrengths(facts, length) {
+function groundedStrengths(facts, length, selected) {
   const sun = facts.positions.sun;
   const strength = STRENGTHS[sun?.sign];
+  const mercury = facts.positions.mercury;
+  const second = STRENGTHS[mercury?.sign];
+  const who = selected ? 'сильных сторон этого человека' : 'твоих сильных сторон';
   const opening = strength
-    ? `Возможно, одна из твоих сильных сторон — умение ${strength}. В карте такую тему связывают с Солнцем в ${SIGN_PREPOSITIONAL[sun.sign]}.`
-    : 'Вспомни занятие, в котором ты чувствуешь себя уверенно. По тому, что даётся тебе легче всего, можно понять, на какие навыки ты уже опираешься.';
+    ? `Возможно, одна из ${who} — умение ${strength}. В карте такую тему связывают с Солнцем в ${SIGN_PREPOSITIONAL[sun.sign]}.`
+    : selected ? 'Полезно посмотреть, какие занятия даются этому человеку легче всего. Это подскажет, какие навыки уже помогают справляться с задачами.'
+      : 'Вспомни занятие, в котором ты чувствуешь себя уверенно. По тому, что даётся тебе легче всего, можно понять, на какие навыки ты уже опираешься.';
   if (length === 'short') return opening;
-  if (length !== 'detailed') return opening + ' Вспомни два случая, когда у тебя это получилось. Что тогда помогло?';
-  return opening + '\n\nВозьми пару примеров из жизни. Один может быть совсем будничным: разговор с коллегой, дело по дому или помощь знакомому. Вспомни, что именно помогло тебе справиться. Если в обоих случаях выручал похожий подход, попробуй применить его к задаче, которая ждёт тебя сейчас. Так легче понять, в чём твоя сила и когда она пригодится.';
+  const another = strength && second && second !== strength
+    ? ` Ещё может получаться ${second}. Такое прочтение даёт Меркурий в ${SIGN_PREPOSITIONAL[mercury.sign]}, когда речь об общении и учёбе.`
+    : '';
+  if (selected) {
+    const example = 'Посмотри, проявлялось ли это в обычной жизни. Например, в разговоре с близкими или в деле, где нужно с кем-то договориться. Можно вспомнить пару ситуаций и сравнить, что помогло в каждой. Так яснее, какие навыки у этого человека уже есть и в каких занятиях они пригодятся.';
+    return length==='detailed' ? opening + another + '\n\n' + example : opening + another;
+  }
+  if (length !== 'detailed') return opening + another + ' Вспомни два случая, когда у тебя это получилось. Что тогда помогло?';
+  const moon = facts.positions.moon;
+  const extra = moon
+    ? `\n\nЕсть ещё сторона, которую легко не заметить. Луна в ${SIGN_PREPOSITIONAL[moon.sign]}${moon.house ? `, в ${moon.house}-м доме` : ''}. Её в карте смотрят, когда хотят понять, что даёт чувство опоры. Вспомни, что помогает тебе вернуть спокойствие, когда дело идёт не по плану. Иногда именно этот привычный способ собраться и помогает проявить сильную сторону.`
+    : '';
+  return opening + another + extra + '\n\nВозьми пару примеров из жизни. Один может быть совсем будничным: разговор с коллегой, дело по дому или помощь знакомому. Вспомни, что именно помогло тебе справиться. Если в обоих случаях выручал похожий подход, попробуй применить его к задаче, которая ждёт тебя сейчас. Так легче понять, в чём твоя сила и когда она пригодится.';
 }
 function groundedSupport(facts) {
   const moon = facts.positions.moon;

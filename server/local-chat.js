@@ -16,13 +16,13 @@ import { SAFE_FALLBACK_ANSWER } from './chat-safety.js';
 import { isRelationshipQuestion } from './chat-topics.js';
 import { groundedRelationshipAnswer, relationshipAnswerProblems } from './relationship-context.js';
 import { groundedNatalAnswer, wrongCalculatedClaim, personalSolarSignAnswer, plainNatalAnswer, uncertainNatalAnswer, calculatedPointMeaning } from './chart-answer-check.js';
-import { groundingQuestion } from './chat-topics.js';
+import { groundingQuestion, applicationClarification } from './chat-topics.js';
 import { isGeneralAstrologyQuestion } from './chat-grounding-scope.js';
 import { extractLearningSignal, learningSignalDiagnostics, LEARNING_SIGNAL, LEARNING_SIGNAL_INSTRUCTION } from './learning-signals.js';
 import {explanationGuidance, incompleteMoneyExplanation, calculatedMoneyExplanation, wrongMoneyRulerClaim, practicalIntentAnswer, intentAnswerProblem} from './chat-explanation.js';
 import {focusedChart} from './chat-chart-focus.js';
 import {chartRecords,recordAnswerProblem,anchorRecordReply} from './chart-records.js';
-import {personalSolarSignQuestion,isMeaningClarification,isSimplificationRequest,repeatedSimplification,wantsNoAstroTerms,asksForMeaning,isNatalOverview} from './chat-topics.js';
+import {personalSolarSignQuestion,isMeaningClarification,isSimplificationRequest,repeatedSimplification,wantsNoAstroTerms,asksForMeaning,isNatalOverview,asksForStrengths,isElaborationFollowUp,hasAnsweredTopic,requestsDetailedAnswer} from './chat-topics.js';
 import {isClearlyOffTopic, incomeRulerExplanation, chatIntent} from './chat-intent.js';
 import {factAnswersEnabled,calculatedFactAnswer,physicalInferenceQuestion,physicalInferenceAnswer} from './chat-fact-answers.js';
 import {basicFactExplanation} from './basic-fact-explanation.js';
@@ -102,6 +102,12 @@ export function systemFor(mode) {
 
 export function questionGuidance(message, chart, mode, history = []) {
   if (mode !== TAROT_MODE && asksForMeaning(message)) return '\nОбъясни смысл последнего ответа применительно к исходному вопросу. Начни с того, что это может значить в обычной жизни. Если полезно, приведи короткий пример. Не повторяй планеты, знаки, номера домов или справочные определения.';
+  if (mode !== TAROT_MODE && requestsDetailedAnswer(message,history)) {
+    const original = groundingQuestion(message,history).split('\nУточнение: ')[0];
+    return '\nРазвивай именно запрошенную тему. Если это продолжение, опирайся на предыдущий ответ и добавь новый смысл. Напиши 2–4 связных абзаца как в живой переписке. Сначала назови главную мысль, затем покажи на бытовом примере, как это может проявиться. Если уместна карта, возьми один или два связанных с вопросом показателя. Объясни, что даёт рассчитанный знак, что добавляет дом и как это вместе выглядит в жизни. Можно использовать ASC или MC, если эти точки реально есть в расчёте, и сразу пояснить их обычными словами. Не придумывай положения, аспекты и гарантии. Не угадывай пол.' +
+      (asksForStrengths(original) ? ' В начале прямо назови конкретные сильные стороны, без вступления о том, что способности просто есть.' : '');
+  }
+  if (mode !== TAROT_MODE && asksForStrengths(message)) return '\nНазови конкретные сильные стороны в первом предложении: что у человека может хорошо получаться. Дай короткий пример из жизни, затем поясни по рассчитанной карте.';
   if (mode !== TAROT_MODE && isNatalOverview(message)) return '\nПервое предложение после приветствия должно быть понятным человеку, который не знает астрологии. Начни с одной возможной темы из жизни. Во втором предложении можно кратко назвать рассчитанный показатель, который её поясняет.';
   if (mode !== TAROT_MODE && isGeneralAstrologyQuestion(groundingQuestion(message, history))) return '\nЭто вопрос о понятии или способе расчёта. Сначала дай простое и точное объяснение термина и один короткий пример. Например, управитель знака — связанная с ним планета; управитель дома определяется по знаку на его куспиде. Не подменяй объяснение личным прогнозом. Приглашение к обучению интерфейс покажет отдельно после ответа: не выдумывай контакты, ссылки, цены, расписание и не вставляй рекламу в сам ответ.';
   if (mode === TAROT_MODE || !isRelationshipQuestion(message)) return '';
@@ -218,12 +224,21 @@ export function createLocalChat({ model, fetchImpl = fetch, learningSignals = pr
   const signalProtocol=learningSignals||process.env.CHAT_MODEL_PROTOCOL==='19';
   return {
     async answer({ message, history, forecast, visitorName = null, visitorGender = null, signal, length = DEFAULT_ANSWER_LENGTH, materials = [], chart = null, mode = null, tone = null, onDelta = null, temperature = 0.25, qualityRetry = false, styleRetry = false, factRetry = false, factCorrection = '', explanationRetry = false, lengthRetry = false }) {
+      const expand = mode !== TAROT_MODE && requestsDetailedAnswer(message,history);
+      if (expand) length='detailed';
       const size = answerSize(mode, length);
       if (!size) throw new Error('Unknown answer length');
       const question = groundingQuestion(message, history);
       const explainMeaning = mode !== TAROT_MODE && asksForMeaning(message);
       const relationshipProblem = text => relationshipAnswerProblems(text,chart,length,{requireOverview:!explainMeaning});
-      const contractProblems=text=>mode===TAROT_MODE?[]:answerContractProblems(text,{message,visitorGender,forecast,history});
+      const contractProblems=text=>{
+        if(mode===TAROT_MODE)return [];
+        const issues=answerContractProblems(text,{message,visitorGender,forecast,history});
+        if(expand&&chart?.subject?.kind==='selected'&&/в\s+твоей\s+(?:натальной\s+)?карте|одна\s+из\s+твоих\s+сильных\s+сторон/iu.test(text)){
+          issues.push('Расчёт относится к выбранному человеку. Объясни его в третьем лице.');
+        }
+        return issues;
+      };
       const recordProblem = text => !explainMeaning && process.env.ANNA_CHART_FOCUS==='30' && mode!==TAROT_MODE && recordAnswerProblem(text,chart,question);
       const publishContext=(text,reason)=>{
         const answer=conversationalOpening(text,history);
@@ -280,14 +295,26 @@ export function createLocalChat({ model, fetchImpl = fetch, learningSignals = pr
         const fixed=foreignChartClarification(question,forecast,chart)??knownServiceReply(question)??unsupportedStrategyReply(question,chart,materials,history)??relationshipTimingReply(question)??uncertainNatalAnswer(chart,question);
         if(fixed)return publishContext(fixed,'context-contract');
         if(explainMeaning&&!history.some(turn=>turn.role==='assistant'))return publishContext('Какую мысль нужно пояснить? Пришли фразу, и я объясню её простыми словами.','meaning-needs-context');
+        if(isElaborationFollowUp(message)&&!hasAnsweredTopic(history))return publishContext('О чём рассказать подробнее? Напиши тему или пришли фразу, которую хочется разобрать.','detail-needs-context');
+        if(!forecast?.subject&&!chart?.partner&&!chart?.partnerMissing&&chart?.subject?.kind!=='selected'){
+          const standardQuestion=question===message ? message
+            : expand&&isElaborationFollowUp(message)&&!applicationClarification(question) ? question.split('\nУточнение: ')[0] : '';
+          const intent=chatIntent(standardQuestion);
+          const standardWork=intent==='workfit'&&/^\s*какая\s+(?:работа|профессия)\s+мне\s+под(?:ходит|ойд[её]т)[.!?…]*\s*$/iu.test(standardQuestion);
+          const standardMoney=['moneyStyle','moneyConfidence'].includes(intent)&&/^\s*(?:какой\s+подход\s+к\s+деньгам\s+мне\s+ближе|как\s+мне\s+увереннее\s+обращаться\s+с\s+деньгами)[.!?…]*\s*$/iu.test(standardQuestion);
+          if(standardWork||standardMoney)return publishContext(practicalIntentAnswer(chart,standardQuestion,length),'practical-topic');
+          if(length!=='detailed'&&asksForStrengths(message)&&chart?.calculated?.positions?.sun&&!chart.solarSignUncertain&&!chart.uncertainPositions?.includes('sun')){
+            return publishContext(groundedNatalAnswer(chart,message,length),'calculated-strengths');
+          }
+        }
       }
-      if (mode !== TAROT_MODE && personalSolarSignQuestion(question)) {
+      if (mode !== TAROT_MODE && !expand && personalSolarSignQuestion(question)) {
         const answer = conversationalOpening(explainMeaning||wantsNoAstroTerms(message)?plainLanguageFallback(chart,question,length):isMeaningClarification(message)?plainNatalAnswer(chart,'Солнце',length):personalSolarSignAnswer(chart), history);
         onDelta?.(answer, answer);
         onDecision?.({stage:'publication',source:'calculated',changed:false,reason:'solar-sign'});
         return {answer,model:null,answerSource:'calculated',length,truncated:false,contextVersion:chatContext.version,learningSuggested:false,groundedFallback:true};
       }
-      if(mode!==TAROT_MODE&&!explainMeaning&&factAnswersEnabled()){
+      if(mode!==TAROT_MODE&&!expand&&!explainMeaning&&factAnswersEnabled()){
         const text=physicalInferenceQuestion(question)?physicalInferenceAnswer:selectedPositionAnswer(question,forecast,chart)??calculatedFactAnswer(chart,question);
         if(text){
           const answer=conversationalOpening(text,history);

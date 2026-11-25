@@ -12,7 +12,7 @@ import { asksAboutCompatibility, chartContext, findMaterials } from '../chat-gro
 import { clientAddress } from '../traffic.js';
 import { fallbackReading, wrongCard } from '../tarot-guard.js';
 import { chatSuggestions } from '../chat-suggestions.js';
-import { groundingQuestion } from '../chat-topics.js';
+import { groundingQuestion, requestsDetailedAnswer } from '../chat-topics.js';
 
 const MAX_MESSAGE_CHARS = 600;
 // Seeds the personal tarot card for a partner/family profile apart from any account id.
@@ -197,7 +197,9 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
     }
 
     const message = body.message.trim();
-    const topicMessage = groundingQuestion(message, body.history ?? []);
+    const history = tarot ? [] : historySigner.trusted(body.history ?? []);
+    const topicMessage = groundingQuestion(message, history);
+    const length = tarot ? 'medium' : requestsDetailedAnswer(message, history) ? 'detailed' : body.length ?? DEFAULT_ANSWER_LENGTH;
     const draw = body.draw ?? 0;
     // Any failure while preparing the prompt frees the slot and gives the message back.
     let context, astro, materials, card;
@@ -215,7 +217,7 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
           : general;
         context = chatForecastContext(forecast, chart.subject);
         const pair = compatibilityPair(chart, topicMessage);
-        astro = chartContext(pair.primary, message, new Date(), { partner: pair.partner, history: body.history ?? [], subject:pair.primary===chart.own?null:chart.subject });
+        astro = chartContext(pair.primary, message, new Date(), { partner: pair.partner, history, subject:pair.primary===chart.own?null:chart.subject });
         // Only the text goes to the model; file names and scores stay on the server.
         materials = findMaterials(knowledge, message, astro.queries);
       }
@@ -262,10 +264,10 @@ export function createChatRoutes({ store, chatWriter, chatLimiter, chatGate, his
       return streaming ? (send('done', payload), res.end()) : json(res, 200, payload);
     };
     try {
-      const generate = (extra = {}) => chatWriter.answer({ message, history: tarot ? [] : historySigner.trusted(body.history ?? []),
+      const generate = (extra = {}) => chatWriter.answer({ message, history,
         forecast: tarot ? context : forecastForQuestion(context, topicMessage),
         visitorName: user.displayName || null, visitorGender: chart.visitorGender ?? null, chart: astro.chart, ...(tarot ? { mode: TAROT_MODE } : {}),
-        length: tarot ? 'medium' : body.length ?? DEFAULT_ANSWER_LENGTH, ...(!tarot && CHAT_TONES.includes(body.tone) ? { tone: body.tone } : {}), materials, signal: abort.signal, onDelta, ...extra });
+        length, ...(!tarot && CHAT_TONES.includes(body.tone) ? { tone: body.tone } : {}), materials, signal: abort.signal, onDelta, ...extra });
       let reply = await generate();
       if (tarot && wrongCard(reply.answer, card)) {
         // The model wrote about another card: one more try, then a calculated reading of the card the person was shown.
